@@ -167,12 +167,12 @@ class RangeMeasurement(Measurement):
             threshold = now + waiting_time
             while now < threshold:
                 if self.state.get('stop_requested'):
-                    self.update.emit({"message": "Stopping..."})
+                    self.update_message("Stopping...")
                     break
                 if self.state.get('change_voltage_continuous'):
                     break
                 remaining = round(threshold - now)
-                self.update.emit({"message": f"Next reading in {remaining:d} sec..."})
+                self.update_message(f"Next reading in {remaining:d} sec...")
                 time.sleep(interval)
                 now = time.time()
 
@@ -182,6 +182,24 @@ class RangeMeasurement(Measurement):
             del self.state['change_voltage_continuous']
             self.rampToContinuous(params.get("end_voltage"), params.get("step_voltage"), params.get("waiting_time"))
         self.itChangeVoltageReady.emit()
+
+    def update_message(self, message: str) -> None:
+        """Emit update message event."""
+        self.update.emit({"message": message})
+
+    def update_progress(self, begin: int, end: int, step: int) -> None:
+        """Emit update progress event."""
+        self.update.emit({"progress": (begin, end, step)})
+
+    def update_estimate_message(self, voltage: float, estimate: Estimate) -> None:
+        """Emit update message event for ramp iterations."""
+        elapsed_time = format(estimate.elapsed).split('.')[0]
+        remaining_time = format(estimate.remaining).split('.')[0]
+        self.update_message(f"Ramp to {voltage} V | Elapsed {elapsed_time} | Remaining {remaining_time}")
+
+    def update_estimate_progress(self, estimate: Estimate) -> None:
+        """Emit update progress event for ramp iterations."""
+        self.update_progress(0, estimate.count, estimate.passed)
 
     def initialize(self):
         source = self.state.get('source')
@@ -225,10 +243,6 @@ class RangeMeasurement(Measurement):
         # Enable output
         self.set_source_output_state(True)
 
-        # Voltage range
-        voltage_end = self.state.get('voltage_end')
-        self.set_source_voltage_range(voltage_end)
-
         self.rampBegin()
 
         # Wait after output enable/ramp
@@ -241,17 +255,15 @@ class RangeMeasurement(Measurement):
             self.state.get('voltage_step')
         )
 
-        self.update.emit({"message": f"Ramp to {ramp.end} V"})
+        self.update_message(f"Ramp to {ramp.end} V")
         estimate = Estimate(len(ramp))
 
         for step, voltage in enumerate(ramp):
-            elapsed_time = format(estimate.elapsed).split('.')[0]
-            remaining_time = format(estimate.remaining).split('.')[0]
-            self.update.emit({"message": f"Ramp to {ramp.end} V | Elapsed {elapsed_time} | Remaining {remaining_time}"})
-            self.update.emit({"progress": (0, len(ramp), step)})
+            self.update_estimate_message(ramp.end, estimate)
+            self.update_estimate_progress(estimate)
 
             if self.state.get('stop_requested'):
-                self.update.emit({"message": "Stopping..."})
+                self.update_message("Stopping...")
                 return
             self.set_source_voltage(voltage)
 
@@ -263,14 +275,14 @@ class RangeMeasurement(Measurement):
 
             estimate.advance()
 
-        self.update.emit({"message": ""})
+        self.update_message("")
 
         if self.state.get('stop_requested'):
-            self.update.emit({"message": "Stopping..."})
+            self.update_message("Stopping...")
             return
 
         if self.state.get('continuous'):
-            self.update.emit({"message": "Continuous measurement..."})
+            self.update_message("Continuous measurement...")
             self.acquireContinuousReading()
 
     def finalize(self):
@@ -292,6 +304,10 @@ class RangeMeasurement(Measurement):
         pass
 
     def rampBegin(self):
+        # Set voltage range to end voltage
+        voltage_end = self.state.get('voltage_end')
+        self.set_source_voltage_range(voltage_end)
+
         voltage_begin = self.state.get('voltage_begin', 0.0)
         ramp = LinearRange(
             self.state.get('source_voltage', 0.0),
@@ -301,10 +317,8 @@ class RangeMeasurement(Measurement):
         estimate = Estimate(len(ramp))
 
         for step, voltage in enumerate(ramp):
-            elapsed_time = format(estimate.elapsed).split('.')[0]
-            remaining_time = format(estimate.remaining).split('.')[0]
-            self.update.emit({"message": f"Ramp to {voltage_begin} V | Elapsed {elapsed_time} | Remaining {remaining_time}"})
-            self.update.emit({"progress": (0, len(ramp), step)})
+            self.update_estimate_message(ramp.end, estimate)
+            self.update_estimate_progress(estimate)
 
             if self.state.get('stop_requested'):
                 break
@@ -322,10 +336,8 @@ class RangeMeasurement(Measurement):
         ramp = LinearRange(source_voltage, 0.0, 5.0)
         estimate = Estimate(len(ramp))
         for step, voltage in enumerate(ramp):
-            elapsed_time = format(estimate.elapsed).split('.')[0]
-            remaining_time = format(estimate.remaining).split('.')[0]
-            self.update.emit({"message": f"Ramp to zero | Elapsed {elapsed_time} | Remaining {remaining_time}"})
-            self.update.emit({"progress": (0, len(ramp), step)})
+            self.update_estimate_message(ramp.end, estimate)
+            self.update_estimate_progress(estimate)
 
             self.set_source_voltage(voltage)
             time.sleep(.250)
@@ -337,17 +349,18 @@ class RangeMeasurement(Measurement):
         ramp = LinearRange(source_voltage, end_voltage, step_voltage)
         estimate = Estimate(len(ramp))
 
-        self.set_source_voltage_range(end_voltage)
+        # If end voltage higher, set new range before ramp.
+        if abs(ramp.end) > abs(ramp.begin):
+            self.set_source_voltage_range(ramp.end)
 
         for step, voltage in enumerate(ramp):
-            elapsed_time = format(estimate.elapsed).split('.')[0]
-            remaining_time = format(estimate.remaining).split('.')[0]
-            self.update.emit({"message": f"Ramp to {end_voltage} V | Elapsed {elapsed_time} | Remaining {remaining_time}"})
-            self.update.emit({"progress": (0, len(ramp), step)})
+            self.update_estimate_message(ramp.end, estimate)
+            self.update_estimate_progress(estimate)
 
             if self.state.get('stop_requested'):
-                self.update.emit({"message": "Stopping..."})
+                self.update_message("Stopping...")
                 return
+
             self.set_source_voltage(voltage)
 
             time.sleep(waiting_time)
@@ -364,6 +377,10 @@ class RangeMeasurement(Measurement):
             self.update_current_compliance()
 
             estimate.advance()
+
+        # If end voltage lower, set new range after ramp.
+        if abs(ramp.end) < abs(ramp.begin):
+            self.set_source_voltage_range(ramp.end)
 
 
 class IVMeasurement(RangeMeasurement):
@@ -410,8 +427,8 @@ class IVMeasurement(RangeMeasurement):
 
     def acquireContinuousReading(self):
         while not self.state.get('stop_requested'):
-            self.update.emit({"message": "Reading..."})
-            self.update.emit({"progress": (0, 0, 0)})
+            self.update_message("Reading...")
+            self.update_progress(0, 0, 0)
             reading = self.acquireReadingData()
             logging.info(reading)
             self.itReading.emit(reading)
