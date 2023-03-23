@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2023-03-23
+### Fixed
+- Increased limits for (bias) voltages to 3030 V (#82).
+
 ## [0.16.0] - 2023-03-01
 ### Added
 - Electrometer K6517B as voltage source (#74).
@@ -198,7 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.16.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.16.1...HEAD
+[0.16.1]: https://github.com/hephy-dd/diode-measurement/compare/0.16.0...0.16.1
 [0.16.0]: https://github.com/hephy-dd/diode-measurement/compare/0.15.6...0.16.0
 [0.15.6]: https://github.com/hephy-dd/diode-measurement/compare/0.15.5...0.15.6
 [0.15.5]: https://github.com/hephy-dd/diode-measurement/compare/0.15.4...0.15.5

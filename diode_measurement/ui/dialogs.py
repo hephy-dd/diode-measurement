@@ -14,7 +14,7 @@ class ChangeVoltageDialog(QtWidgets.QDialog):
         self.endVoltageLabel = QtWidgets.QLabel("End Voltage")
 
         self.endVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.endVoltageSpinBox.setRange(-1100, +1100)
+        self.endVoltageSpinBox.setRange(-3030, +3030)
         self.endVoltageSpinBox.setDecimals(3)
         self.endVoltageSpinBox.setSuffix(" V")
 

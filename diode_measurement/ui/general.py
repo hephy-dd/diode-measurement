@@ -39,17 +39,17 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self.beginVoltageSpinBox = QtWidgets.QDoubleSpinBox()
         self.beginVoltageSpinBox.setDecimals(3)
-        self.beginVoltageSpinBox.setRange(-2000.0, +2000.0)
+        self.beginVoltageSpinBox.setRange(-3030.0, +3030.0)
         self.beginVoltageSpinBox.setSuffix(" V")
 
         self.endVoltageSpinBox = QtWidgets.QDoubleSpinBox()
         self.endVoltageSpinBox.setDecimals(3)
-        self.endVoltageSpinBox.setRange(-2000.0, +2000.0)
+        self.endVoltageSpinBox.setRange(-3030.0, +3030.0)
         self.endVoltageSpinBox.setSuffix(" V")
 
         self.stepVoltageSpinBox = QtWidgets.QDoubleSpinBox()
         self.stepVoltageSpinBox.setDecimals(3)
-        self.stepVoltageSpinBox.setRange(0, +2000.0)
+        self.stepVoltageSpinBox.setRange(0, +3030.0)
         self.stepVoltageSpinBox.setSuffix(" V")
 
         self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox()
@@ -57,7 +57,7 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self.biasVoltageSpinBox = QtWidgets.QDoubleSpinBox()
         self.biasVoltageSpinBox.setDecimals(3)
-        self.biasVoltageSpinBox.setRange(-2000.0, +2000.0)
+        self.biasVoltageSpinBox.setRange(-3030.0, +3030.0)
         self.biasVoltageSpinBox.setSuffix(" V")
 
         self.currentComplianceSpinBox = QtWidgets.QDoubleSpinBox()
