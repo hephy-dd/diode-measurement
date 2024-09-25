@@ -68,7 +68,7 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self.currentComplianceSpinBox = QtWidgets.QDoubleSpinBox()
         self.currentComplianceSpinBox.setDecimals(3)
-        self.currentComplianceSpinBox.setRange(0.0, +2000.0)
+        self.currentComplianceSpinBox.setRange(0.0, +2000000.0)
         self.currentComplianceSpinBox.setSuffix(" uA")
         self.currentComplianceSpinBox.editingFinished.connect(
             lambda: self.currentComplianceChanged.emit(self.currentCompliance())
