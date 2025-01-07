@@ -26,7 +26,7 @@ python -m venv build_env
 # Install dependencies
 pip install -U pip
 pip install wheel pyusb pyserial gpib-ctypes
-pip install pyinstaller==4.10.* pyinstaller-versionfile==2.0.*
+pip install pyinstaller pyinstaller-versionfile
 pip install .
 
 # Build executable
@@ -39,25 +39,25 @@ An executable will be created in `dist/diode-measurement-{version}.exe`
 
 Source Meter Units
 
-- Keithley K237
-- Keithley K2410
-- Keithley K2470
-- Keithley K2657A
+- Keithley 237
+- Keithley 2410
+- Keithley 2470
+- Keithley 2657A
 
 Electro Meter
 
-- Keithley K6514
-- Keithley K6517B
+- Keithley 6514
+- Keithley 6517B
 
 LCR Meter
 
-- Keithley K595
+- Keithley 595
 - Keysight E4980A
 - Agilent 4284A
 
 DMM (Temperature)
 
-- Keithley K2700
+- Keithley 2700
 
 Switching Matrix
 

@@ -13,8 +13,8 @@ package_icon = os.path.join(package_root, "assets", "icons", "diode-measurement.
 
 # Create entry point
 def create_entrypoint(output_file):
-  with open(output_file, "wt") as fp:
-      fp.write("from diode_measurement.__main__ import main; main()")
+    with open(output_file, "wt") as fp:
+        fp.write("from diode_measurement.__main__ import main; main()")
 
 create_entrypoint(output_file="entry_point.py")
 
@@ -25,7 +25,7 @@ create_versionfile(
     company_name="HEPHY",
     file_description="IV/CV measurements for silicon sensors",
     internal_name="Diode Measurement",
-    legal_copyright="Copyright 2021-2024 HEPHY. All rights reserved.",
+    legal_copyright="Copyright 2021-2025 HEPHY. All rights reserved.",
     original_filename=filename,
     product_name="Diode Measurement"
 )
