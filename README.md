@@ -26,7 +26,7 @@ python -m venv build_env
 # Install dependencies
 pip install -U pip
 pip install wheel pyusb pyserial gpib-ctypes
-pip install pyinstaller==4.10.* pyinstaller-versionfile==2.0.*
+pip install pyinstaller pyinstaller-versionfile
 pip install .
 
 # Build executable
