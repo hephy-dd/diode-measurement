@@ -31,7 +31,6 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["diode_measurement"]
 include-package-data = true
 
 [tool.setuptools.dynamic]
