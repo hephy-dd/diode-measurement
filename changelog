@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.4] - 2025-04-15
+
+### Fixed
+- `pyproject.toml` excluded sub-packages (#110).
+
 ## [0.21.3] - 2025-01-07
 
 ### Changed
@@ -273,7 +278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.21.3...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.21.4...HEAD
+[0.21.4]: https://github.com/hephy-dd/diode-measurement/compare/0.21.3...0.21.4
 [0.21.3]: https://github.com/hephy-dd/diode-measurement/compare/0.21.2...0.21.3
 [0.21.2]: https://github.com/hephy-dd/diode-measurement/compare/0.21.1...0.21.2
 [0.21.1]: https://github.com/hephy-dd/diode-measurement/compare/0.21.0...0.21.1
