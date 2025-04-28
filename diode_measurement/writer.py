@@ -90,7 +90,7 @@ class Writer:
             self.write_table_header([
                 "timestamp[s]",
                 "voltage[V]",
-                "v_smu[V]"
+                "v_smu[V]",
                 "i_smu[A]",
                 "i_elm[A]",
                 "i_elm2[A]",
