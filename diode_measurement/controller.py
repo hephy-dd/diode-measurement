@@ -135,6 +135,7 @@ class Controller(QtCore.QObject):
         super().__init__(parent)
         self.view = view
 
+        self.isExceptionDialogActive: bool = False
         self.abortRequested = threading.Event()
         self.measurementThread: Optional[threading.Thread] = None
         self.state: State = State()
@@ -627,7 +628,11 @@ class Controller(QtCore.QObject):
     # Slots
 
     def handleException(self, exc):
-        showException(exc, self.view)
+        """Shows up to one error message at a time."""
+        if not self.isExceptionDialogActive:
+            self.isExceptionDialogActive = True
+            showException(exc, self.view)
+            self.isExceptionDialogActive = False
 
     def onUpdate(self, data):
         cache = {}
