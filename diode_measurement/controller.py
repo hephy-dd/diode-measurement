@@ -781,20 +781,26 @@ class Controller(QtCore.QObject):
 
     def onInstrumentsChanged(self) -> None:
         self.view.generalWidget.setCurrentComplianceLocked(False)
+        #
+        # HACK Not all instruments support compliance!
+        # TODO Implement instrument capabilities to lock not supported inputs
+        #
         if self.view.generalWidget.isSMUEnabled():
             ...
         elif self.view.generalWidget.isELMEnabled():
-            # TODO this is very ugly!
             role = self.view.findRole("ELM")
-            if role.resourceWidget.model() == "K6517B":  # HACK
+            if role.resourceWidget.model() in ["K6517B"]:
                 self.view.generalWidget.setCurrentComplianceLocked(True)
-                self.view.generalWidget.setCurrentCompliance(1.0e-3) # TODO
+                self.view.generalWidget.setCurrentCompliance(1.0e-3)  # fixed for K6517B
         elif self.view.generalWidget.isELM2Enabled():
-            # TODO this is very ugly!
             role = self.view.findRole("ELM2")
-            if role.resourceWidget.model() == "K6517B":  # HACK
+            if role.resourceWidget.model() in ["K6517B"]:
                 self.view.generalWidget.setCurrentComplianceLocked(True)
-                self.view.generalWidget.setCurrentCompliance(1.0e-3) # TODO
+                self.view.generalWidget.setCurrentCompliance(1.0e-3)  # fixed for K6517B
+        elif self.view.generalWidget.isLCREnabled():
+            role = self.view.findRole("LCR")
+            if role.resourceWidget.model() in ["K595", "E4980A", "A4284A"]:
+                self.view.generalWidget.setCurrentComplianceLocked(True)
 
     def onToggleSmu(self, state: bool) -> None:
         self.ivPlotsController.toggleSmuSeries(state)

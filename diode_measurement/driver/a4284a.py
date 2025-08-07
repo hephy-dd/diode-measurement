@@ -73,10 +73,10 @@ class A4284A(LCRMeter):
         pass  # TODO
 
     def set_current_compliance_level(self, level: float) -> None:
-        raise RuntimeError("current compliance not supported")
+        ...  # not supported
 
     def compliance_tripped(self) -> bool:
-        raise RuntimeError("current compliance not supported")
+        return False
 
     def measure_i(self) -> float:
         return 0.0

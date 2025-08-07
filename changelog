@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.7] - 2025-08-07
+
+### Fixed
+- Keysight E4980A does not support compliance when used as source (#114).
+
 ## [0.21.6] - 2025-06-10
 
 ### Fixed
@@ -288,7 +293,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.21.6...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...HEAD
+[0.21.7]: https://github.com/hephy-dd/diode-measurement/compare/0.21.6...0.21.7
 [0.21.6]: https://github.com/hephy-dd/diode-measurement/compare/0.21.5...0.21.6
 [0.21.5]: https://github.com/hephy-dd/diode-measurement/compare/0.21.4...0.21.5
 [0.21.4]: https://github.com/hephy-dd/diode-measurement/compare/0.21.3...0.21.4

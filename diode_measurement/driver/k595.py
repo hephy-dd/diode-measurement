@@ -59,7 +59,7 @@ class K595(LCRMeter):
         ...  # TODO
 
     def set_current_compliance_level(self, level: float) -> None:
-        ...  # not available
+        ...  # not supported
 
     def compliance_tripped(self) -> bool:
         self._write("F1X")

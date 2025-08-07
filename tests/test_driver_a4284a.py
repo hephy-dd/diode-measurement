@@ -44,14 +44,12 @@ def test_driver_a4284a(res):
     assert d.set_voltage_range(200.0) is None
     assert res.buffer == []
 
-    res.buffer = []
-    with pytest.raises(RuntimeError):
-        d.set_current_compliance_level(0.002)
+    res.buffer = []  # not supported
+    assert d.set_current_compliance_level(0.002) is None
     assert res.buffer == []
 
     res.buffer = []
-    with pytest.raises(RuntimeError):
-        d.compliance_tripped()
+    assert not d.compliance_tripped()
     assert res.buffer == []
 
     res.buffer = []
