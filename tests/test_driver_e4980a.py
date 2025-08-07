@@ -42,13 +42,13 @@ def test_driver_e4980a(res):
     assert d.set_voltage_range(200.0) is None
     assert res.buffer == []
 
-    res.buffer = ["1"]
+    res.buffer = []  # not supported
     assert d.set_current_compliance_level(0.002) is None
-    assert res.buffer == [":SENS:CURR:PROT:LEV 2.000E-03", "*OPC?"]
+    assert res.buffer == []
 
-    res.buffer = ["1"]
-    assert d.compliance_tripped() is True
-    assert res.buffer == [":SENS:CURR:PROT:TRIP?"]
+    res.buffer = []
+    assert not d.compliance_tripped()
+    assert res.buffer == []
 
     res.buffer = []
     assert d.measure_i() == 0.0

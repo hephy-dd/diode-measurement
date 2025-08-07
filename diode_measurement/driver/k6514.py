@@ -67,7 +67,7 @@ class K6514(Electrometer):
         ...
 
     def set_current_compliance_level(self, level: float) -> None:
-        ...
+        ...  # not supported
 
     def compliance_tripped(self) -> bool:
         return False

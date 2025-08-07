@@ -75,10 +75,10 @@ class E4980A(LCRMeter):
         ...  # TODO
 
     def set_current_compliance_level(self, level: float) -> None:
-        self._write(f":SENS:CURR:PROT:LEV {level:.3E}")
+        ...  # not supported
 
     def compliance_tripped(self) -> bool:
-        return self._query(":SENS:CURR:PROT:TRIP?") == "1"
+        return False
 
     def measure_i(self) -> float:
         return 0.0
