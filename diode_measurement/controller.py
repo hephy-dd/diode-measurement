@@ -148,7 +148,7 @@ class Controller(QtCore.QObject):
             <p>IV/CV measurements for silicon sensors.</p>
             <p>Version {__version__}</p>
             <p>This software is licensed under the GNU General Public License Version 3.</p>
-            <p>Copyright &copy; 2021-2025 <a href=\"https://hephy.at\">HEPHY</a></p>
+            <p>Copyright &copy; 2021-2025 <a href=\"https://oeaw.ac.at/mbi\">MBI</a></p>
         """)
 
         # Controller

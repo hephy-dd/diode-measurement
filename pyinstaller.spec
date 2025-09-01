@@ -22,10 +22,10 @@ create_entrypoint(output_file="entry_point.py")
 create_versionfile(
     output_file="version_info.txt",
     version=f"{version}.0",
-    company_name="HEPHY",
+    company_name="MBI",
     file_description="IV/CV measurements for silicon sensors",
     internal_name="Diode Measurement",
-    legal_copyright="Copyright 2021-2025 HEPHY. All rights reserved.",
+    legal_copyright="Copyright 2021-2025 MBI. All rights reserved.",
     original_filename=filename,
     product_name="Diode Measurement"
 )
