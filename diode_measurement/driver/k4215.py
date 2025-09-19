@@ -118,7 +118,7 @@ class K4215(LCRMeter):
 
         if level not in [0, 1e-6, 30e-6, 1e-3]:
             raise ValueError("AC current range must be one of: 0, 1uA, 30uA, 1mA")
-        
+
         self._write(f":CVU:ACZ:RANGE {level:.6E}")
 
     def set_output_enabled(self, enabled: bool) -> None:
@@ -130,7 +130,6 @@ class K4215(LCRMeter):
         """Check if the CVU output is enabled."""
         # not implemented in K4215
         return False
-
 
     def set_correction(self, open_state=False, short_state=False, load_state=False):
         """Enable or disable open, short, and load compensation."""
@@ -221,7 +220,9 @@ class K4215(LCRMeter):
             raise ValueError("Delay factor must be between 0 and 100")
 
         # Set speed with delay factor, filter factor and aperture
-        self._write(f":CVU:SPEED 3,{delay_factor:.3E},{filter_factor:.3E},{aperture:.3E}")
+        self._write(
+            f":CVU:SPEED 3,{delay_factor:.3E},{filter_factor:.3E},{aperture:.3E}"
+        )
 
     def set_amplitude_voltage(self, voltage: float) -> None:
         if not (0.01 <= voltage <= 1.0):
@@ -254,12 +255,10 @@ class K4215(LCRMeter):
             raise ValueError("Correction length must be 0, 1.5, or 3.0 meters")
         self._write(f":CVU:LENGTH {correction_length:.1f}")
 
-
     def set_voltage_level(self, level: float) -> None:
         """Set the DC bias voltage level."""
         if not (-30.0 <= level <= 30.0):
             raise ValueError("Bias voltage level must be between -30V and 30V")
-
 
         if self._external_bias_tee_enabled:
             raise RuntimeError(

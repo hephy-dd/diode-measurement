@@ -60,7 +60,7 @@ def test_driver_k4215_output_control(res):
     res.buffer = ["1"]
     # always returns False for K4215, as the command is not implemented
     # and no querying to the K4215 takes place
-    assert d.get_output_enabled() is False 
+    assert d.get_output_enabled() is False
     assert res.buffer == ["1"]
 
     # Test get output enabled - False
@@ -300,7 +300,6 @@ def test_driver_k4215_correction_functions(res):
     assert res.buffer == [":CVU:CORRECT 1,1,0"]
 
 
-
 def test_driver_k4215_correction_length_validation(res):
     """Test cable length correction with validation."""
     d = K4215(res)
@@ -399,7 +398,7 @@ def test_driver_k4215_default_configuration(res):
     """Test comprehensive configuration with all options."""
     d = K4215(res)
 
-    res.buffer = [] 
+    res.buffer = []
     options = {"voltage": 0.1, "frequency": 100000.0}
     d.configure(options)
 
@@ -407,7 +406,6 @@ def test_driver_k4215_default_configuration(res):
     assert ":CVU:MODEL 2" in res.buffer  # Default CPRP function type
     assert ":CVU:ACV 1.000000E-01" in res.buffer  # AC voltage
     assert ":CVU:FREQ 100000" in res.buffer  # Frequency
-
 
 
 def test_driver_k4215_fetch_functionality(res):
@@ -419,4 +417,3 @@ def test_driver_k4215_fetch_functionality(res):
     result = d._fetch(timeout=1.0, interval=0.1)
     assert result == "1.000000E-01,2.000000E-01"
     assert res.buffer == [":CVU:MEASZ?"]
-
