@@ -12,6 +12,7 @@ __all__ = [
     "K2470Panel",
     "K2657APanel",
     "K2700Panel",
+    "K4215Panel",
     "K6514Panel",
     "K6517BPanel",
     "A4284APanel",
@@ -88,11 +89,9 @@ class InstrumentPanel(QtWidgets.QWidget):
     def setModel(self, model: str) -> None:
         self.setProperty("model", model)
 
-    def restoreDefaults(self) -> None:
-        ...
+    def restoreDefaults(self) -> None: ...
 
-    def setLocked(self, state: bool) -> None:
-        ...
+    def setLocked(self, state: bool) -> None: ...
 
     def bindParameter(self, key: str, parameter: Any) -> None:
         if key in self._parameters:
@@ -177,11 +176,11 @@ class K2410Panel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filterFactorLabel = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filterFactorSpinBox = QtWidgets.QSpinBox()
+        self.filterFactorSpinBox.setSingleStep(1)
+        self.filterFactorSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -191,8 +190,8 @@ class K2410Panel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
+        filterLayout.addWidget(self.filterFactorLabel)
+        filterLayout.addWidget(self.filterFactorSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         filterLayout.addStretch()
@@ -247,23 +246,25 @@ class K2410Panel(InstrumentPanel):
         # Parameters
 
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
-        self.bindParameter("route.terminals", WidgetParameter(self.routeTerminalsComboBox))
+        self.bindParameter(
+            "route.terminals", WidgetParameter(self.routeTerminalsComboBox)
+        )
 
         self.restoreDefaults()
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
+        self.filterFactorSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
         self.routeTerminalsComboBox.setCurrentIndex(0)
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
+        self.filterFactorSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.routeTerminalsComboBox.setEnabled(not state)
@@ -280,11 +281,11 @@ class K2470Panel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filterFactorLabel = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filterFactorSpinBox = QtWidgets.QSpinBox()
+        self.filterFactorSpinBox.setSingleStep(1)
+        self.filterFactorSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -294,8 +295,8 @@ class K2470Panel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
+        filterLayout.addWidget(self.filterFactorLabel)
+        filterLayout.addWidget(self.filterFactorSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         filterLayout.addStretch()
@@ -359,17 +360,22 @@ class K2470Panel(InstrumentPanel):
         layout.setStretch(1, 1)
 
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
-        self.bindParameter("route.terminals", WidgetParameter(self.routeTerminalsComboBox))
-        self.bindParameter("system.breakdown.protection", WidgetParameter(self.breakdownProtectionCheckBox))
+        self.bindParameter(
+            "route.terminals", WidgetParameter(self.routeTerminalsComboBox)
+        )
+        self.bindParameter(
+            "system.breakdown.protection",
+            WidgetParameter(self.breakdownProtectionCheckBox),
+        )
 
         self.restoreDefaults()
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
+        self.filterFactorSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
         self.routeTerminalsComboBox.setCurrentIndex(0)
@@ -377,7 +383,7 @@ class K2470Panel(InstrumentPanel):
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
+        self.filterFactorSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.routeTerminalsComboBox.setEnabled(not state)
@@ -393,11 +399,11 @@ class K2657APanel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filterFactorLabel = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filterFactorSpinBox = QtWidgets.QSpinBox()
+        self.filterFactorSpinBox.setSingleStep(1)
+        self.filterFactorSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -408,8 +414,8 @@ class K2657APanel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
+        filterLayout.addWidget(self.filterFactorLabel)
+        filterLayout.addWidget(self.filterFactorSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         filterLayout.addStretch()
@@ -447,7 +453,7 @@ class K2657APanel(InstrumentPanel):
         layout.setStretch(1, 1)
 
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
 
@@ -455,13 +461,13 @@ class K2657APanel(InstrumentPanel):
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
+        self.filterFactorSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
+        self.filterFactorSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
 
@@ -470,6 +476,286 @@ class K2700Panel(InstrumentPanel):
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__("K2700", parent)
+
+
+class K4215Panel(InstrumentPanel):
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__("K4215", parent)
+
+        # AC amplitude
+
+        self.amplitudeGroupBox = QtWidgets.QGroupBox()
+        self.amplitudeGroupBox.setTitle("AC Amplitude")
+
+        self.amplitudeVoltageTimeLabel = QtWidgets.QLabel("Voltage")
+
+        self.amplitudeVoltageSpinBox = QtWidgets.QDoubleSpinBox()
+        self.amplitudeVoltageSpinBox.setSuffix(" mV")
+        self.amplitudeVoltageSpinBox.setDecimals(0)
+        self.amplitudeVoltageSpinBox.setRange(5, 20e3)
+        self.amplitudeVoltageSpinBox.setValue(100.0)
+
+        self.amplitudeFrequencyTimeLabel = QtWidgets.QLabel("Frequency")
+
+        self.amplitudeFrequencySpinBox = QtWidgets.QDoubleSpinBox()
+        self.amplitudeFrequencySpinBox.setSuffix(" kHz")
+        self.amplitudeFrequencySpinBox.setDecimals(3)
+        self.amplitudeFrequencySpinBox.setRange(0.020, 2e6)
+        self.amplitudeFrequencySpinBox.setValue(1e5)
+
+        self.amplitudeAlcCheckBox = QtWidgets.QCheckBox("Auto Level Control (ALC)")
+
+        amplitudeLayout = QtWidgets.QVBoxLayout(self.amplitudeGroupBox)
+        amplitudeLayout.addWidget(self.amplitudeVoltageTimeLabel)
+        amplitudeLayout.addWidget(self.amplitudeVoltageSpinBox)
+        amplitudeLayout.addWidget(self.amplitudeFrequencyTimeLabel)
+        amplitudeLayout.addWidget(self.amplitudeFrequencySpinBox)
+        # amplitudeLayout.addWidget(self.amplitudeAlcCheckBox)
+        amplitudeLayout.addStretch()
+
+        # External Bias Tee section
+        self.externalBiasTeeGroupBox = QtWidgets.QGroupBox()
+        self.externalBiasTeeGroupBox.setTitle("External Bias Tee")
+
+        self.externalBiasTeeCCheckBox = QtWidgets.QCheckBox(
+            "-10V DC Bias (only for P3 Bias Tee)"
+        )
+        self.externalBiasTeeCCheckBox.setStatusTip(
+            "Use external bias tee for DC bias voltage. When enabled, internal bias voltage control is disabled."
+        )
+
+        externalBiasTeeLayout = QtWidgets.QVBoxLayout(self.externalBiasTeeGroupBox)
+        externalBiasTeeLayout.addWidget(self.externalBiasTeeCCheckBox)
+        externalBiasTeeLayout.addStretch()
+
+        # Aperture
+
+        self.apertureGroupBox = QtWidgets.QGroupBox()
+        self.apertureGroupBox.setTitle("Aperture")
+
+        self.integrationTimeLabel = QtWidgets.QLabel("Integration Time")
+
+        self.integrationTimeComboBox = QtWidgets.QComboBox()
+        self.integrationTimeComboBox.addItem("Fast", "SHOR")
+        self.integrationTimeComboBox.addItem("Normal", "MED")
+        self.integrationTimeComboBox.addItem("Quiet", "LONG")
+        self.integrationTimeComboBox.addItem("Custom", "CUSTOM")
+
+        self.averagingRateLabel = QtWidgets.QLabel("Aperture (PLC)")
+
+        self.averagingRateSpinBox = QtWidgets.QDoubleSpinBox()
+        self.averagingRateSpinBox.setRange(0.006, 10.002)
+        self.averagingRateSpinBox.setDecimals(4)
+        self.averagingRateSpinBox.setValue(10.0)
+
+        self.filterFactorLabel = QtWidgets.QLabel("Filter Factor")
+
+        self.filterFactorSpinBox = QtWidgets.QDoubleSpinBox()
+        self.filterFactorSpinBox.setRange(0, 707.0)
+        self.filterFactorSpinBox.setDecimals(1)
+        self.filterFactorSpinBox.setValue(2.0)
+        self.filterFactorSpinBox.setStatusTip("Filter factor for noise reduction")
+
+        self.delayFactorLabel = QtWidgets.QLabel("Delay Factor")
+
+        self.delayFactorSpinBox = QtWidgets.QDoubleSpinBox()
+        self.delayFactorSpinBox.setRange(0.1, 100.0)
+        self.delayFactorSpinBox.setDecimals(1)
+        self.delayFactorSpinBox.setValue(1.0)
+        self.delayFactorSpinBox.setStatusTip("Delay factor for measurement timing")
+
+        apertureLayout = QtWidgets.QVBoxLayout(self.apertureGroupBox)
+        apertureLayout.addWidget(self.integrationTimeLabel)
+        apertureLayout.addWidget(self.integrationTimeComboBox)
+        apertureLayout.addWidget(self.averagingRateLabel)
+        apertureLayout.addWidget(self.averagingRateSpinBox)
+        apertureLayout.addWidget(self.filterFactorLabel)
+        apertureLayout.addWidget(self.filterFactorSpinBox)
+        apertureLayout.addWidget(self.delayFactorLabel)
+        apertureLayout.addWidget(self.delayFactorSpinBox)
+        apertureLayout.addStretch()
+
+        # Correction
+
+        self.correctionGroupBox = QtWidgets.QGroupBox()
+        self.correctionGroupBox.setTitle("Correction")
+
+        self.lengthLabel = QtWidgets.QLabel("Cable Length")
+
+        self.lengthComboBox = QtWidgets.QComboBox()
+        self.lengthComboBox.addItem("0 m", 0)
+        self.lengthComboBox.addItem("1.5 m", 1.5)
+        self.lengthComboBox.addItem("3.0 m", 3)
+
+        self.openEnabledCheckBox = QtWidgets.QCheckBox("Enable OPEN correction")
+        self.openEnabledCheckBox.setStatusTip("Enable OPEN correction")
+
+        self.shortEnabledCheckBox = QtWidgets.QCheckBox("Enable SHORT correction")
+        self.shortEnabledCheckBox.setStatusTip("Enable SHORT correction")
+
+        correctionLayout = QtWidgets.QVBoxLayout(self.correctionGroupBox)
+        correctionLayout.addWidget(self.lengthLabel)
+        correctionLayout.addWidget(self.lengthComboBox)
+        correctionLayout.addWidget(self.openEnabledCheckBox)
+        correctionLayout.addWidget(self.shortEnabledCheckBox)
+        correctionLayout.addStretch()
+
+        # Layout
+
+        leftLayout = QtWidgets.QVBoxLayout()
+        leftLayout.addWidget(self.amplitudeGroupBox)
+        leftLayout.addWidget(self.externalBiasTeeGroupBox)
+
+        rightLayout = QtWidgets.QVBoxLayout()
+        rightLayout.addWidget(self.apertureGroupBox)
+        rightLayout.addWidget(self.correctionGroupBox)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(leftLayout)
+        layout.addLayout(rightLayout)
+        layout.addStretch()
+        layout.setStretch(0, 1)
+        layout.setStretch(1, 1)
+
+        self.bindParameter(
+            "voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage)
+        )
+        self.bindParameter(
+            "frequency",
+            MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency),
+        )
+        self.bindParameter("amplitude.alc", WidgetParameter(self.amplitudeAlcCheckBox))
+        self.bindParameter(
+            "aperture.integration_time", WidgetParameter(self.integrationTimeComboBox)
+        )
+        self.bindParameter(
+            "aperture.aperture", WidgetParameter(self.averagingRateSpinBox)
+        )
+        self.bindParameter(
+            "aperture.filter_count", WidgetParameter(self.filterFactorSpinBox)
+        )
+        self.bindParameter(
+            "aperture.delay_factor", WidgetParameter(self.delayFactorSpinBox)
+        )
+        self.bindParameter("correction.length", WidgetParameter(self.lengthComboBox))
+        self.bindParameter(
+            "correction.open.enabled", WidgetParameter(self.openEnabledCheckBox)
+        )
+        self.bindParameter(
+            "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        )
+        self.bindParameter(
+            "external_bias_tee.enabled", WidgetParameter(self.externalBiasTeeCCheckBox)
+        )
+
+        # Connect signal to handle bias voltage control state
+        self.externalBiasTeeCCheckBox.toggled.connect(self.onExternalBiasTeeCToggled)
+
+        # Connect signal to handle integration time preset changes
+        self.integrationTimeComboBox.currentTextChanged.connect(
+            self.onIntegrationTimeChanged
+        )
+
+        # Connect signals to switch to Custom when manual changes are made
+        self.averagingRateSpinBox.valueChanged.connect(self.onManualParameterChange)
+        self.filterFactorSpinBox.valueChanged.connect(self.onManualParameterChange)
+        self.delayFactorSpinBox.valueChanged.connect(self.onManualParameterChange)
+
+        self.restoreDefaults()
+
+    def onExternalBiasTeeCToggled(self, checked: bool) -> None:
+        """Handle external bias tee checkbox toggle."""
+        # When external bias tee is enabled, warn user that bias voltage control is disabled
+        if checked:
+            self.setStatusTip(
+                "External bias tee enabled - internal bias voltage control is disabled"
+            )
+        else:
+            self.setStatusTip(
+                "External bias tee disabled - internal bias voltage control is available"
+            )
+
+    def onIntegrationTimeChanged(self, text: str) -> None:
+        """Handle integration time preset changes."""
+        # Define presets based on K4215 manual
+        presets = {
+            "Fast": {
+                "delay_factor": 0.7,
+                "filter_factor": 0.2,
+                "aperture_time": 1,
+            },
+            "Normal": {
+                "delay_factor": 1.0,
+                "filter_factor": 1.0,
+                "aperture_time": 10,
+            },
+            "Quiet": {
+                "delay_factor": 0.7,
+                "filter_factor": 1.3,
+                "aperture_time": 10,
+            },
+        }
+
+        # Only update if it's a preset (not Custom)
+        if text in presets:
+            preset = presets[text]
+
+            # Update delay factor (already scaled for display)
+            self.delayFactorSpinBox.setValue(preset["delay_factor"])
+
+            # Update filter count
+            self.filterFactorSpinBox.setValue(preset["filter_factor"])
+
+            # Set aperture time from preset
+            self.averagingRateSpinBox.setValue(preset["aperture_time"])
+
+    def onManualParameterChange(self) -> None:
+        """Switch to Custom mode when user manually changes parameters."""
+        # Only switch to Custom if currently on a preset
+        current_text = self.integrationTimeComboBox.currentText()
+        if current_text != "Custom":
+            # Temporarily disconnect the signal to avoid recursion
+            self.integrationTimeComboBox.currentTextChanged.disconnect()
+            self.integrationTimeComboBox.setCurrentText("Custom")
+            self.integrationTimeComboBox.currentTextChanged.connect(
+                self.onIntegrationTimeChanged
+            )
+
+    def amplitudeVoltage(self) -> float:
+        return self.amplitudeVoltageSpinBox.value() / 1e3  # mV to V
+
+    def setAmplitudeVoltage(self, voltage: float) -> None:
+        self.amplitudeVoltageSpinBox.setValue(voltage * 1e3)  # V to mV
+
+    def amplitudeFrequency(self) -> float:
+        return self.amplitudeFrequencySpinBox.value() * 1e3  # kHz to Hz
+
+    def setAmplitudeFrequency(self, frequency: float) -> None:
+        self.amplitudeFrequencySpinBox.setValue(frequency / 1e3)  # Hz to kHz
+
+    def restoreDefaults(self) -> None:
+        self.setAmplitudeVoltage(1e-1)
+        self.setAmplitudeFrequency(100e3)
+        self.amplitudeAlcCheckBox.setChecked(False)
+        self.integrationTimeComboBox.setCurrentIndex(1)
+        self.averagingRateSpinBox.setValue(10.0)
+        self.lengthComboBox.setCurrentIndex(0)
+        self.openEnabledCheckBox.setChecked(False)
+        self.shortEnabledCheckBox.setChecked(False)
+        self.externalBiasTeeCCheckBox.setChecked(False)
+
+    def setLocked(self, state: bool) -> None:
+        self.amplitudeVoltageSpinBox.setEnabled(not state)
+        self.amplitudeFrequencySpinBox.setEnabled(not state)
+        self.amplitudeAlcCheckBox.setEnabled(not state)
+        self.integrationTimeComboBox.setEnabled(not state)
+        self.averagingRateSpinBox.setEnabled(not state)
+        self.lengthComboBox.setEnabled(not state)
+        self.openEnabledCheckBox.setEnabled(not state)
+        self.shortEnabledCheckBox.setEnabled(not state)
+        self.externalBiasTeeCCheckBox.setEnabled(not state)
 
 
 class K6514Panel(InstrumentPanel):
@@ -523,11 +809,11 @@ class K6514Panel(InstrumentPanel):
 
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filterFactorLabel = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filterFactorSpinBox = QtWidgets.QSpinBox()
+        self.filterFactorSpinBox.setSingleStep(1)
+        self.filterFactorSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -537,8 +823,8 @@ class K6514Panel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
+        filterLayout.addWidget(self.filterFactorLabel)
+        filterLayout.addWidget(self.filterFactorSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         # filterLayout.addStretch()
@@ -582,10 +868,14 @@ class K6514Panel(InstrumentPanel):
 
         self.bindParameter("sense.range", WidgetParameter(self.senseRangeMetric))
         self.bindParameter("sense.auto_range", WidgetParameter(self.autoRangeCheckBox))
-        self.bindParameter("sense.auto_range.lower_limit", WidgetParameter(self.autoRangeLLimitMetric))
-        self.bindParameter("sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric))
+        self.bindParameter(
+            "sense.auto_range.lower_limit", WidgetParameter(self.autoRangeLLimitMetric)
+        )
+        self.bindParameter(
+            "sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric)
+        )
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
 
@@ -597,7 +887,7 @@ class K6514Panel(InstrumentPanel):
         self.autoRangeLLimitMetric.setValue(2e-12)
         self.autoRangeULimitMetric.setValue(20e-3)
         self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
+        self.filterFactorSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(5.0)
         self.updateState(self.autoRangeCheckBox.isChecked())
@@ -608,7 +898,7 @@ class K6514Panel(InstrumentPanel):
         self.autoRangeLLimitMetric.setEnabled(not state)
         self.autoRangeULimitMetric.setEnabled(not state)
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
+        self.filterFactorSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.updateState(self.autoRangeCheckBox.isChecked())
@@ -671,7 +961,9 @@ class K6517BPanel(InstrumentPanel):
         self.sourceGroupBox.setTitle("Source")
 
         self.meterConnectCheckBox = QtWidgets.QCheckBox("Meter Connect")
-        self.meterConnectCheckBox.setStatusTip("Enable or disable V-source LO to ammeter LO connection.")
+        self.meterConnectCheckBox.setStatusTip(
+            "Enable or disable V-source LO to ammeter LO connection."
+        )
 
         sourceLayout = QtWidgets.QVBoxLayout(self.sourceGroupBox)
         sourceLayout.addWidget(self.meterConnectCheckBox)
@@ -683,11 +975,11 @@ class K6517BPanel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filterFactorLabel = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filterFactorSpinBox = QtWidgets.QSpinBox()
+        self.filterFactorSpinBox.setSingleStep(1)
+        self.filterFactorSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -697,8 +989,8 @@ class K6517BPanel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
+        filterLayout.addWidget(self.filterFactorLabel)
+        filterLayout.addWidget(self.filterFactorSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         # filterLayout.addStretch()
@@ -743,11 +1035,17 @@ class K6517BPanel(InstrumentPanel):
 
         self.bindParameter("sense.range", WidgetParameter(self.senseRangeMetric))
         self.bindParameter("sense.auto_range", WidgetParameter(self.autoRangeCheckBox))
-        self.bindParameter("sense.auto_range.lower_limit", WidgetParameter(self.autoRangeLLimitMetric))
-        self.bindParameter("sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric))
-        self.bindParameter("source.meter_connect", WidgetParameter(self.meterConnectCheckBox))
+        self.bindParameter(
+            "sense.auto_range.lower_limit", WidgetParameter(self.autoRangeLLimitMetric)
+        )
+        self.bindParameter(
+            "sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric)
+        )
+        self.bindParameter(
+            "source.meter_connect", WidgetParameter(self.meterConnectCheckBox)
+        )
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
 
@@ -760,7 +1058,7 @@ class K6517BPanel(InstrumentPanel):
         self.autoRangeULimitMetric.setValue(20e-3)
         self.meterConnectCheckBox.setChecked(False)
         self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
+        self.filterFactorSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
 
@@ -771,7 +1069,7 @@ class K6517BPanel(InstrumentPanel):
         self.autoRangeULimitMetric.setEnabled(not state)
         self.meterConnectCheckBox.setEnabled(not state)
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
+        self.filterFactorSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.updateState(self.autoRangeCheckBox.isChecked())
@@ -881,14 +1179,27 @@ class A4284APanel(InstrumentPanel):
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter("voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage))
-        self.bindParameter("frequency", MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency))
+        self.bindParameter(
+            "voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage)
+        )
+        self.bindParameter(
+            "frequency",
+            MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency),
+        )
         self.bindParameter("amplitude.alc", WidgetParameter(self.amplitudeAlcCheckBox))
-        self.bindParameter("aperture.integration_time", WidgetParameter(self.integrationTimeComboBox))
-        self.bindParameter("aperture.averaging_rate", WidgetParameter(self.averagingRateSpinBox))
+        self.bindParameter(
+            "aperture.integration_time", WidgetParameter(self.integrationTimeComboBox)
+        )
+        self.bindParameter(
+            "aperture.averaging_rate", WidgetParameter(self.averagingRateSpinBox)
+        )
         self.bindParameter("correction.length", WidgetParameter(self.lengthComboBox))
-        self.bindParameter("correction.open.enabled", WidgetParameter(self.openEnabledCheckBox))
-        self.bindParameter("correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox))
+        self.bindParameter(
+            "correction.open.enabled", WidgetParameter(self.openEnabledCheckBox)
+        )
+        self.bindParameter(
+            "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        )
 
         self.restoreDefaults()
 
@@ -1022,14 +1333,27 @@ class E4980APanel(InstrumentPanel):
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter("voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage))
-        self.bindParameter("frequency", MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency))
+        self.bindParameter(
+            "voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage)
+        )
+        self.bindParameter(
+            "frequency",
+            MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency),
+        )
         self.bindParameter("amplitude.alc", WidgetParameter(self.amplitudeAlcCheckBox))
-        self.bindParameter("aperture.integration_time", WidgetParameter(self.integrationTimeComboBox))
-        self.bindParameter("aperture.averaging_rate", WidgetParameter(self.averagingRateSpinBox))
+        self.bindParameter(
+            "aperture.integration_time", WidgetParameter(self.integrationTimeComboBox)
+        )
+        self.bindParameter(
+            "aperture.averaging_rate", WidgetParameter(self.averagingRateSpinBox)
+        )
         self.bindParameter("correction.length", WidgetParameter(self.lengthComboBox))
-        self.bindParameter("correction.open.enabled", WidgetParameter(self.openEnabledCheckBox))
-        self.bindParameter("correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox))
+        self.bindParameter(
+            "correction.open.enabled", WidgetParameter(self.openEnabledCheckBox)
+        )
+        self.bindParameter(
+            "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        )
 
         self.restoreDefaults()
 
@@ -1105,7 +1429,9 @@ class BrandBoxPanel(InstrumentPanel):
 
         # Parameters
 
-        self.bindParameter("channels", MethodParameter(self.closedChannels, self.setClosedChannels))
+        self.bindParameter(
+            "channels", MethodParameter(self.closedChannels, self.setClosedChannels)
+        )
 
         self.restoreDefaults()
 

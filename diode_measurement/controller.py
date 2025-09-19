@@ -27,6 +27,7 @@ from .view.panels import K6517BPanel
 from .view.panels import K595Panel
 from .view.panels import E4980APanel
 from .view.panels import A4284APanel
+from .view.panels import K4215Panel
 
 # DMM
 from .view.panels import K2700Panel
@@ -191,6 +192,7 @@ class Controller(QtCore.QObject):
         role.addInstrumentPanel(K595Panel())
         role.addInstrumentPanel(E4980APanel())
         role.addInstrumentPanel(A4284APanel())
+        role.addInstrumentPanel(K4215Panel())
 
         # Temperatur
         role = self.view.addRole("DMM")
