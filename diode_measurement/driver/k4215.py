@@ -17,6 +17,8 @@ class K4215(LCRMeter):
 
     def reset(self) -> None:
         self._write("*RST")
+        # clear last errors
+        self._write(":ERROR:LAST:CLEAR")
 
     def clear(self) -> None:
         self._write("BC")
