@@ -254,14 +254,6 @@ class K4215(LCRMeter):
             raise ValueError("Correction length must be 0, 1.5, or 3.0 meters")
         self._write(f":CVU:LENGTH {correction_length:.1f}")
 
-    def get_voltage_level(self) -> float:
-        """Get the current DC bias voltage level."""
-        try:
-            response = self._query(":CVU:DCV?")
-            return float(response.strip())
-        except Exception:
-            # Return 0 if query fails
-            return 0.0
 
     def set_voltage_level(self, level: float) -> None:
         """Set the DC bias voltage level."""
@@ -275,6 +267,11 @@ class K4215(LCRMeter):
             )
         self._write(f":CVU:DCV {level:.3E}")
 
+    def get_voltage_level(self) -> float:
+        """Get the current DC bias voltage level."""
+        # not implemented by the instrument, return 0
+        return 0.0
+
     def set_voltage_offset(self, offset: float) -> None:
         """Set the DC voltage offset level."""
         if not (-30.0 <= offset <= 30.0):
@@ -287,8 +284,8 @@ class K4215(LCRMeter):
 
     def get_voltage_offset(self) -> float:
         """Get the current DC voltage offset level."""
-        response = self._query(":CVU:DCV:OFFSET?")
-        return float(response.strip())
+        # not implemented by the instrument, return 0
+        return 0.0
 
     def _enable_bias_tee_dc_voltage(self):
         """Enable -10V DC at HI and LO terminals for P3 bias tee."""

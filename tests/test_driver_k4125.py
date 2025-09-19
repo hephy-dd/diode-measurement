@@ -86,9 +86,11 @@ def test_driver_k4215_voltage_level(res):
     d = K4215(res)
 
     # Test get voltage level
+    # as this is not implemented by the instrument, it always returns 0.0
+    # and does not query the instrument
     res.buffer = ["2.200000E+01"]
-    assert d.get_voltage_level() == 22.0
-    assert res.buffer == [":CVU:DCV?"]
+    assert d.get_voltage_level() == 0.0
+    assert res.buffer == ["2.200000E+01"]
 
     # Test set voltage level
     res.buffer = []
@@ -112,9 +114,11 @@ def test_driver_k4215_voltage_offset(res):
     d = K4215(res)
 
     # Test get voltage offset
+    # as this is not implemented by the instrument, it always returns 0.0
+    # and does not query the instrument
     res.buffer = ["1.500000E+00"]
-    assert d.get_voltage_offset() == 1.5
-    assert res.buffer == [":CVU:DCV:OFFSET?"]
+    assert d.get_voltage_offset() == 0.0
+    assert res.buffer == ["1.500000E+00"]
 
     # Test set voltage offset
     res.buffer = []
