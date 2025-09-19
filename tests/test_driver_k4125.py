@@ -16,7 +16,7 @@ def test_driver_k4215_basic_operations(res):
     # Test reset
     res.buffer = []
     assert d.reset() is None
-    assert res.buffer == ["*RST"]
+    assert res.buffer == ["*RST", ":ERROR:LAST:CLEAR"]
 
     # Test clear
     res.buffer = []
@@ -26,7 +26,7 @@ def test_driver_k4215_basic_operations(res):
     # Test finalize
     res.buffer = []
     assert d.finalize() is None
-    assert res.buffer == ["*RST"]
+    assert res.buffer == ["*RST", ":ERROR:LAST:CLEAR"]
 
 
 def test_driver_k4215_error_handling(res):
