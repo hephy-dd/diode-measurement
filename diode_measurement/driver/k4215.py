@@ -25,6 +25,11 @@ class K4215(LCRMeter):
         """Get the next error from the instrument's error queue."""
         # KXCI uses :ERROR:LAST:GET to retrieve the last error
         response = self._query(":ERROR:LAST:GET")
+        self._write(":ERROR:LAST:CLEAR")
+
+        # if response is empty, return no error
+        if len(response.strip()) == 0:
+            return 0, "No error"
 
         # Try to parse response in standard SCPI format: code,"message"
         if "," in response and '"' in response:
@@ -45,9 +50,6 @@ class K4215(LCRMeter):
                 return code, message
             except Exception:
                 pass
-
-        # clear error
-        self._write(":ERROR:LAST:CLEAR")
 
         # Fallback: return the raw response with error code -1
         return -1, response.strip()
@@ -85,10 +87,10 @@ class K4215(LCRMeter):
         self.set_correction(correction_open, correction_short, correction_load)
 
         # Set measurement parameters
-        voltage = options.get("voltage", 0.2)
+        voltage = options.get("voltage", 0.1)
         self.set_amplitude_voltage(voltage)
 
-        frequency = options.get("frequency", 100000.0)
+        frequency = options.get("frequency", 1.0e5)
         self.set_amplitude_frequency(frequency)
 
         # Set bias voltage only if external bias tee is NOT enabled
@@ -108,9 +110,13 @@ class K4215(LCRMeter):
         """Set the AC current measurement range
 
         Args:
-            level (float): AC current range in Amperes, between 1E1-6 and 1E-3.
+            level (float): AC current range in Amperes. 1E-6, 30E-6, 1E-3
                            For auto range, use 0.
         """
+
+        if level not in [0, 1e-6, 30e-6, 1e-3]:
+            raise ValueError("AC current range must be one of: 0, 1uA, 30uA, 1mA")
+        
         self._write(f":CVU:ACZ:RANGE {level:.6E}")
 
     def set_output_enabled(self, enabled: bool) -> None:
@@ -120,8 +126,9 @@ class K4215(LCRMeter):
 
     def get_output_enabled(self) -> bool:
         """Check if the CVU output is enabled."""
-        response = self._query(":CVU:OUTPUT?")
-        return response.strip() == "1"
+        # not implemented in K4215
+        return False
+
 
     def set_correction(self, open_state=False, short_state=False, load_state=False):
         """Enable or disable open, short, and load compensation."""
@@ -136,41 +143,14 @@ class K4215(LCRMeter):
         For KXCI CVU measurements, this method implements proper timing
         and synchronization to ensure reliable measurements.
         """
-        # Clear any previous errors and set up for measurement
-        try:
-            self._write_nowait("*CLS")
-            self._write_nowait("*OPC")
-        except Exception:
-            pass  # Continue if clear commands fail
-
         threshold = time.time() + timeout
         interval = min(timeout, interval)
-
-        # Trigger measurement
-        try:
-            self._write_nowait(":CVU:TRIG")
-        except Exception:
-            # If explicit trigger not supported, measurement might be continuous
-            pass
-
         while time.time() < threshold:
             try:
-                # Check if operation is complete
-                try:
-                    esr = int(self._query("*ESR?"))
-                    if esr & 0x1:  # Operation Complete bit
-                        return self._query(":CVU:MEASZ?")
-                except Exception:
-                    # If *ESR? not supported, try direct measurement query
-                    result = self._query(":CVU:MEASZ?")
-                    if result and result.strip():
-                        return result
-
-            except Exception:
-                # Continue trying until timeout
-                pass
+                return self._query(":CVU:MEASZ?")
+            except Exception as exc:
+                raise RuntimeError(f"Failed to fetch LCR reading: {exc}") from exc
             time.sleep(interval)
-
         raise RuntimeError(f"LCR reading timeout, exceeded {timeout:G} s")
 
     def measure_impedance(self) -> Tuple[float, float]:
@@ -183,7 +163,7 @@ class K4215(LCRMeter):
             ) from exc
 
     def set_function_impedance_type(self, impedance_type) -> None:
-        """ Set the impedance equivalent circuit representation.
+        """Set the impedance equivalent circuit representation.
 
         Args:
             impedance_type: Can be integer (0-7) or string ("CPRP", "CSRS", etc.)
@@ -231,23 +211,29 @@ class K4215(LCRMeter):
             filter_factor: Filter count for noise reduction
             delay_factor: Delay factor for settling
         """
-        # Ensure aperture is within valid range (PLC values)
-        aperture = max(0.006, min(10.002, float(aperture)))
+        if aperture < 0.006 or aperture > 10.002:
+            raise ValueError("Aperture must be between 0.006 and 10.002 PLC")
+        if filter_factor < 0 or filter_factor > 707:
+            raise ValueError("Filter factor must be between 0 and 707")
+        if delay_factor < 0 or delay_factor > 100:
+            raise ValueError("Delay factor must be between 0 and 100")
 
         # Set speed with delay factor, filter factor and aperture
-        self._write(f":CVU:SPEED 3,{delay_factor},{filter_factor},{aperture}")
-
+        self._write(f":CVU:SPEED 3,{delay_factor:.3E},{filter_factor:.3E},{aperture:.3E}")
 
     def set_amplitude_voltage(self, voltage: float) -> None:
+        if not (0.01 <= voltage <= 1.0):
+            raise ValueError("AC voltage must be between 10mV and 1V")
         self._write(f":CVU:ACV {voltage:E}")
 
     def set_amplitude_frequency(self, frequency: float) -> None:
+        if not (1e3 <= frequency <= 1e7):
+            raise ValueError("Frequency must be between 1kHz and 10MHz")
         self._write(f":CVU:FREQ {int(frequency)}")
 
     def _write(self, message):
         """Write command and wait for operation complete."""
         self.resource.write(message)
-        self.resource.query("*OPC?")
 
     def _write_nowait(self, message):
         self.resource.write(message)
@@ -262,11 +248,8 @@ class K4215(LCRMeter):
         Args:
             correction_length: Cable length in meters (0, 1.5, or 3.0)
         """
-        assert correction_length in [
-            0,
-            1.5,
-            3.0,
-        ], f"Invalid cable length: {correction_length}. Must be 0, 1.5, or 3.0 meters."
+        if correction_length not in [0, 1.5, 3.0]:
+            raise ValueError("Correction length must be 0, 1.5, or 3.0 meters")
         self._write(f":CVU:LENGTH {correction_length:.1f}")
 
     def get_voltage_level(self) -> float:
@@ -280,15 +263,38 @@ class K4215(LCRMeter):
 
     def set_voltage_level(self, level: float) -> None:
         """Set the DC bias voltage level."""
+        if not (-30.0 <= level <= 30.0):
+            raise ValueError("Bias voltage level must be between -30V and 30V")
+
+
         if self._external_bias_tee_enabled:
             raise RuntimeError(
                 "Cannot change bias voltage level when external P3 bias tee is enabled"
             )
         self._write(f":CVU:DCV {level:.3E}")
 
+    def set_voltage_offset(self, offset: float) -> None:
+        """Set the DC voltage offset level."""
+        if not (-30.0 <= offset <= 30.0):
+            raise ValueError("Bias voltage offset must be between -30V and 30V")
+        if self._external_bias_tee_enabled:
+            raise RuntimeError(
+                "Cannot change bias voltage offset when external P3 bias tee is enabled"
+            )
+        self._write(f":CVU:DCV:OFFSET {offset:.3E}")
+
+    def get_voltage_offset(self) -> float:
+        """Get the current DC voltage offset level."""
+        response = self._query(":CVU:DCV:OFFSET?")
+        return float(response.strip())
+
     def _enable_bias_tee_dc_voltage(self):
+        """Enable -10V DC at HI and LO terminals for P3 bias tee."""
         self._write(":CVU:CONFIG:ACVHI 1")
         self._write(":CVU:CONFIG:DCVHI 1")
+        # don't use set_voltage_offset and set_voltage_level because
+        # these methods dont allow for the bias voltage to be changed
+        # if the external bias tee is in use
         self._write(":CVU:DCV:OFFSET -10")
         self._write(":CVU:DCV -10")
 
@@ -310,8 +316,7 @@ class K4215(LCRMeter):
         pass  # Not supported by K4215
 
     def set_voltage_range(self, level: float) -> None:
-        """Set voltage range for the K4215."""
-        self._write(f":CVU:DCV:RANGE {level:.3E}")
+        pass  # Not supported by K4215
 
     def finalize(self):
         """Clean up and reset the instrument."""
