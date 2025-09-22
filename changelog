@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2025-09-22
+
+### Added
+- Support for Keithley 4215-CVU LCR meter (#116).
+
+### Removed
+- Obsolete `requirements.txt` file.
+
+### Fixed
+- Workaround for missing icons issue in PyInstaller single file builds (#117).
+
 ## [0.21.7] - 2025-08-07
 
 ### Fixed
@@ -293,7 +304,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.22.0...HEAD
+[0.22.0]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...0.22.0
 [0.21.7]: https://github.com/hephy-dd/diode-measurement/compare/0.21.6...0.21.7
 [0.21.6]: https://github.com/hephy-dd/diode-measurement/compare/0.21.5...0.21.6
 [0.21.5]: https://github.com/hephy-dd/diode-measurement/compare/0.21.4...0.21.5
