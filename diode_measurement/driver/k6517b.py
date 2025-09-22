@@ -95,7 +95,7 @@ class K6517B(Electrometer):
         raise RuntimeError(f"Electrometer reading timeout, exceeded {timeout:G} s")
 
     def measure_iv(self) -> Tuple[float, float]:
-        i = self.measure_i(), float("nan")  # TODO
+        return self.measure_i(), float("nan")  # TODO
 
     def set_format_elements(self, elements: List[str]) -> None:
         value = ",".join(elements)

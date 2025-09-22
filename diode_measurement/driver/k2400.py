@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from .driver import SourceMeter, handle_exception
 
@@ -9,7 +9,7 @@ class K2400(SourceMeter):
 
     def __init__(self, resource) -> None:
         super().__init__(resource)
-        self._format_element = None
+        self._format_element: Optional[str] = None
 
     def identity(self) -> str:
         return self._query("*IDN?")
