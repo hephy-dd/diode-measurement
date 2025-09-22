@@ -207,6 +207,7 @@ class TCPServerPlugin(Plugin, QtCore.QObject):
         self._messageCacheLock = threading.RLock()
         self._messageTimer = QtCore.QTimer()
         self._messageTimer.timeout.connect(self.appendCachedMessages)
+        self.failed.connect(lambda _: self.rpcWidget.setServerEnabled(False))  # disable on error
 
     def install(self, context):
         self.failed.connect(context.handleException)
@@ -318,7 +319,6 @@ class TCPServerPlugin(Plugin, QtCore.QObject):
                 server.serve_forever()
         except Exception as exc:
             logger.exception(exc)
-            self.setServerEnabled(False)
             self.failed.emit(exc)
         finally:
             logger.info("TCP stopped %s:%s", hostname, port)
