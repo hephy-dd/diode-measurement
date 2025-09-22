@@ -1,14 +1,14 @@
-from typing import List, Optional
+from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets
 
-TIMESTAMP_FORMATS: List = [
+TIMESTAMP_FORMATS: list[str] = [
     ".3f",
     ".6f",
     ".9f",
 ]
 
-VALUE_FORMATS: List = [
+VALUE_FORMATS: list[str] = [
     "+.3E",
     "+.6E",
     "+.9E",

@@ -1,6 +1,5 @@
 import math
 import time
-from typing import Tuple
 
 from .driver import LCRMeter, handle_exception
 
@@ -30,7 +29,7 @@ class K595(LCRMeter):
     def clear(self) -> None:
         self.resource.clear()
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         result = self._query("U1X")[3:]
         for index, value in enumerate(result):
             if value == "1":
@@ -71,10 +70,10 @@ class K595(LCRMeter):
         self._write("G1X")
         return float(self._query("X").split(",")[0])
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         return self.measure_i(), float("nan")  # TODO
 
-    def measure_impedance(self) -> Tuple[float, float]:
+    def measure_impedance(self) -> tuple[float, float]:
         self._write("F0X")
         self._write("G1X")
         return float(self._query("X").split(",")[0]), math.nan

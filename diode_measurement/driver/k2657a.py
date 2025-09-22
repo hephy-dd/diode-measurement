@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from .driver import SourceMeter, handle_exception
 
 __all__ = ["K2657A"]
@@ -16,7 +14,7 @@ class K2657A(SourceMeter):
     def clear(self) -> None:
         self._write("status.reset()")
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         code, message, *_ = self._print("errorqueue.next()").split("\t")
         code = int(float(code))
         message = message.strip().strip('"')
@@ -68,7 +66,7 @@ class K2657A(SourceMeter):
     def measure_v(self) -> float:
         return float(self._print("smua.measure.v()"))
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         i = self.measure_i()  # TODO print(smua.measure.iv())
         v = self.measure_v()
         return i, v

@@ -2,7 +2,7 @@ import logging
 import math
 import time
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 from ..utils import inverse_square
 

@@ -10,7 +10,7 @@ import socketserver
 import threading
 import time
 
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -44,7 +44,7 @@ class RPCHandler:
         self.dispatcher["state"] = self.on_state
         self.manager = jsonrpc.JSONRPCResponseManager()
 
-    def handle(self, request) -> Dict[str, Any]:
+    def handle(self, request) -> dict[str, Any]:
         return self.manager.handle(request, self.dispatcher)
 
     def on_start(self, reset: bool = None, continuous: bool = None,
@@ -54,7 +54,7 @@ class RPCHandler:
                  compliance: float = None,
                  waiting_time_continuous: float = None) -> None:
         with self.controller.rpc_params:
-            rpc_params: Dict[str, Union[None, int, float, str]] = {}
+            rpc_params: dict[str, Union[None, int, float, str]] = {}
             if reset is not None:
                 rpc_params["reset"] = reset
             if continuous is not None:
@@ -83,7 +83,7 @@ class RPCHandler:
                           waiting_time: float = 1.0) -> None:
         self.controller.requestChangeVoltage.emit(end_voltage, step_voltage, waiting_time)
 
-    def on_state(self) -> Dict[str, Union[None, int, float, str]]:
+    def on_state(self) -> dict[str, Union[None, int, float, str]]:
         return json_dict(self.controller.snapshot())
 
 

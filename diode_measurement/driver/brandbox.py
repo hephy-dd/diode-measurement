@@ -1,21 +1,21 @@
 import re
 
-from typing import Dict, List, Tuple, Optional
+from typing import Optional
 
 from .driver import SwitchingMatrix, handle_exception
 
 __all__ = ["BrandBox"]
 
-ERROR_MESSAGES: Dict[int, str] = {
+ERROR_MESSAGES: dict[int, str] = {
     99: "Invalid command"
 }
 
 
-def split_channels(channels: str) -> List[str]:
+def split_channels(channels: str) -> list[str]:
     return [channel.strip() for channel in channels.split(',') if channel.strip()]
 
 
-def join_channels(channels: List[str]) -> str:
+def join_channels(channels: list[str]) -> str:
     return ','.join([format(channel).strip() for channel in channels])
 
 
@@ -45,7 +45,7 @@ class BrandBox(SwitchingMatrix):
         self._error_queue.clear()
         self._write("*CLS")  # NOTE: closes IV-Mode channels!
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         code = 0
         if self._error_queue:
             code = self._error_queue.pop(0)

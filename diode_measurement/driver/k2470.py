@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from .driver import SourceMeter, handle_exception
 
 __all__ = ["K2470"]
@@ -16,7 +14,7 @@ class K2470(SourceMeter):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
         message = message.strip().strip('"')
@@ -71,7 +69,7 @@ class K2470(SourceMeter):
     def measure_v(self) -> float:
         return float(self._query(":MEAS:VOLT?"))
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         i = self.measure_i()  # no concurrent measurements possible?
         v = self.measure_v()
         return i, v

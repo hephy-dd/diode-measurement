@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from .driver import SourceMeter, handle_exception
 
 __all__ = ["K2400"]
@@ -20,7 +18,7 @@ class K2400(SourceMeter):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         result = self._query(":SYST:ERR?")
         try:
             code, message = result.split(",")
@@ -85,7 +83,7 @@ class K2400(SourceMeter):
         _, v = self.measure_iv()
         return v
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         if self._format_element != "VOLT,CURR":
             self._write(":FORM:ELEM VOLT,CURR")
             self._format_element = "VOLT,CURR"

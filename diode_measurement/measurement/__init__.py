@@ -2,7 +2,7 @@ import contextlib
 import logging
 import time
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 from ..resource import Resource, AutoReconnectResource
 from ..driver import driver_factory
@@ -15,13 +15,13 @@ __all__ = ["Measurement", "RangeMeasurement"]
 
 logger = logging.getLogger(__name__)
 
-ReadingType = Dict[str, Any]
+ReadingType = dict[str, Any]
 
 
 class EventHandler:
 
     def __init__(self) -> None:
-        self.handlers: List[Callable] = []
+        self.handlers: list[Callable] = []
 
     def subscribe(self, handler: Callable) -> None:
         self.handlers.append(handler)
@@ -36,8 +36,8 @@ class Measurement:
     def __init__(self, state: State) -> None:
         super().__init__()
         self.state: State = state
-        self.instruments: Dict = {}
-        self._instruments: Dict = {}
+        self.instruments: dict = {}
+        self._instruments: dict = {}
         self.started_event: EventHandler = EventHandler()
         self.finished_event: EventHandler = EventHandler()
         self.failed_event: EventHandler = EventHandler()

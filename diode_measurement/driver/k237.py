@@ -1,6 +1,5 @@
 import time
 import logging
-from typing import Tuple
 
 from .driver import SourceMeter, handle_exception
 
@@ -51,7 +50,7 @@ class K237(SourceMeter):
     def clear(self) -> None:
         self.resource.clear()
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         result = self._query("U1X").strip()[3:]
         for index, value in enumerate(result):
             if value == "1":
@@ -93,7 +92,7 @@ class K237(SourceMeter):
         self._write("G4,2,0X")
         return float(self._query("X"))
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         i = self.measure_i()
         v = self.get_voltage_level()  # not possible in function VOLT
         return i, v

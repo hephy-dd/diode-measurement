@@ -1,6 +1,6 @@
 import logging
 import webbrowser
-from typing import Dict, List, Optional
+from typing import Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -122,7 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.generalWidget = GeneralWidget()
         self.generalWidget.changeVoltageButton.clicked.connect(self.changeVoltageAction.trigger)
 
-        self.roleWidgets: Dict[str, RoleWidget] = {}
+        self.roleWidgets: dict[str, RoleWidget] = {}
 
         self.controlTabWidget = QtWidgets.QTabWidget()
         self.controlTabWidget.addTab(self.generalWidget, self.generalWidget.windowTitle())
@@ -378,7 +378,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def findRole(self, name: str) -> Optional[RoleWidget]:
         return self.roleWidgets.get(name)
 
-    def roles(self) -> List[RoleWidget]:
+    def roles(self) -> list[RoleWidget]:
         return list(self.roleWidgets.values())
 
     def clear(self) -> None:

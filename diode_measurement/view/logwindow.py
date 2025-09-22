@@ -1,7 +1,7 @@
 import html
 import logging
 import threading
-from typing import Callable, List
+from typing import Callable
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -22,13 +22,13 @@ class RecordsQueue:
 
     def __init__(self) -> None:
         self.lock = threading.RLock()
-        self.records: List[logging.LogRecord] = []
+        self.records: list[logging.LogRecord] = []
 
     def append(self, record: logging.LogRecord) -> None:
         with self.lock:
             self.records.append(record)
 
-    def fetch(self) -> List[logging.LogRecord]:
+    def fetch(self) -> list[logging.LogRecord]:
         with self.lock:
             records = self.records[:]
             self.records.clear()
