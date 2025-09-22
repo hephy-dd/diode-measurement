@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.1] - 2025-09-22
+
 ### Fixes
 - Broken `measure_iv` method for K6517b (#120).
 - Broken disable TCP server on error (#121).
@@ -308,7 +310,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.22.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.22.1...HEAD
+[0.22.1]: https://github.com/hephy-dd/diode-measurement/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...0.22.0
 [0.21.7]: https://github.com/hephy-dd/diode-measurement/compare/0.21.6...0.21.7
 [0.21.6]: https://github.com/hephy-dd/diode-measurement/compare/0.21.5...0.21.6
