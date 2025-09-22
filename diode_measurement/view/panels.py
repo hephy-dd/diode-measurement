@@ -176,11 +176,11 @@ class K2410Panel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterFactorLabel = QtWidgets.QLabel("Count")
+        self.filterCountLabel = QtWidgets.QLabel("Count")
 
-        self.filterFactorSpinBox = QtWidgets.QSpinBox()
-        self.filterFactorSpinBox.setSingleStep(1)
-        self.filterFactorSpinBox.setRange(2, 100)
+        self.filterCountSpinBox = QtWidgets.QSpinBox()
+        self.filterCountSpinBox.setSingleStep(1)
+        self.filterCountSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -190,8 +190,8 @@ class K2410Panel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterFactorLabel)
-        filterLayout.addWidget(self.filterFactorSpinBox)
+        filterLayout.addWidget(self.filterCountLabel)
+        filterLayout.addWidget(self.filterCountSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         filterLayout.addStretch()
@@ -246,7 +246,7 @@ class K2410Panel(InstrumentPanel):
         # Parameters
 
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
         self.bindParameter(
@@ -257,14 +257,14 @@ class K2410Panel(InstrumentPanel):
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
-        self.filterFactorSpinBox.setValue(10)
+        self.filterCountSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
         self.routeTerminalsComboBox.setCurrentIndex(0)
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterFactorSpinBox.setEnabled(not state)
+        self.filterCountSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.routeTerminalsComboBox.setEnabled(not state)
@@ -281,11 +281,11 @@ class K2470Panel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterFactorLabel = QtWidgets.QLabel("Count")
+        self.filterCountLabel = QtWidgets.QLabel("Count")
 
-        self.filterFactorSpinBox = QtWidgets.QSpinBox()
-        self.filterFactorSpinBox.setSingleStep(1)
-        self.filterFactorSpinBox.setRange(2, 100)
+        self.filterCountSpinBox = QtWidgets.QSpinBox()
+        self.filterCountSpinBox.setSingleStep(1)
+        self.filterCountSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -295,8 +295,8 @@ class K2470Panel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterFactorLabel)
-        filterLayout.addWidget(self.filterFactorSpinBox)
+        filterLayout.addWidget(self.filterCountLabel)
+        filterLayout.addWidget(self.filterCountSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         filterLayout.addStretch()
@@ -360,7 +360,7 @@ class K2470Panel(InstrumentPanel):
         layout.setStretch(1, 1)
 
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
         self.bindParameter(
@@ -375,7 +375,7 @@ class K2470Panel(InstrumentPanel):
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
-        self.filterFactorSpinBox.setValue(10)
+        self.filterCountSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
         self.routeTerminalsComboBox.setCurrentIndex(0)
@@ -383,7 +383,7 @@ class K2470Panel(InstrumentPanel):
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterFactorSpinBox.setEnabled(not state)
+        self.filterCountSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.routeTerminalsComboBox.setEnabled(not state)
@@ -399,11 +399,11 @@ class K2657APanel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterFactorLabel = QtWidgets.QLabel("Count")
+        self.filterCountLabel = QtWidgets.QLabel("Count")
 
-        self.filterFactorSpinBox = QtWidgets.QSpinBox()
-        self.filterFactorSpinBox.setSingleStep(1)
-        self.filterFactorSpinBox.setRange(2, 100)
+        self.filterCountSpinBox = QtWidgets.QSpinBox()
+        self.filterCountSpinBox.setSingleStep(1)
+        self.filterCountSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -414,8 +414,8 @@ class K2657APanel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterFactorLabel)
-        filterLayout.addWidget(self.filterFactorSpinBox)
+        filterLayout.addWidget(self.filterCountLabel)
+        filterLayout.addWidget(self.filterCountSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         filterLayout.addStretch()
@@ -453,7 +453,7 @@ class K2657APanel(InstrumentPanel):
         layout.setStretch(1, 1)
 
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
 
@@ -461,13 +461,13 @@ class K2657APanel(InstrumentPanel):
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
-        self.filterFactorSpinBox.setValue(10)
+        self.filterCountSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterFactorSpinBox.setEnabled(not state)
+        self.filterCountSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
 
@@ -809,11 +809,11 @@ class K6514Panel(InstrumentPanel):
 
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterFactorLabel = QtWidgets.QLabel("Count")
+        self.filterCountLabel = QtWidgets.QLabel("Count")
 
-        self.filterFactorSpinBox = QtWidgets.QSpinBox()
-        self.filterFactorSpinBox.setSingleStep(1)
-        self.filterFactorSpinBox.setRange(2, 100)
+        self.filterCountSpinBox = QtWidgets.QSpinBox()
+        self.filterCountSpinBox.setSingleStep(1)
+        self.filterCountSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -823,8 +823,8 @@ class K6514Panel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterFactorLabel)
-        filterLayout.addWidget(self.filterFactorSpinBox)
+        filterLayout.addWidget(self.filterCountLabel)
+        filterLayout.addWidget(self.filterCountSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         # filterLayout.addStretch()
@@ -875,7 +875,7 @@ class K6514Panel(InstrumentPanel):
             "sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric)
         )
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
 
@@ -887,7 +887,7 @@ class K6514Panel(InstrumentPanel):
         self.autoRangeLLimitMetric.setValue(2e-12)
         self.autoRangeULimitMetric.setValue(20e-3)
         self.filterEnableCheckBox.setChecked(False)
-        self.filterFactorSpinBox.setValue(10)
+        self.filterCountSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(5.0)
         self.updateState(self.autoRangeCheckBox.isChecked())
@@ -898,7 +898,7 @@ class K6514Panel(InstrumentPanel):
         self.autoRangeLLimitMetric.setEnabled(not state)
         self.autoRangeULimitMetric.setEnabled(not state)
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterFactorSpinBox.setEnabled(not state)
+        self.filterCountSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.updateState(self.autoRangeCheckBox.isChecked())
@@ -975,11 +975,11 @@ class K6517BPanel(InstrumentPanel):
         self.filterGroupBox.setTitle("Filter")
         self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
 
-        self.filterFactorLabel = QtWidgets.QLabel("Count")
+        self.filterCountLabel = QtWidgets.QLabel("Count")
 
-        self.filterFactorSpinBox = QtWidgets.QSpinBox()
-        self.filterFactorSpinBox.setSingleStep(1)
-        self.filterFactorSpinBox.setRange(2, 100)
+        self.filterCountSpinBox = QtWidgets.QSpinBox()
+        self.filterCountSpinBox.setSingleStep(1)
+        self.filterCountSpinBox.setRange(2, 100)
 
         self.filterModeLabel = QtWidgets.QLabel("Mode")
 
@@ -989,8 +989,8 @@ class K6517BPanel(InstrumentPanel):
 
         filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
         filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterFactorLabel)
-        filterLayout.addWidget(self.filterFactorSpinBox)
+        filterLayout.addWidget(self.filterCountLabel)
+        filterLayout.addWidget(self.filterCountSpinBox)
         filterLayout.addWidget(self.filterModeLabel)
         filterLayout.addWidget(self.filterModeComboBox)
         # filterLayout.addStretch()
@@ -1045,7 +1045,7 @@ class K6517BPanel(InstrumentPanel):
             "source.meter_connect", WidgetParameter(self.meterConnectCheckBox)
         )
         self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterFactorSpinBox))
+        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
         self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
         self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
 
@@ -1058,7 +1058,7 @@ class K6517BPanel(InstrumentPanel):
         self.autoRangeULimitMetric.setValue(20e-3)
         self.meterConnectCheckBox.setChecked(False)
         self.filterEnableCheckBox.setChecked(False)
-        self.filterFactorSpinBox.setValue(10)
+        self.filterCountSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
 
@@ -1069,7 +1069,7 @@ class K6517BPanel(InstrumentPanel):
         self.autoRangeULimitMetric.setEnabled(not state)
         self.meterConnectCheckBox.setEnabled(not state)
         self.filterEnableCheckBox.setEnabled(not state)
-        self.filterFactorSpinBox.setEnabled(not state)
+        self.filterCountSpinBox.setEnabled(not state)
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.updateState(self.autoRangeCheckBox.isChecked())
