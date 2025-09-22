@@ -2,7 +2,7 @@ import os
 import re
 import pint
 
-from typing import Iterable, Tuple
+from typing import Iterable
 
 import pyvisa
 
@@ -19,7 +19,7 @@ __all__ = [
 ureg = pint.UnitRegistry()
 
 
-def get_resource(resource_name: str) -> Tuple[str, str]:
+def get_resource(resource_name: str) -> tuple[str, str]:
     """Create valid VISA resource name for short descriptors."""
     resource_name = resource_name.strip()
 
@@ -53,7 +53,7 @@ def safe_filename(filename: str) -> str:
     return re.sub(r"[^a-zA-Z0-9\_\/\.\-]+", "_", filename)
 
 
-def auto_scale(value: float) -> Tuple[float, str, str]:
+def auto_scale(value: float) -> tuple[float, str, str]:
     scales = (
         (1e+24, "Y", "yotta"),
         (1e+21, "Z", "zetta"),
@@ -98,9 +98,9 @@ def format_switch(value: bool) -> str:
     return {False: "OFF", True: "ON"}.get(value) or "---"
 
 
-def limits(iterable: Iterable) -> Tuple:
+def limits(iterable: Iterable) -> tuple:
     """Calculate limits of 2D point series."""
-    limits: Tuple = tuple()
+    limits: tuple = tuple()
     for x, y in iterable:
         if not limits:
             limits = (x, x, y, y)

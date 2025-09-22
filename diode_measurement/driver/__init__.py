@@ -1,4 +1,4 @@
-from typing import Dict
+from .driver import Driver
 
 # Drivers
 from .k237 import K237
@@ -16,7 +16,7 @@ from .brandbox import BrandBox
 
 __all__ = ["driver_factory"]
 
-DRIVERS: Dict[str, type] = {
+DRIVER_REGISTRY: dict[str, type[Driver]] = {
     "K237": K237,
     "K595": K595,
     "K2410": K2410,
@@ -32,9 +32,9 @@ DRIVERS: Dict[str, type] = {
 }
 
 
-def driver_factory(model: str) -> type:
+def driver_factory(model: str) -> type[Driver]:
     """Return driver class referenced by model."""
-    driver = DRIVERS.get(model)
+    driver = DRIVER_REGISTRY.get(model)
     if driver is None:
-        raise ValueError(f"No such driver: {model}")
+        raise KeyError(f"No such driver: {model}")
     return driver

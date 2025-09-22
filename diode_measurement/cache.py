@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Dict, Iterator
+from typing import Any, Iterator
 
 __all__ = ["Cache"]
 
@@ -9,7 +9,7 @@ class Cache:
 
     def __init__(self) -> None:
         self._lock: threading.RLock = threading.RLock()
-        self._items: Dict[str, Any] = {}
+        self._items: dict[str, Any] = {}
 
     def __enter__(self) -> "Cache":
         self._lock.acquire()
@@ -25,7 +25,7 @@ class Cache:
     def get(self, key: str, default=None):
         return self._items.get(key, default)
 
-    def update(self, items: Dict[str, Any]) -> None:
+    def update(self, items: dict[str, Any]) -> None:
         self._items.update(items)
 
     def clear(self) -> None:

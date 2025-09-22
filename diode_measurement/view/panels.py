@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from PyQt5 import QtWidgets
 
@@ -20,7 +20,7 @@ __all__ = [
     "BrandBoxPanel",
 ]
 
-ConfigType = Dict[str, Any]
+ConfigType = dict[str, Any]
 
 
 class WidgetParameter:
@@ -80,7 +80,7 @@ class InstrumentPanel(QtWidgets.QWidget):
 
     def __init__(self, model: str, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
-        self._parameters: Dict[str, Any] = {}
+        self._parameters: dict[str, Any] = {}
         self.setModel(model)
 
     def model(self) -> str:

@@ -3,7 +3,7 @@ import math
 import time
 import threading
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 from ..estimate import Estimate
 
