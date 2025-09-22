@@ -19,6 +19,17 @@ PACKAGE_PATH = os.path.realpath(os.path.dirname(__file__))
 ASSETS_PATH = os.path.join(PACKAGE_PATH, "assets")
 
 
+def create_icon(filename: str) -> QtGui.QIcon:
+    """Load icon into memory and create a QIcon, this prevents missing icons for
+    pyinstaller single file builds.
+    """
+    with open(os.path.join(ASSETS_PATH, "icons", filename), "rb") as f:
+        icon_bytes = f.read()
+    pixmap = QtGui.QPixmap()
+    pixmap.loadFromData(icon_bytes)
+    return QtGui.QIcon(pixmap)
+
+
 class Application(QtWidgets.QApplication):
 
     def __init__(self):
@@ -28,9 +39,7 @@ class Application(QtWidgets.QApplication):
         self.setApplicationDisplayName(f"Diode Measurement {__version__}")
         self.setOrganizationName("HEPHY")
         self.setOrganizationDomain("hephy.at")
-
-        icon = QtGui.QIcon(os.path.join(ASSETS_PATH, "icons", "diode-measurement.svg"))
-        self.setWindowIcon(icon)
+        self.setWindowIcon(create_icon("diode-measurement.svg"))
 
     def bootstrap(self):
         # Initialize settings
