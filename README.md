@@ -11,7 +11,7 @@ On Windows download a pre-built executable from the release section and run it.
 Install using pip in a virtual environment.
 
 ```bash
-pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.22.1.tar.gz
+pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.22.2.tar.gz
 ```
 
 ## Build Executable
