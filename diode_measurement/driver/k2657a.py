@@ -27,6 +27,7 @@ class K2657A(SourceMeter):
         self.set_beeper_enable(beeper_enable)
 
         self.set_source_function("DCVOLTS")
+        self.set_display_measure_function("DCAMPS")
 
         filter_mode = options.get("filter.mode", "REPEAT_AVG")
         self.set_measure_filter_type(filter_mode)
@@ -91,6 +92,11 @@ class K2657A(SourceMeter):
 
     def set_measure_nplc(self, nplc: float) -> None:
         self._write(f"smua.measure.nplc = {nplc:E}")
+
+    def set_display_measure_function(self, function: str) -> None:
+        if function not in ("DCAMPS", "DCVOLTS", "OHMS", "WATTS"):
+            raise ValueError(f"Invalid display measure function: {function}")
+        self._write(f"display.smua.measure.func = display.MEASURE_{function}")
 
     @handle_exception
     def _write(self, message):

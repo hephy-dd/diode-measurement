@@ -51,10 +51,10 @@ Electro Meter
 
 LCR Meter
 
-- Keithley 595
-- Keysight E4980A
 - Agilent 4284A
+- Keithley 595
 - Keithley 4215-CVU
+- Keysight E4980A
 
 DMM (Temperature)
 
