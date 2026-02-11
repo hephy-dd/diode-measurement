@@ -39,7 +39,7 @@ from .view.dialogs import ChangeVoltageDialog
 
 from .view.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
 
-from .measurement import Measurement
+from .measurement import Measurement, ReadingType
 from .measurement.iv import IVMeasurement
 from .measurement.iv_bias import IVBiasMeasurement
 from .measurement.cv import CVMeasurement
@@ -74,9 +74,9 @@ class MeasurementRunner:
      - `value_format` set value format of file writer.
     """
 
-    def __init__(self, measurement: Measurement, options: dict = None) -> None:
+    def __init__(self, measurement: Measurement, options: Optional[dict] = None) -> None:
         self.measurement = measurement
-        self.options: dict = {}
+        self.options: dict[str, Any] = {}
         if options is not None:
             self.options.update(options)
 
@@ -121,7 +121,6 @@ class MeasurementRunner:
 
 
 class Controller(QtCore.QObject):
-
     started = QtCore.pyqtSignal()
     aborted = QtCore.pyqtSignal()
     update = QtCore.pyqtSignal(dict)
@@ -131,7 +130,7 @@ class Controller(QtCore.QObject):
     requestChangeVoltage = QtCore.pyqtSignal(float, float, float)
     changeVoltageReady = QtCore.pyqtSignal()
 
-    def __init__(self, view, parent=None) -> None:
+    def __init__(self, view, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
         self.view = view
 
@@ -988,8 +987,7 @@ class Controller(QtCore.QObject):
 
 
 class IVPlotsController(QtCore.QObject):
-
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
 
         self.ivPlotWidget = IVPlotWidget()
@@ -1003,9 +1001,9 @@ class IVPlotsController(QtCore.QObject):
         self.ivLayout.setStretch(1, 1)
         self.ivLayout.setContentsMargins(0, 0, 0, 0)
 
-        self.ivReadingQueue = []
+        self.ivReadingQueue: list[ReadingType] = []
         self.ivReadingLock = threading.RLock()
-        self.itReadingQueue = []
+        self.itReadingQueue: list[ReadingType] = []
         self.itReadingLock = threading.RLock()
 
         self.updateTimer = QtCore.QTimer()
@@ -1069,10 +1067,10 @@ class IVPlotsController(QtCore.QObject):
             self.ivPlotWidget.fit()
 
     def onLoadIVReadings(self, readings: list[dict]) -> None:
-        smuPoints = []
-        smu2Points = []
-        elmPoints = []
-        elm2Points = []
+        smuPoints: list[QtCore.QPointF] = []
+        smu2Points: list[QtCore.QPointF] = []
+        elmPoints: list[QtCore.QPointF] = []
+        elm2Points: list[QtCore.QPointF] = []
         widget = self.ivPlotWidget
         widget.clear()
         for reading in readings:
@@ -1097,15 +1095,16 @@ class IVPlotsController(QtCore.QObject):
                 elm2Points.append(QtCore.QPointF(voltage, i_elm2))
                 widget.iLimits.append(i_elm2)
                 widget.vLimits.append(voltage)
-        widget.series.get("smu").replace(smuPoints)
-        widget.series.get("smu2").replace(smu2Points)
-        widget.series.get("elm").replace(elmPoints)
-        widget.series.get("elm2").replace(elm2Points)
-        if self.parent():
-            self.parent().onToggleSmu(True)
-            self.parent().onToggleSmu2(bool(len(smu2Points)))
-            self.parent().onToggleElm(bool(len(elmPoints)))
-            self.parent().onToggleElm2(bool(len(elm2Points)))
+        widget.replace_series("smu", smuPoints)
+        widget.replace_series("smu2", smu2Points)
+        widget.replace_series("elm", elmPoints)
+        widget.replace_series("elm2", elm2Points)
+        parent = self.parent()  # TODO!
+        if isinstance(parent, Controller):
+            parent.onToggleSmu(True)
+            parent.onToggleSmu2(bool(len(smu2Points)))
+            parent.onToggleElm(bool(len(elmPoints)))
+            parent.onToggleElm2(bool(len(elm2Points)))
         widget.fit()
 
     def onFlushItReadings(self) -> None:
@@ -1163,16 +1162,15 @@ class IVPlotsController(QtCore.QObject):
                 elm2Points.append(QtCore.QPointF(timestamp * 1e3, i_elm2))
                 widget.iLimits.append(i_elm2)
                 widget.tLimits.append(timestamp)
-        widget.series.get("smu").replace(smuPoints)
-        widget.series.get("smu2").replace(smu2Points)
-        widget.series.get("elm").replace(elmPoints)
-        widget.series.get("elm2").replace(elm2Points)
+        widget.replace_series("smu", smuPoints)
+        widget.replace_series("smu2", smu2Points)
+        widget.replace_series("elm", elmPoints)
+        widget.replace_series("elm2", elm2Points)
         widget.fit()
 
 
 class CVPlotsController(QtCore.QObject):
-
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
 
         self.cvPlotWidget = CVPlotWidget()
@@ -1185,7 +1183,7 @@ class CVPlotsController(QtCore.QObject):
         self.cvLayout.setStretch(1, 1)
         self.cvLayout.setContentsMargins(0, 0, 0, 0)
 
-        self.cvReadingQueue = []
+        self.cvReadingQueue: list[ReadingType] = []
         self.cvReadingLock = threading.RLock()
 
         self.updateTimer = QtCore.QTimer()
@@ -1245,7 +1243,7 @@ class CVPlotsController(QtCore.QObject):
                 lcrPoints.append(QtCore.QPointF(voltage, c_lcr))
                 widget.cLimits.append(c_lcr)
                 widget.vLimits.append(voltage)
-        widget.series.get("lcr").replace(lcrPoints)
+        widget.replace_series("lcr", lcrPoints)
         widget.fit()
 
     def onLoadCV2Readings(self, readings: list[dict]) -> None:
@@ -1259,16 +1257,15 @@ class CVPlotsController(QtCore.QObject):
                 lcr2Points.append(QtCore.QPointF(voltage, c2_lcr))
                 widget.cLimits.append(c2_lcr)
                 widget.vLimits.append(voltage)
-        widget.series.get("lcr").replace(lcr2Points)
+        widget.replace_series("lcr", lcr2Points)
         widget.fit()
 
 
 class ChangeVoltageController(QtCore.QObject):
-
-    def __init__(self, view, state, parent=None) -> None:
+    def __init__(self, view, state: State, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
         self.view = view
-        self.state = state
+        self.state: State = state
         # Connect signals
         self.view.prepareChangeVoltage.connect(self.onPrepareChangeVoltage)
 

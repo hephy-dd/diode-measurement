@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from PyQt5 import QtWidgets
 
@@ -23,7 +23,6 @@ ConfigType = dict[str, Any]
 
 
 class WidgetParameter:
-
     def __init__(self, widget) -> None:
         self.widget = widget
 
@@ -63,7 +62,6 @@ class WidgetParameter:
 
 
 class MethodParameter:
-
     def __init__(self, getter, setter) -> None:
         self.getter = getter
         self.setter = setter
@@ -76,8 +74,7 @@ class MethodParameter:
 
 
 class InstrumentPanel(QtWidgets.QWidget):
-
-    def __init__(self, model: str, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, model: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self._parameters: dict[str, Any] = {}
         self.setModel(model)
@@ -113,7 +110,7 @@ class InstrumentPanel(QtWidgets.QWidget):
 
 class K237Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K237", parent)
 
         # Filter
@@ -160,13 +157,13 @@ class K237Panel(InstrumentPanel):
 
 class K595Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K595", parent)
 
 
 class K2410Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2410", parent)
 
         # Filter
@@ -271,7 +268,7 @@ class K2410Panel(InstrumentPanel):
 
 class K2470Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2470", parent)
 
         # Filter
@@ -391,7 +388,7 @@ class K2470Panel(InstrumentPanel):
 
 class K2657APanel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2657A", parent)
 
         self.filterGroupBox = QtWidgets.QGroupBox()
@@ -473,13 +470,13 @@ class K2657APanel(InstrumentPanel):
 
 class K2700Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2700", parent)
 
 
 class K4215Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K4215", parent)
 
         # AC amplitude
@@ -759,7 +756,7 @@ class K4215Panel(InstrumentPanel):
 
 class K6514Panel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K6514", parent)
 
         # Range
@@ -913,7 +910,7 @@ class K6514Panel(InstrumentPanel):
 
 class K6517BPanel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K6517B", parent)
 
         # Range
@@ -1084,7 +1081,7 @@ class K6517BPanel(InstrumentPanel):
 
 class A4284APanel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("A4284A", parent)
 
         # AC amplitude
@@ -1237,7 +1234,7 @@ class A4284APanel(InstrumentPanel):
 
 class E4980APanel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("E4980A", parent)
 
         # AC amplitude
@@ -1391,7 +1388,7 @@ class E4980APanel(InstrumentPanel):
 
 class BrandBoxPanel(InstrumentPanel):
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("BrandBox", parent)
 
         # Channels

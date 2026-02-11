@@ -1,6 +1,6 @@
 import logging
 import threading
-from typing import Callable
+from typing import Callable, Optional
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -8,7 +8,6 @@ __all__ = ["LogWindow", "LogWidget"]
 
 
 class Handler(logging.Handler):
-
     def __init__(self, callback: Callable) -> None:
         super().__init__()
         self.callback = callback
@@ -18,7 +17,6 @@ class Handler(logging.Handler):
 
 
 class RecordsQueue:
-
     def __init__(self) -> None:
         self.lock = threading.RLock()
         self.records: list[logging.LogRecord] = []
@@ -35,7 +33,6 @@ class RecordsQueue:
 
 
 class LogWidget(QtWidgets.QTextEdit):
-
     MaximumEntries: int = 1024 * 1024
     """Maximum number of visible log entries."""
 
@@ -45,10 +42,12 @@ class LogWidget(QtWidgets.QTextEdit):
     updateInterval = 200
     """Update interval in milliseconds."""
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setReadOnly(True)
-        self.document().setMaximumBlockCount(type(self).MaximumEntries)
+        document = self.document()
+        if document:
+            document.setMaximumBlockCount(self.MaximumEntries)
         self.recordsQueue = RecordsQueue()
         self.handler = Handler(self.received.emit)
         self.setLevel(logging.INFO)
@@ -98,23 +97,24 @@ class LogWidget(QtWidgets.QTextEdit):
         if records:
             # Get current scrollbar position
             scrollbar = self.verticalScrollBar()
-            position = scrollbar.value()
-            # Lock to current position or to bottom
-            lock = False
-            if position + 1 >= scrollbar.maximum():
-                lock = True
-            # Append formatted log messages
-            for record in records:
-                for level, recordFormat in self.recordFormats.items():
-                    if record.levelno >= level:
-                        self.setCurrentCharFormat(recordFormat)
-                        break
-                self.append(self.formatRecord(record))
-            # Scroll to bottom
-            if lock:
-                scrollbar.setValue(scrollbar.maximum())
-            else:
-                scrollbar.setValue(position)
+            if scrollbar:
+                position = scrollbar.value()
+                # Lock to current position or to bottom
+                lock = False
+                if position + 1 >= scrollbar.maximum():
+                    lock = True
+                # Append formatted log messages
+                for record in records:
+                    for level, recordFormat in self.recordFormats.items():
+                        if record.levelno >= level:
+                            self.setCurrentCharFormat(recordFormat)
+                            break
+                    self.append(self.formatRecord(record))
+                # Scroll to bottom
+                if lock:
+                    scrollbar.setValue(scrollbar.maximum())
+                else:
+                    scrollbar.setValue(position)
 
     def ensureRecentRecordsVisible(self) -> None:
         scrollbar = self.verticalScrollBar()
@@ -134,8 +134,7 @@ class LogWidget(QtWidgets.QTextEdit):
 
 
 class LogWindow(QtWidgets.QWidget):
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(self.tr("Logging"))
 

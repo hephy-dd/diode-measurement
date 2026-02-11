@@ -1,12 +1,12 @@
 import csv
 import math
 
-from typing import Any, Optional
+from typing import Any, Optional, TextIO
 
 __all__ = ["Writer"]
 
 
-def safe_format(value: Any, format_spec: str = None) -> str:
+def safe_format(value: Any, format_spec: Optional[str] = None) -> str:
     """Safe format any value, return `NAN` if format fails."""
     try:
         return format(value, format_spec or "")
@@ -15,12 +15,11 @@ def safe_format(value: Any, format_spec: str = None) -> str:
 
 
 class Writer:
-
     delimiter: str = "\t"
 
-    def __init__(self, fp) -> None:
-        self._fp = fp
-        self._writer = csv.writer(fp, delimiter=type(self).delimiter)
+    def __init__(self, fp: TextIO) -> None:
+        self._fp: TextIO = fp
+        self._writer = csv.writer(fp, delimiter=self.delimiter)
         self._current_table: Optional[str] = None
         self._timestamp_offset: float = 0.
         self.relative_timestamp: bool = False
@@ -71,7 +70,7 @@ class Writer:
         self.write_meta_lcr(data)
         self.flush()
 
-    def write_meta_lcr(self, data: dict) -> None:
+    def write_meta_lcr(self, data: dict[str, Any]) -> None:
         lcr = data.get("roles", {}).get("lcr", {})
         if lcr.get("enabled"):
             lcr_options = lcr.get("options", {})
@@ -84,7 +83,7 @@ class Writer:
             if frequency is not None:
                 self.write_tag("lcr_ac_frequency[Hz]", safe_format(frequency, self.value_format))
 
-    def write_iv_row(self, data: dict) -> None:
+    def write_iv_row(self, data: dict[str, Any]) -> None:
         if self._current_table != "iv":
             self._current_table = "iv"
             self.write_table_header([
@@ -108,7 +107,7 @@ class Writer:
         ])
         self.flush()
 
-    def write_iv_bias_row(self, data: dict) -> None:
+    def write_iv_bias_row(self, data: dict[str, Any]) -> None:
         if self._current_table != "iv":
             self._current_table = "iv"
             self.write_table_header([
@@ -136,7 +135,7 @@ class Writer:
         ])
         self.flush()
 
-    def write_it_row(self, data: dict) -> None:
+    def write_it_row(self, data: dict[str, Any]) -> None:
         if self._current_table != "it":
             self._current_table = "it"
             self.write_table_header([
@@ -160,7 +159,7 @@ class Writer:
         ])
         self.flush()
 
-    def write_it_bias_row(self, data: dict) -> None:
+    def write_it_bias_row(self, data: dict[str, Any]) -> None:
         if self._current_table != "it":
             self._current_table = "it"
             self.write_table_header([
@@ -188,7 +187,7 @@ class Writer:
         ])
         self.flush()
 
-    def write_cv_row(self, data: dict) -> None:
+    def write_cv_row(self, data: dict[str, Any]) -> None:
         if self._current_table != "cv":
             self._current_table = "cv"
             self.write_table_header([

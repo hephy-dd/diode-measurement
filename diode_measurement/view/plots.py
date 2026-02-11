@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any
+from typing import Optional
 
 from PyQt5 import QtChart, QtCore, QtWidgets
 
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-def limitRange(minimum, maximum, value):
+def limitRange(minimum: float, maximum: float, value: float) -> tuple[float, float]:
     """Limit range to a minimum value."""
     diff = abs(maximum - minimum)
     if diff < value:
@@ -24,7 +24,6 @@ def limitRange(minimum, maximum, value):
 
 
 class DynamicValueAxis(QtChart.QValueAxis):
-
     def __init__(self, axis: QtChart.QValueAxis, unit: str) -> None:
         super().__init__(axis)
         self.setProperty("axis", axis)
@@ -57,8 +56,7 @@ class DynamicValueAxis(QtChart.QValueAxis):
 
 
 class LimitsAggregator(QtCore.QObject):
-
-    def __init__(self, parent: QtCore.QObject = None) -> None:
+    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
         self._minimum: float = 0.
         self._maximum: float = 0.
@@ -89,15 +87,13 @@ class LimitsAggregator(QtCore.QObject):
 
 
 class PlotToolButton(QtWidgets.QPushButton):
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setFixedSize(18, 18)
 
 
 class PlotWidget(QtChart.QChartView):
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         chart = QtChart.QChart()
         chart.setMargins(QtCore.QMargins(4, 4, 4, 4))
@@ -136,7 +132,7 @@ class PlotWidget(QtChart.QChartView):
         layout.addWidget(self.resetButton)
         layout.addWidget(self.saveAsButton)
 
-        self.series: dict[str, Any] = {}
+        self._series: dict[str, QtChart.QXYSeries] = {}
 
     def mouseMoveEvent(self, event) -> None:
         self.toolbar.setVisible(self.underMouse())
@@ -166,19 +162,25 @@ class PlotWidget(QtChart.QChartView):
 
     def clear(self) -> None:
         for series in self.chart().series():
-            series.clear()
+            if isinstance(series, QtChart.QXYSeries):
+                series.clear()
 
     def isReverse(self) -> bool:
         for series in self.chart().series():
-            if series.count():
-                if series.at(series.count() - 1).x() < series.at(0).x():
-                    return True
+            if isinstance(series, QtChart.QXYSeries):
+                if series.count():
+                    if series.at(series.count() - 1).x() < series.at(0).x():
+                        return True
         return False
+
+    def replace_series(self, name: str, points: list[QtCore.QPointF]) -> None:
+        series = self._series.get(name)
+        if isinstance(series, QtChart.QXYSeries):
+            series.replace(points)
 
 
 class IVPlotWidget(PlotWidget):
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("I vs. V")
 
@@ -232,10 +234,10 @@ class IVPlotWidget(PlotWidget):
         self.iLimits = LimitsAggregator(self)
         self.vLimits = LimitsAggregator(self)
 
-        self.series["smu"] = self.smuSeries
-        self.series["smu2"] = self.smu2Series
-        self.series["elm"] = self.elmSeries
-        self.series["elm2"] = self.elm2Series
+        self._series["smu"] = self.smuSeries
+        self._series["smu2"] = self.smu2Series
+        self._series["elm"] = self.elmSeries
+        self._series["elm2"] = self.elm2Series
 
     def fitVAxis(self) -> None:
         self.vAxis.setReverse(self.isReverse())
@@ -271,7 +273,7 @@ class IVPlotWidget(PlotWidget):
         self.vLimits.clear()
 
     def append(self, name: str, x: float, y: float) -> None:
-        series = self.series.get(name)
+        series = self._series.get(name)
         if series is not None:
             series.append(x, y)
             self.iLimits.append(y)
@@ -280,10 +282,9 @@ class IVPlotWidget(PlotWidget):
 
 
 class ItPlotWidget(PlotWidget):
-
     MAX_POINTS: int = 60 * 60 * 24
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("I vs. t")
 
@@ -337,10 +338,10 @@ class ItPlotWidget(PlotWidget):
         self.iLimits = LimitsAggregator(self)
         self.tLimits = LimitsAggregator(self)
 
-        self.series["smu"] = self.smuSeries
-        self.series["smu2"] = self.smu2Series
-        self.series["elm"] = self.elmSeries
-        self.series["elm2"] = self.elm2Series
+        self._series["smu"] = self.smuSeries
+        self._series["smu2"] = self.smu2Series
+        self._series["elm"] = self.elmSeries
+        self._series["elm2"] = self.elm2Series
 
     def fitTAxis(self) -> None:
         if self.tLimits.isValid():
@@ -378,7 +379,7 @@ class ItPlotWidget(PlotWidget):
         self.tLimits.clear()
 
     def append(self, name: str, x: float, y: float) -> None:
-        series = self.series.get(name)
+        series = self._series.get(name)
         if series is not None:
             series.append(QtCore.QPointF(x * 1e3, y))
             if series.count() > self.MAX_POINTS:
@@ -389,8 +390,7 @@ class ItPlotWidget(PlotWidget):
 
 
 class CVPlotWidget(PlotWidget):
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("C vs. V")
 
@@ -420,7 +420,7 @@ class CVPlotWidget(PlotWidget):
         self.cLimits = LimitsAggregator(self)
         self.vLimits = LimitsAggregator(self)
 
-        self.series["lcr"] = self.lcrSeries
+        self._series["lcr"] = self.lcrSeries
 
     def fit(self) -> None:
         if self.chart().isZoomed():
@@ -441,7 +441,7 @@ class CVPlotWidget(PlotWidget):
         self.vLimits.clear()
 
     def append(self, name: str, x: float, y: float) -> None:
-        series = self.series.get(name)
+        series = self._series.get(name)
         if series is not None:
             series.append(x, y)
             self.cLimits.append(y)
@@ -450,8 +450,7 @@ class CVPlotWidget(PlotWidget):
 
 
 class CV2PlotWidget(PlotWidget):
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("1/C^2 vs. V")
 
@@ -479,7 +478,7 @@ class CV2PlotWidget(PlotWidget):
         self.cLimits = LimitsAggregator(self)
         self.vLimits = LimitsAggregator(self)
 
-        self.series["lcr"] = self.lcrSeries
+        self._series["lcr"] = self.lcrSeries
 
     def fit(self) -> None:
         if self.chart().isZoomed():
@@ -499,7 +498,7 @@ class CV2PlotWidget(PlotWidget):
         self.vLimits.clear()
 
     def append(self, name: str, x: float, y: float) -> None:
-        series = self.series.get(name)
+        series = self._series.get(name)
         if series is not None:
             series.append(x, y)
             self.cLimits.append(y)

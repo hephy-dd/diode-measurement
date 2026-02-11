@@ -10,7 +10,7 @@ import socketserver
 import threading
 import time
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -34,7 +34,6 @@ def json_dict(d: dict) -> dict:
 
 
 class RPCHandler:
-
     def __init__(self, controller) -> None:
         self.controller = controller
         self.dispatcher = jsonrpc.Dispatcher()
@@ -47,12 +46,12 @@ class RPCHandler:
     def handle(self, request) -> dict[str, Any]:
         return self.manager.handle(request, self.dispatcher)
 
-    def on_start(self, reset: bool = None, continuous: bool = None,
-                 auto_reconnect: bool = None, measurement_type: str = None,
-                 begin_voltage: float = None, end_voltage: float = None,
-                 step_voltage: float = None, waiting_time: float = None,
-                 compliance: float = None,
-                 waiting_time_continuous: float = None) -> None:
+    def on_start(self, reset: Optional[bool] = None, continuous: Optional[bool] = None,
+                 auto_reconnect: Optional[bool] = None, measurement_type: Optional[str] = None,
+                 begin_voltage: Optional[float] = None, end_voltage: Optional[float] = None,
+                 step_voltage: Optional[float] = None, waiting_time: Optional[float] = None,
+                 compliance: Optional[float] = None,
+                 waiting_time_continuous: Optional[float] = None) -> None:
         with self.controller.rpc_params:
             rpc_params: dict[str, Union[None, int, float, str]] = {}
             if reset is not None:
@@ -88,34 +87,36 @@ class RPCHandler:
 
 
 class TCPHandler(socketserver.BaseRequestHandler):
-
     buffer_size: int = 1024
 
     def handle(self) -> None:
         self.data = self.request.recv(self.buffer_size).strip().decode("utf-8")
         logger.info("TCP %s wrote: %s", self.client_address[0], self.data)
-        self.server.messageReady.emit(format(self.data))
-        response = self.server.rpcHandler.handle(self.data)
-        if response:
-            data = response.json.encode("utf-8")
-            logger.info("TCP %s returned: %s", self.client_address[0], response.json)
-            self.server.messageReady.emit(format(response.json))
-            self.request.sendall(data)
+        rpc_handler = getattr(self.server, "rpc_handler", None)
+        message_ready = getattr(self.server, "message_ready", None)
+        if message_ready:
+            message_ready.emit(format(self.data))
+        if rpc_handler:
+            response = rpc_handler.handle(self.data)
+            if response:
+                data = response.json.encode("utf-8")
+                logger.info("TCP %s returned: %s", self.client_address[0], response.json)
+                if message_ready:
+                    message_ready.emit(format(response.json))
+                self.request.sendall(data)
 
 
 class TCPServer(socketserver.TCPServer):
-
     allow_reuse_address: bool = True
 
 
 class RPCWidget(QtWidgets.QWidget):
-
     MaximumEntries: int = 1024 * 64
     """Maximum number of visible protocol entries."""
 
     restartSignal = QtCore.pyqtSignal()
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("RPC")
 
@@ -196,7 +197,7 @@ class TCPServerPlugin(Plugin, QtCore.QObject):
 
     running = QtCore.pyqtSignal(bool)
     failed = QtCore.pyqtSignal(object)
-    messageReady = QtCore.pyqtSignal(str)
+    message_ready = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -212,7 +213,7 @@ class TCPServerPlugin(Plugin, QtCore.QObject):
     def install(self, context):
         self.failed.connect(context.handleException)
         self._installTab(context)
-        self.rpcHandler = RPCHandler(context)
+        self.rpc_handler = RPCHandler(context)
         self.loadSettings()
         self._startThread()
         self._messageTimer.start(250)
@@ -259,7 +260,7 @@ class TCPServerPlugin(Plugin, QtCore.QObject):
         self.running.connect(lambda state: self.rpcWidget.setConnected(state))
         self.rpcWidget.restartSignal.connect(lambda: self.requestRestart())
         context.view.controlTabWidget.insertTab(1000, self.rpcWidget, self.rpcWidget.windowTitle())
-        self.messageReady.connect(self.appendProtocol)
+        self.message_ready.connect(self.appendProtocol)
 
     def appendProtocol(self, message: str) -> None:
         with self._messageCacheLock:
@@ -298,8 +299,8 @@ class TCPServerPlugin(Plugin, QtCore.QObject):
 
     def _setupServer(self, server):
         self._shutdownHandlers.append(server.shutdown)
-        server.rpcHandler = self.rpcHandler
-        server.messageReady = self.messageReady
+        server.rpc_handler = self.rpc_handler
+        server.message_ready = self.message_ready
 
     def run(self):
         while self._enabled.is_set():

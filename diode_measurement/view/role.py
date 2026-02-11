@@ -11,7 +11,7 @@ __all__ = ["RoleWidget"]
 
 class RoleWidget(QtWidgets.QWidget):
 
-    def __init__(self, name, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, name, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setName(name)
 
