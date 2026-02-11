@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added mypy checks to tox and fixed typing issues (#132).
+
 ### Changed
 
 - Fixed Ruff linter errors and built-in typing (#130).

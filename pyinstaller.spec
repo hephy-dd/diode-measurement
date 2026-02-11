@@ -25,7 +25,7 @@ create_versionfile(
     company_name="MBI",
     file_description="IV/CV measurements for silicon sensors",
     internal_name="Diode Measurement",
-    legal_copyright="Copyright 2021-2025 MBI. All rights reserved.",
+    legal_copyright="Copyright 2021-2026 MBI. All rights reserved.",
     original_filename=filename,
     product_name="Diode Measurement"
 )

@@ -64,6 +64,14 @@ MEASUREMENTS = {
     "iv_bias": IVBiasMeasurement,
     "cv": CVMeasurement,
 }
+CONTENTS_URL: str = "https://github.com/hephy-dd/diode-measurement"
+ABOUT_TEXT: str = f"""
+    <h3>Diode Measurement</h3>
+    <p>IV/CV measurements for silicon sensors.</p>
+    <p>Version {__version__}</p>
+    <p>This software is licensed under the GNU General Public License Version 3.</p>
+    <p>Copyright &copy; 2021-2026 <a href=\"https://oeaw.ac.at/mbi\">MBI</a></p>
+"""
 
 
 class MeasurementRunner:
@@ -141,14 +149,8 @@ class Controller(QtCore.QObject):
         self.cache: Cache = Cache()
         self.rpc_params: Cache = Cache()
 
-        self.view.setProperty("contentsUrl", "https://github.com/hephy-dd/diode-measurement")
-        self.view.setProperty("about", f"""
-            <h3>Diode Measurement</h3>
-            <p>IV/CV measurements for silicon sensors.</p>
-            <p>Version {__version__}</p>
-            <p>This software is licensed under the GNU General Public License Version 3.</p>
-            <p>Copyright &copy; 2021-2025 <a href=\"https://oeaw.ac.at/mbi\">MBI</a></p>
-        """)
+        self.view.setProperty("contentsUrl", CONTENTS_URL)
+        self.view.setProperty("about", ABOUT_TEXT)
 
         # Controller
         self.ivPlotsController = IVPlotsController(self)
