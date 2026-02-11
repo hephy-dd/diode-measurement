@@ -1,5 +1,5 @@
 import threading
-from typing import Any
+from typing import Any, Iterator
 
 __all__ = ["Cache"]
 
@@ -18,6 +18,9 @@ class Cache:
     def __exit__(self, *exc):
         self._lock.release()
         return False
+
+    def __iter__(self) -> Iterator:
+        return iter(self._items)
 
     def get(self, key: str, default=None):
         return self._items.get(key, default)
