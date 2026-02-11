@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List
+from typing import Any
 
 __all__ = ["Plugin", "PluginRegistry"]
 
@@ -21,7 +21,7 @@ class PluginRegistry:
 
     def __init__(self, context: Any) -> None:
         self._context: Any = context
-        self._plugins: List[Plugin] = []
+        self._plugins: list[Plugin] = []
 
     def install(self, plugin: Plugin) -> None:
         """Install a plugin."""
@@ -31,7 +31,7 @@ class PluginRegistry:
         logger.debug("Installing plugin %s... done.", repr(type(plugin).__name__))
 
     @property
-    def plugins(self) -> List[Plugin]:
+    def plugins(self) -> list[Plugin]:
         """Return list of installed plugins."""
         return [plugin for plugin in self._plugins]
 

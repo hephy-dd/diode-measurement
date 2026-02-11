@@ -6,7 +6,7 @@ import threading
 import time
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -294,8 +294,8 @@ class Controller(QtCore.QObject):
             snapshot["temperature"] = self.cache.get("dmm_temperature")
             return snapshot
 
-    def prepareState(self) -> Dict[str, Any]:
-        state: Dict[str, Any] = {}
+    def prepareState(self) -> dict[str, Any]:
+        state: dict[str, Any] = {}
 
         state["sample"] = self.view.generalWidget.sampleName()
         state["measurement_type"] = self.view.generalWidget.currentMeasurement().get("type")
@@ -313,7 +313,7 @@ class Controller(QtCore.QObject):
         state["continue_in_compliance"] = self.view.generalWidget.isContinueInCompliance()
         state["waiting_time_continuous"] = self.view.generalWidget.waitingTimeContinuous()
 
-        roles: Dict[str, Any] = state.setdefault("roles", {})
+        roles: dict[str, Any] = state.setdefault("roles", {})
 
         for role in self.view.roles():
             key = role.name().lower()
@@ -1068,7 +1068,7 @@ class IVPlotsController(QtCore.QObject):
         if fit:
             self.ivPlotWidget.fit()
 
-    def onLoadIVReadings(self, readings: List[dict]) -> None:
+    def onLoadIVReadings(self, readings: list[dict]) -> None:
         smuPoints = []
         smu2Points = []
         elmPoints = []
@@ -1134,11 +1134,11 @@ class IVPlotsController(QtCore.QObject):
         if fit:
             self.itPlotWidget.fit()
 
-    def onLoadItReadings(self, readings: List[dict]) -> None:
-        smuPoints: List[QtCore.QPointF] = []
-        smu2Points: List[QtCore.QPointF] = []
-        elmPoints: List[QtCore.QPointF] = []
-        elm2Points: List[QtCore.QPointF] = []
+    def onLoadItReadings(self, readings: list[dict]) -> None:
+        smuPoints: list[QtCore.QPointF] = []
+        smu2Points: list[QtCore.QPointF] = []
+        elmPoints: list[QtCore.QPointF] = []
+        elm2Points: list[QtCore.QPointF] = []
         widget = self.itPlotWidget
         widget.clear()
         for reading in readings:
@@ -1230,8 +1230,8 @@ class CVPlotsController(QtCore.QObject):
         if math.isfinite(voltage) and math.isfinite(c2_lcr):
             self.cv2PlotWidget.append("lcr", voltage, c2_lcr)
 
-    def onLoadCVReadings(self, readings: List[dict]) -> None:
-        lcrPoints: List[QtCore.QPointF] = []
+    def onLoadCVReadings(self, readings: list[dict]) -> None:
+        lcrPoints: list[QtCore.QPointF] = []
         widget = self.cvPlotWidget
         widget.clear()
         for reading in readings:
@@ -1244,8 +1244,8 @@ class CVPlotsController(QtCore.QObject):
         widget.series.get("lcr").replace(lcrPoints)
         widget.fit()
 
-    def onLoadCV2Readings(self, readings: List[dict]) -> None:
-        lcr2Points: List[QtCore.QPointF] = []
+    def onLoadCV2Readings(self, readings: list[dict]) -> None:
+        lcr2Points: list[QtCore.QPointF] = []
         widget = self.cv2PlotWidget
         widget.clear()
         for reading in readings:

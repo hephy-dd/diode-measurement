@@ -1,5 +1,4 @@
 import time
-from typing import List, Tuple
 
 from .driver import Electrometer, handle_exception
 
@@ -17,7 +16,7 @@ class K6517B(Electrometer):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
         message = message.strip().strip('"')
@@ -94,10 +93,10 @@ class K6517B(Electrometer):
             time.sleep(interval)
         raise RuntimeError(f"Electrometer reading timeout, exceeded {timeout:G} s")
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         return self.measure_i(), float("nan")  # TODO
 
-    def set_format_elements(self, elements: List[str]) -> None:
+    def set_format_elements(self, elements: list[str]) -> None:
         value = ",".join(elements)
         self._write(f":FORM:ELEM {value}")
 
