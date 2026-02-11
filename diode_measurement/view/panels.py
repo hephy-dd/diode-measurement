@@ -2,7 +2,6 @@ from typing import Any, Dict
 
 from PyQt5 import QtWidgets
 
-from ..utils import ureg
 from .metric import MetricWidget
 
 __all__ = [

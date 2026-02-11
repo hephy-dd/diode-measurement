@@ -2,12 +2,11 @@ import contextlib
 import logging
 import math
 import os
-import pathlib
 import threading
 import time
 
 from datetime import datetime
-from typing import Any, Dict, List, Iterator, Optional
+from typing import Any, Dict, List, Optional
 
 from PyQt5 import QtCore, QtWidgets
 

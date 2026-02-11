@@ -1,6 +1,6 @@
 import re
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 from .driver import SwitchingMatrix, handle_exception
 
