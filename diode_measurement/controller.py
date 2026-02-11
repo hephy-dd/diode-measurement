@@ -1160,6 +1160,10 @@ class IVPlotsController(QtCore.QObject):
                 elmPoints.append(QtCore.QPointF(timestamp * 1e3, i_elm))
                 widget.iLimits.append(i_elm)
                 widget.tLimits.append(timestamp)
+            if math.isfinite(timestamp) and math.isfinite(i_elm2):
+                elm2Points.append(QtCore.QPointF(timestamp * 1e3, i_elm2))
+                widget.iLimits.append(i_elm2)
+                widget.tLimits.append(timestamp)
         widget.series.get("smu").replace(smuPoints)
         widget.series.get("smu2").replace(smu2Points)
         widget.series.get("elm").replace(elmPoints)
