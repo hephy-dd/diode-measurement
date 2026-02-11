@@ -23,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     prepareChangeVoltage = QtCore.pyqtSignal()
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setProperty("locked", False)
 
@@ -590,7 +590,7 @@ class MainWindow(QtWidgets.QMainWindow):
         text = "Stop the current measurement to exiting the application."
         QtWidgets.QMessageBox.information(self, title, text)
 
-    def closeEvent(self, event: QtCore.QEvent) -> None:
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         if self.property("locked"):
             self.showActiveInfo()
             event.ignore()

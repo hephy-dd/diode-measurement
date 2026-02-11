@@ -41,3 +41,9 @@ version = {attr = "diode_measurement.__version__"}
 
 [tool.setuptools.package-data]
 "diode_measurement.assets.icons" = ["*.svg", "*.ico"]
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = ["jsonrpc.*"]
+ignore_missing_imports = true

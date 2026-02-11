@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Optional
 
 import pyvisa
 
@@ -9,12 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 class ResourceError(Exception):
-
     ...
 
 
 class Resource:
-
     def __init__(self, resource_name: str, visa_library: str, **options):
         self.resource_name = resource_name
         self.visa_library = visa_library
@@ -24,12 +23,13 @@ class Resource:
             "timeout": 8000
         }
         self.options.update(options)
+        self._rm = Optional[pyvisa.ResourceManager]
         self._resource = None
 
     def __enter__(self):
         try:
-            rm = pyvisa.ResourceManager(self.visa_library)
-            self._resource = rm.open_resource(resource_name=self.resource_name, **self.options)
+            self._rm = pyvisa.ResourceManager(self.visa_library)
+            self._resource = self._rm.open_resource(resource_name=self.resource_name, **self.options)
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         return self
@@ -41,7 +41,11 @@ class Resource:
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         finally:
-            self._resource = None
+            try:
+                self._rm.close()
+            finally:
+                self._rm = None
+                self._resource = None
             return False
 
     def query(self, message):
@@ -76,7 +80,6 @@ class Resource:
 
 
 class AutoReconnectResource(Resource):
-
     retry_attempts = 3
     retry_delay = 1.0
 

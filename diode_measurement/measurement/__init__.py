@@ -48,13 +48,13 @@ class Measurement:
         role = self.state.find_role(name)
         if not role.get("enabled"):
             return None
-        model = role.get("model")
-        resource_name = role.get("resource_name")
+        model = role.get("model", "")
+        resource_name = role.get("resource_name", "")
         if not resource_name.strip():
             raise ValueError(f"Empty resource name not allowed for {name.upper()} ({model}).")
-        visa_library = role.get("visa_library")
-        termination = role.get("termination")
-        timeout = role.get("timeout") * 1000  # in millisecs
+        visa_library = role.get("visa_library", "@py")
+        termination = role.get("termination", "\n")
+        timeout = role.get("timeout", 0) * 1000  # in millisecs
         cls = driver_factory(model)
         if not cls:
             logger.warning("No such driver: %s", model)
@@ -149,87 +149,87 @@ class RangeMeasurement(Measurement):
     # Source
 
     def get_source_output_state(self) -> bool:
-        return self.source_instrument.get_output_enabled()
+        return self.source_instrument.get_output_enabled()  # type: ignore
 
     def set_source_output_state(self, state: bool) -> None:
         logger.info("Source output state: %s", state)
-        self.source_instrument.set_output_enabled(state)
+        self.source_instrument.set_output_enabled(state)  # type: ignore
         self.update_event({"source_output_state": state})
         self.state.update({"source_output_state": state})
 
     def get_source_voltage(self) -> float:
-        return self.source_instrument.get_voltage_level()
+        return self.source_instrument.get_voltage_level()  # type: ignore
 
     def set_source_voltage(self, voltage: float) -> None:
         logger.info("Source voltage level: %gV", voltage)
-        self.source_instrument.set_voltage_level(voltage)
+        self.source_instrument.set_voltage_level(voltage)  # type: ignore
         self.update_event({"source_voltage": voltage})
         self.state.update({"source_voltage": voltage})
 
     def set_source_voltage_range(self, voltage: float) -> None:
         logger.info("Source voltage range: %gV", voltage)
-        self.source_instrument.set_voltage_range(voltage)
+        self.source_instrument.set_voltage_range(voltage)  # type: ignore
 
     # Bias source
 
     def get_bias_source_output_state(self) -> bool:
-        return self.bias_source_instrument.get_output_enabled()
+        return self.bias_source_instrument.get_output_enabled()  # type: ignore
 
     def set_bias_source_output_state(self, state: bool) -> None:
         logger.info("Bias source output state: %s", state)
-        self.bias_source_instrument.set_output_enabled(state)
+        self.bias_source_instrument.set_output_enabled(state)  # type: ignore
         self.update_event({"bias_source_output_state": state})
         self.state.update({"bias_source_output_state": state})
 
     def get_bias_source_voltage(self) -> float:
-        return self.bias_source_instrument.get_voltage_level()
+        return self.bias_source_instrument.get_voltage_level()  # type: ignore
 
     def set_bias_source_voltage(self, voltage: float) -> None:
         logger.info("Bias source voltage level: %gV", voltage)
-        self.bias_source_instrument.set_voltage_level(voltage)
+        self.bias_source_instrument.set_voltage_level(voltage)  # type: ignore
         self.update_event({"bias_source_voltage": voltage})
         self.state.update({"bias_source_voltage": voltage})
 
     def set_bias_source_voltage_range(self, voltage: float) -> None:
         logger.info("Bias source voltage range: %gV", voltage)
-        self.bias_source_instrument.set_voltage_range(voltage)
+        self.bias_source_instrument.set_voltage_range(voltage)  # type: ignore
 
     def check_current_compliance(self) -> None:
         """Raise exception if current compliance tripped and continue in
         compliance option is not active.
         """
         if not self.state.continue_in_compliance:
-            if self.source_instrument.compliance_tripped():
+            if self.source_instrument.compliance_tripped():  # type: ignore
                 raise RuntimeError("Source compliance tripped!")
 
     def update_current_compliance(self) -> None:
         """Update current compliance if value changed."""
         current_compliance = self.state.current_compliance
-        if self.current_compliance != current_compliance:
+        if self.current_compliance != current_compliance:  # type: ignore
             self.current_compliance = current_compliance
             self.set_source_compliance(self.current_compliance)
             self.check_error_state(self.source_instrument)
 
     def set_source_compliance(self, compliance: float) -> None:
         logger.info("Source current compliance level: %gA", compliance)
-        self.source_instrument.set_current_compliance_level(compliance)
+        self.source_instrument.set_current_compliance_level(compliance)  # type: ignore
 
     def set_bias_source_compliance(self, compliance: float) -> None:
         logger.info("Bias source current compliance level: %gA", compliance)
-        self.bias_source_instrument.set_current_compliance_level(compliance)
+        self.bias_source_instrument.set_current_compliance_level(compliance)  # type: ignore
 
     def check_bias_current_compliance(self) -> None:
         """Raise exception if biascurrent compliance tripped and continue in
         compliance option is not active.
         """
         if not self.state.continue_in_compliance:
-            if self.bias_source_instrument.compliance_tripped():
+            if self.bias_source_instrument.compliance_tripped():  # type: ignore
                 raise RuntimeError("Source compliance tripped!")
 
     def update_bias_current_compliance(self) -> None:
         """Update current compliance if value changed."""
         current_compliance = self.state.current_compliance
-        if self.bias_current_compliance != current_compliance:
+        if self.bias_current_compliance != current_compliance:  # type: ignore
             self.bias_current_compliance = current_compliance
             self.set_bias_source_compliance(self.bias_current_compliance)
             self.check_error_state(self.bias_source_instrument)
@@ -295,7 +295,7 @@ class RangeMeasurement(Measurement):
         self.update_progress(0, estimate.count, estimate.passed)
 
     def initialize(self) -> None:
-        source: str = self.state.source_role
+        source = self.state.source_role
         if source in self.instruments:
             self.source_instrument = self.instruments.get(source)
         else:
@@ -305,7 +305,7 @@ class RangeMeasurement(Measurement):
 
         self.bias_source_instrument = None
         if self.state.measurement_type in ["iv_bias"]:  # TODO
-            bias_source: str = self.state.bias_source_role
+            bias_source = self.state.bias_source_role
             if bias_source in self.instruments:
                 self.bias_source_instrument = self.instruments.get(bias_source)
             else:
@@ -548,7 +548,7 @@ class RangeMeasurement(Measurement):
         ...
 
     def ramp_to_begin(self) -> None:
-        source_voltage: float = self.state.source_voltage
+        source_voltage: float = self.state.source_voltage  # type: ignore
         voltage_begin: float = self.state.voltage_begin
         voltage_end: float = self.state.voltage_end
         voltage_step: float = 5.0
@@ -651,7 +651,7 @@ class RangeMeasurement(Measurement):
         logging.info("Ramp bias source to zero... done.")
 
     def ramp_to_continuous(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
-        source_voltage: float = self.state.source_voltage
+        source_voltage: float = self.state.source_voltage  # type: ignore
 
         ramp: LinearRange = LinearRange(source_voltage, end_voltage, step_voltage)
         estimate: Estimate = Estimate(len(ramp))

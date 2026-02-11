@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class ScreenshotPlugin(Plugin):
-
     def install(self, context) -> None:
         self.context = context
         self.createWidgets(context)
@@ -38,7 +37,7 @@ class ScreenshotPlugin(Plugin):
         layout = context.view.generalWidget.outputGroupBox.layout()
         layout.removeWidget(self.saveScreenshotCheckBox)
 
-        self.saveScreenshotCheckBox.setParent(None)
+        self.saveScreenshotCheckBox.setParent(None)  # type: ignore
         self.saveScreenshotCheckBox.deleteLater()
 
     def loadSettings(self) -> None:

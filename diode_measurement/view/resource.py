@@ -1,7 +1,10 @@
+from typing import Optional
+
 from PyQt5 import QtCore, QtWidgets
 
 from ..driver import driver_factory
 from ..utils import open_resource
+
 
 __all__ = ["ResourceWidget"]
 
@@ -13,7 +16,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
     terminationChanged = QtCore.pyqtSignal(str)
     timeoutChanged = QtCore.pyqtSignal(float)
 
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("Instrument")
 
@@ -115,7 +118,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
     def setTimeout(self, timeout: float) -> None:
         self.timeoutSpinBox.setValue(timeout)
 
-    def openResource(self) -> None:
+    def openResource(self):
         return open_resource(self.resourceName(), self.termination(), self.timeout())
 
     def readIdentity(self) -> str:
