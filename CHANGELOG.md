@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Renamed `changelog` to `CHANGELOG.md`.
-- Formatted `CHANGELOG.md` to follow consistent Markdown/Keep a Changelog style.
+- Fixed Ruff linter errors and built-in typing (#130).
+- Renamed `changelog` to `CHANGELOG.md` (#131).
+- Formatted `CHANGELOG.md` to follow consistent Markdown/Keep a Changelog style (#131).
+
+### Fixed
+
+- Fix missing elm2 series population in IT plot (#129).
 
 ## [0.22.2] - 2025-09-26
 
