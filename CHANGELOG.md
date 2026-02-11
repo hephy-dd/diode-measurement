@@ -1,253 +1,351 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed `changelog` to `CHANGELOG.md`.
+- Formatted `CHANGELOG.md` to follow consistent Markdown/Keep a Changelog style.
+
 ## [0.22.2] - 2025-09-26
 
 ### Fixes
+
 - Display DCAMPS measurements on K2657A (#125).
 
 ## [0.22.1] - 2025-09-22
 
 ### Fixes
+
 - Broken `measure_iv` method for K6517b (#120).
 - Broken disable TCP server on error (#121).
 
 ## [0.22.0] - 2025-09-22
 
 ### Added
+
 - Support for Keithley 4215-CVU LCR meter (#116).
 
 ### Removed
+
 - Obsolete `requirements.txt` file.
 
 ### Fixed
+
 - Workaround for missing icons issue in PyInstaller single file builds (#117).
 
 ## [0.21.7] - 2025-08-07
 
 ### Fixed
+
 - Keysight E4980A does not support compliance when used as source (#114).
 
 ## [0.21.6] - 2025-06-10
 
 ### Fixed
+
 - JSONRPC producing unbound number of error message boxes (#112).
 
 ## [0.21.5] - 2025-04-28
 
 ### Fixed
+
 - CSV header for iv-measurements (#111).
 
 ## [0.21.4] - 2025-04-15
 
 ### Fixed
+
 - `pyproject.toml` excluded sub-packages (#110).
 
 ## [0.21.3] - 2025-01-07
 
 ### Changed
+
 - Using ruff for linting.
 - Using tox for tests in github workflows.
 - Dropped support for Python 3.8.
 - Added support for Python 3.13.
 
 ### Removed
+
 - Obsolete setup.cfg
 
 ### Fixed
+
 - Conflicts with pint and new numpy version (#108).
 - Reverted maximum compliance current (#106).
 
 ## [0.21.2] - 2024-09-25
+
 ### Fixed
+
 - Maximum compliance current (#106).
 
 ## [0.21.1] - 2024-05-13
+
 ### Fixed
+
 - Configuration of BrandBox HV switch (#104).
 
 ## [0.21.0] - 2024-05-13
+
 ### Added
+
 - Configurable precision for file writer (#102).
 
 ### Changed
 - Added support for Python 3.12.
 
 ## [0.20.1] - 2024-02-05
+
 ### Fixed
+
 - Set source voltage range for reverse ramps (#100).
 
 ## [0.20.0] - 2023-09-05
+
 ### Added
+
 - Support for HEPHY BandBox HV Switch (#66).
 - Additional voltage readings for all SMUs (#96).
 - Interlock check for K2470 (#97).
 - Exception hook to catch unhandled exceptions (#98).
 
 ### Changed
+
 - Dropped support for Python 3.7.
 - Added support for Python 3.11.
 
 ## [0.19.0] - 2023-09-01
+
 ### Added
+
 - Sense autorange limits for Keithley 6514 and 6517B (#81).
 - Breakdown protection for Keithley 2070 (#79).
 - Metric input widget.
 
 ## [0.18.2] - 2023-08-30
+
 ### Fixed
+
 - ELM2 series visibility glitch (#93).
 
 ## [0.18.1] - 2023-08-30
+
 ### Fixed
+
 - Broken change voltage function (#91).
 
 ## [0.18.0] - 2023-06-02
+
 ### Added
+
 - Add optional ELM2 instrument (#89).
 
 ## [0.17.1] - 2023-06-02
+
 ### Fixed
+
 - Missing LCR amplitude/frequency values in output file (#87).
 
 ## [0.17.0] - 2023-06-01
+
 ### Added
+
 - Acquire and store Cp + Rp in CV measurements (#85).
 
 ## [0.16.1] - 2023-03-23
+
 ### Fixed
+
 - Increased limits for (bias) voltages to 3030 V (#82).
 
 ## [0.16.0] - 2023-03-01
+
 ### Added
+
 - Electrometer K6517B as voltage source (#74).
 - Meter Connect option for K6517B electrometer (#77).
 
 ## [0.15.6] - 2023-02-28
+
 ### Fixed
+
 - Initial source ramp to zero (#75).
 
 ## [0.15.5] - 2022-12-20
+
 ### Fixed
+
 - Added LCR AC amplitude/frequency to header (#72).
 
 ## [0.15.4] - 2022-11-03
+
 ### Fixed
+
 - Filter count of 1 not supported by some instruments (#67).
 - CV plot not cleared before new measurement (#70).
 
 ## [0.15.3] - 2022-10-24
+
 ### Fixed
+
 - Allow pA for sense range (#68).
 
 ## [0.15.2] - 2022-08-30
+
 ### Fixed
+
 - Selected instrument options are not configured (#63).
 
 ## [0.15.1] - 2022-08-26 [YANKED]
+
 ### Fixed
+
 - Issue with step in linear range function (#61).
 
 ## [0.15.0] - 2022-08-24
+
 ### Added
+
 - IV Bias measurement and SMU2 role (#59).
 
 ## [0.14.1] - 2022-08-24
+
 ### Fixed
+
 - Issue preventing starting a measurement (#57).
 
 ## [0.14.0] - 2022-07-22 [YANKED]
+
 ### Added
+
 - Colored stop button (#51).
 - Input parameters for Electrometers (#55).
 - Test instrument connection (#50).
 - Model specific persistent settings (#49).
 
 ### Changed
+
 - Migrated to pytest (#54).
 
 ## [0.13.3] - 2022-07-20
+
 ### Added
+
 - Toggle zero check for Electrometers (#52).
 
 ## [0.13.2] - 2022-07-20
+
 ### Fixed
+
 - Broken electrometer configuration for K6514/K6517B (#47).
 
 ## [0.13.1] - 2022-07-19
+
 ### Fixed
+
 - Broken persistent instrument settings (#45).
 
 ## [0.13.0] - 2022-07-18
+
 ### Added
+
 - Save screenshot of plots (see #43).
 
 ## [0.12.0] - 2022-06-30
+
 ### Added
+
 - Auto reconnect and retry for resource connections (see #41).
 
 ### Changed
+
 - Logging is now a dock widget at the bottom.
 
 ### Fixed
+
 - Enable change voltage button only while in continuous mode.
 - Show most recent log entries on measurement start.
 
 ## [0.11.0] - 2022-06-29
+
 ### Added
+
 - Additional options for LCR meters (#39).
 
 ### Fixed
+
 - Bug in 4284A trigger configuration.
 - Bug in E4980A trigger configuration.
 
 ## [0.10.0] - 2022-06-28
+
 ### Added
+
 - Support for Agilent 4284A LCR Meter (#35).
 - Aperture and correction settings for LCR Meters.
 
 ## Changed
+
 - Show only plots of selected measurement (#37).
 - Refactored measurement thread handling.
 
 ## [0.9.3] - 2022-06-27
+
 ### Fixed
+
 - Show CV plots in range of < 1pF.
 
 ## [0.9.2] - 2022-05-05
+
 ### Fixed
+
 - Wait until voltage settled before output disable (#31).
 - Bug with continuous waiting times > 1 s (#32).
 - Reduced decimals for continuous waiting time.
 
 ## [0.9.1] - 2022-05-05
+
 ### Fixed
+
 - Broken change voltage function (#29).
 
 ## [0.9.0] - 2022-05-04
+
 ### Added
+
 - Route terminals to SMU settings (K2410, K2470) (#28).
 
 ## [0.8.2] - 2022-04-27
+
 ### Changed
+
 - Improved plot performance at high rates (#26).
 
 ## [0.8.1] - 2022-04-25
+
 ### Changed
+
 - Timestamp precision to µs in output file for fast readings (#24).
 
 ## [0.8.0] - 2022-03-30
+
 ### Added
+
 - NPLC to SMU settings (K2410, K2470, K2657A) (#20).
 - Improved fast reading performance in continuous mode (#21).
 
 ## [0.7.0] - 2022-03-24
+
 ### Added
+
 - Basic plugin system.
 - JSON-RPC remote control TCP server (#5).
 - Show average loop iteration time (#12).
@@ -256,63 +354,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `setup.cfg`, `pyproject.toml` and `tox.ini`.
 
 ### Changed
+
 - Refactored measurement module.
 
 ## [0.6.2] - 2021-11-19
+
 ### Fixed
+
 - CV yields division by zero (#8).
 - Invalid plot values yield unhandled exceptions (#9).
 - Crashes on file permission errors (#10).
 
 ## [0.6.1] - 2021-11-10
+
 ### Fixed
+
 - Change voltage yield range error (#6).
 
 ## [0.6.0] - 2021-09-10
+
 ### Added
+
 - Source voltage range selection (#3).
 - Optional write output to file (#4).
 
 ## [0.5.0] - 2021-09-01
+
 ### Added
+
 - Command line argument to switch Qt style.
 
 ### Changed
+
 - Improved scaling of plot axes.
 
 ## [0.4.0] - 2021-08-30
+
 ### Added
+
 - Change voltage in continuous It measurement (#2).
 
 ### Fixed
+
 - Raise error on missing resource name (#1).
 
 ## [0.3.0] - 2021-08-20
+
 ### Changed
+
 - Measurement data file formats.
 
 ### Fixed
+
 - Import measurement data file performance.
 
 ## [0.2.1] - 2021-08-20
+
 ### Fixed
+
 - Import measurement data file line endings and performance.
 
 ## [0.2.0] - 2021-08-19
+
 ### Added
+
 - Import measurement data files.
 
 ### Fixed
+
 - Scaling of plot axes.
 
 ## [0.1.1] - 2021-08-18
+
 ### Fixed
+
 - Jittering plot axes.
 - Unspecific error when no source selected.
 - Enabled contents menu action.
 
 ## [0.1.0] - 2021-08-18
+
 ### Added
+
 - IV measurement.
 
 [Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...HEAD
