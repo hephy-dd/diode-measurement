@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from PyQt5 import QtWidgets
 
@@ -15,7 +15,7 @@ class RoleWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.setName(name)
 
-        self._resources: Dict[str, Any] = {}  # TODO
+        self._resources: dict[str, Any] = {}  # TODO
 
         self.resourceWidget = ResourceWidget(self)
         self.resourceWidget.modelChanged.connect(self.modelChanged)
@@ -63,10 +63,10 @@ class RoleWidget(QtWidgets.QWidget):
     def setTimeout(self, timeout: float) -> None:
         self.resourceWidget.setTimeout(timeout)
 
-    def resources(self) -> Dict[str, Any]:
+    def resources(self) -> dict[str, Any]:
         return self._resources.copy()
 
-    def setResources(self, resources: Dict[str, Any]) -> None:
+    def setResources(self, resources: dict[str, Any]) -> None:
         self._resources.update(resources)
 
     def syncCurrentResource(self) -> None:
@@ -80,19 +80,19 @@ class RoleWidget(QtWidgets.QWidget):
             }
             self._resources.setdefault(model, {}).update(resource)
 
-    def currentConfig(self) -> Dict[str, Any]:
+    def currentConfig(self) -> dict[str, Any]:
         widget = self.stackedWidget.currentWidget()
         if isinstance(widget, InstrumentPanel):
             return widget.config()
         return {}
 
-    def configs(self) -> Dict[str, Any]:
+    def configs(self) -> dict[str, Any]:
         configs = {}
         for widget in self.instrumentPanels():
             configs[widget.model()] = widget.config()
         return configs
 
-    def setConfigs(self, configs: Dict[str, Dict[str, Any]]) -> None:
+    def setConfigs(self, configs: dict[str, dict[str, Any]]) -> None:
         for widget in self.instrumentPanels():
             widget.setConfig(configs.get(widget.model(), {}))
 
@@ -106,7 +106,7 @@ class RoleWidget(QtWidgets.QWidget):
         self.resourceWidget.addModel(widget.model())
         self.stackedWidget.addWidget(widget)
 
-    def instrumentPanels(self) -> List[InstrumentPanel]:
+    def instrumentPanels(self) -> list[InstrumentPanel]:
         """Return list of registered instrument panels."""
         widgets = []
         for index in range(self.stackedWidget.count()):

@@ -1,7 +1,5 @@
 import logging
-import time
 from abc import ABC, abstractmethod
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +38,7 @@ class Driver(ABC):
         ...
 
     @abstractmethod
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         ...
 
     @abstractmethod
@@ -83,7 +81,7 @@ class SourceMeter(Driver):
         ...
 
     @abstractmethod
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         ...
 
 
@@ -101,7 +99,7 @@ class Electrometer(SourceMeter):
 class LCRMeter(SourceMeter):
 
     @abstractmethod
-    def measure_impedance(self) -> Tuple[float, float]:
+    def measure_impedance(self) -> tuple[float, float]:
         ...
 
 

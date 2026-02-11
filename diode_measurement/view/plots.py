@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict
+from typing import Any
 
 from PyQt5 import QtChart, QtCore, QtWidgets
 
@@ -136,7 +136,7 @@ class PlotWidget(QtChart.QChartView):
         layout.addWidget(self.resetButton)
         layout.addWidget(self.saveAsButton)
 
-        self.series: Dict[str, Any] = {}
+        self.series: dict[str, Any] = {}
 
     def mouseMoveEvent(self, event) -> None:
         self.toolbar.setVisible(self.underMouse())

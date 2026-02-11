@@ -1,5 +1,4 @@
 import time
-from typing import Tuple
 
 from .driver import LCRMeter, handle_exception
 
@@ -23,7 +22,7 @@ class K4215(LCRMeter):
     def clear(self) -> None:
         self._write("BC")
 
-    def next_error(self) -> Tuple[int, str]:
+    def next_error(self) -> tuple[int, str]:
         """Get the next error from the instrument's error queue."""
         # KXCI uses :ERROR:LAST:GET to retrieve the last error
         response = self._query(":ERROR:LAST:GET")
@@ -154,7 +153,7 @@ class K4215(LCRMeter):
             time.sleep(interval)
         raise RuntimeError(f"LCR reading timeout, exceeded {timeout:G} s")
 
-    def measure_impedance(self) -> Tuple[float, float]:
+    def measure_impedance(self) -> tuple[float, float]:
         result = self._fetch().split(",")
         try:
             return float(result[0]), float(result[1])
@@ -305,7 +304,7 @@ class K4215(LCRMeter):
         """Measure current - not supported on K4215."""
         return 0.0
 
-    def measure_iv(self) -> Tuple[float, float]:
+    def measure_iv(self) -> tuple[float, float]:
         """Measure current and voltage - not supported on K4215."""
         return 0.0, 0.0
 

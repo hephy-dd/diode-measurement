@@ -1,5 +1,3 @@
-from typing import Dict
-
 # Drivers
 from .k237 import K237
 from .k595 import K595
@@ -16,7 +14,7 @@ from .brandbox import BrandBox
 
 __all__ = ["driver_factory"]
 
-DRIVERS: Dict[str, type] = {
+DRIVERS: dict[str, type] = {
     "K237": K237,
     "K595": K595,
     "K2410": K2410,
