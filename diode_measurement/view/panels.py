@@ -135,6 +135,7 @@ class InstrumentPanel(QtWidgets.QWidget):
         super().__init__(parent)
         self._parameters: dict[str, Any] = {}
         self.setModel(model)
+        self.model_title: str = model
 
     def model(self) -> str:
         return self.property("model")

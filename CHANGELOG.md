@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-03-06
+
+### Fixed
+
+- Disable K4215-CVU C-V bias voltage/offset after measurement; restores the fix previously released in 0.22.3 (#123).
+
 ## [0.23.1] - 2026-03-06
 
 ### Fixed
@@ -34,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix missing elm2 series population in IT plot (#129).
+
+## [0.22.3] - 2026-02-12
+
+### Fixes
+
+- Disable K4215-CVU C-V bias voltage/offset after measurement (#123).
 
 ## [0.22.2] - 2025-09-26
 
@@ -461,9 +473,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.23.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.23.3...HEAD
+[0.23.2]: https://github.com/hephy-dd/diode-measurement/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/hephy-dd/diode-measurement/compare/0.23.0...0.23.1
-[0.23.0]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...0.23.0
+[0.23.0]: https://github.com/hephy-dd/diode-measurement/compare/0.22.3...0.23.0
+[0.22.3]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...0.22.3
 [0.22.2]: https://github.com/hephy-dd/diode-measurement/compare/0.22.1...0.22.2
 [0.22.1]: https://github.com/hephy-dd/diode-measurement/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...0.22.0
