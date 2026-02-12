@@ -23,10 +23,26 @@ def test_driver_k4215_basic_operations(res):
     assert d.clear() is None
     assert res.buffer == ["BC"]
 
-    # Test finalize
+
+def test_driver_k4215_finalize(res):
+    d = K4215(res)
+
+    assert d.configure({}) is None
+
     res.buffer = []
     assert d.finalize() is None
-    assert res.buffer == ["*RST", ":ERROR:LAST:CLEAR"]
+    assert res.buffer == []
+
+    assert d.configure({"external_bias_tee.enabled": True}) is None
+
+    res.buffer = []
+    assert d.finalize() is None
+    assert res.buffer == [
+        ":CVU:CONFIG:ACVHI 1",
+        ":CVU:CONFIG:DCVHI 1",
+        ":CVU:DCV:OFFSET 0",
+        ":CVU:DCV 0",
+    ]
 
 
 def test_driver_k4215_error_handling(res):

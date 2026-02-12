@@ -474,6 +474,8 @@ class RangeMeasurement(Measurement):
             if self.bias_source_instrument:
                 self.ramp_bias_to_zero()
 
+            self.finalize_lcr()
+
             self.assure_discharge()
 
             self.set_source_output_state(False)
@@ -507,6 +509,11 @@ class RangeMeasurement(Measurement):
         if elm2 is not None:
             elm2.set_zero_check_enabled(True)
             logger.info("ELM2 zero check: on")
+
+    def finalize_lcr(self) -> None:
+        lcr = self.instruments.get("lcr")
+        if lcr is not None:
+            lcr.finalize()
 
     def finalize_switch(self) -> None:
         switch = self.instruments.get("switch")
