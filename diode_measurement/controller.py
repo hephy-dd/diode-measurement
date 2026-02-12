@@ -801,7 +801,7 @@ class Controller(QtCore.QObject):
                 self.view.generalWidget.setCurrentCompliance(1.0e-3)  # fixed for K6517B
         elif self.view.generalWidget.isLCREnabled():
             role = self.view.findRole("LCR")
-            if role.resourceWidget.model() in ["K595", "E4980A", "A4284A"]:
+            if role.resourceWidget.model() in ["K595", "E4980A", "A4284A", "K4215"]:
                 self.view.generalWidget.setCurrentComplianceLocked(True)
 
     def onToggleSmu(self, state: bool) -> None:

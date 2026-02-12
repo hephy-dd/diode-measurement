@@ -235,10 +235,6 @@ class K4215(LCRMeter):
         self._write(f":CVU:FREQ {int(frequency)}")
 
     def _write(self, message):
-        """Write command and wait for operation complete."""
-        self.resource.write(message)
-
-    def _write_nowait(self, message):
         self.resource.write(message)
 
     @handle_exception
@@ -286,7 +282,7 @@ class K4215(LCRMeter):
         # not implemented by the instrument, return 0
         return 0.0
 
-    def _enable_bias_tee_dc_voltage(self):
+    def _enable_bias_tee_dc_voltage(self) -> None:
         """Enable -10V DC at HI and LO terminals for P3 bias tee."""
         self._write(":CVU:CONFIG:ACVHI 1")
         self._write(":CVU:CONFIG:DCVHI 1")
@@ -295,6 +291,12 @@ class K4215(LCRMeter):
         # if the external bias tee is in use
         self._write(":CVU:DCV:OFFSET -10")
         self._write(":CVU:DCV -10")
+
+    def _reset_bias_tee_dc_voltage(self) -> None:
+        self._write(":CVU:CONFIG:ACVHI 1")
+        self._write(":CVU:CONFIG:DCVHI 1")
+        self._write(":CVU:DCV:OFFSET 0")
+        self._write(":CVU:DCV 0")
 
     def compliance_tripped(self) -> bool:
         """Check if current compliance is tripped."""
@@ -316,6 +318,7 @@ class K4215(LCRMeter):
     def set_voltage_range(self, level: float) -> None:
         pass  # Not supported by K4215
 
-    def finalize(self):
+    def finalize(self) -> None:
         """Clean up and reset the instrument."""
-        self.reset()
+        if self._external_bias_tee_enabled:
+            self._reset_bias_tee_dc_voltage()
