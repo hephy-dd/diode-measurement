@@ -4,9 +4,8 @@ import math
 import os
 import threading
 import time
-
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -53,7 +52,7 @@ from .utils import format_metric
 
 from .cache import Cache
 from .settings import DEFAULTS
-from .state import State
+from .state import State, FSMState
 
 __all__ = ["Controller"]
 
@@ -135,7 +134,6 @@ class Controller(QtCore.QObject):
     failed = QtCore.pyqtSignal(Exception)
     finished = QtCore.pyqtSignal()
 
-    requestChangeVoltage = QtCore.pyqtSignal(float, float, float)
     changeVoltageReady = QtCore.pyqtSignal()
 
     def __init__(self, view, parent: Optional[QtCore.QObject] = None) -> None:
@@ -147,7 +145,6 @@ class Controller(QtCore.QObject):
         self.measurementThread: Optional[threading.Thread] = None
         self.state: State = State()
         self.cache: Cache = Cache()
-        self.rpc_params: Cache = Cache()
 
         self.view.setProperty("contentsUrl", CONTENTS_URL)
         self.view.setProperty("about", ABOUT_TEXT)
@@ -157,7 +154,6 @@ class Controller(QtCore.QObject):
         self.cvPlotsController = CVPlotsController(self)
 
         self.changeVoltageController = ChangeVoltageController(self.view, self.state, self)
-        self.requestChangeVoltage.connect(self.changeVoltageController.onRequestChangeVoltage)
         self.changeVoltageReady.connect(self.changeVoltageController.onChangeVoltageReady)
         self.failed.connect(self.handleException)
 
@@ -281,7 +277,7 @@ class Controller(QtCore.QObject):
         """Return application state snapshot."""
         with self.cache:
             snapshot = {}
-            snapshot["state"] = self.cache.get("rpc_state", "idle")
+            snapshot["state"] = self.cache.get("fsm_state", FSMState.IDLE)  # TODO
             snapshot["measurement_type"] = self.cache.get("measurement_type")
             snapshot["sample"] = self.cache.get("sample")
             snapshot["source_voltage"] = self.cache.get("source_voltage")
@@ -638,8 +634,8 @@ class Controller(QtCore.QObject):
 
     def onUpdate(self, data):
         cache = {}
-        if "rpc_state" in data:
-            cache.update({"rpc_state": data.get("rpc_state")})
+        if "fsm_state" in data:
+            cache.update({"fsm_state": data.get("fsm_state")})
         if "source_voltage" in data:
             self.view.updateSourceVoltage(data.get("source_voltage"))
             cache.update({"source_voltage": data.get("source_voltage")})
@@ -885,6 +881,35 @@ class Controller(QtCore.QObject):
         measurement.cvReadingQueue = self.cvPlotsController.cvReadingQueue
         measurement.cvReadingLock = self.cvPlotsController.cvReadingLock
 
+    def configure(self, params: Mapping[str, Any]) -> None:
+        for key, value in params.items():
+            if key == "reset":
+                self.view.setReset(value)
+            elif key == "continuous":
+                self.view.setContinuous(value)
+            elif key == "auto_reconnect":
+                self.view.setAutoReconnect(value)
+            elif key == "measurement_type":
+                self.view.generalWidget.setCurrentMeasurement(value)
+            elif key == "measurement_roles":
+                self.view.generalWidget.setMeasurementRoles(value)
+            elif key == "end_voltage":
+                self.view.generalWidget.setEndVoltage(value)
+            elif key == "begin_voltage":
+                self.view.generalWidget.setBeginVoltage(value)
+            elif key == "step_voltage":
+                self.view.generalWidget.setStepVoltage(value)
+            elif key == "waiting_time":
+                self.view.generalWidget.setWaitingTime(value)
+            elif key == "bias_voltage":
+                self.view.generalWidget.setBiasVoltage(value)
+            elif key == "compliance":
+                self.view.generalWidget.setCurrentCompliance(value)
+            elif key == "waiting_time_continuous":
+                self.view.generalWidget.setWaitingTimeContinuous(value)
+            else:
+                raise KeyError(f"Invalid configuration key: {key}")
+
     def createMeasurement(self):
         measurementType = self.state.measurement_type
         measurement = MEASUREMENTS.get(measurementType)(self.state)
@@ -908,30 +933,6 @@ class Controller(QtCore.QObject):
 
     def startMeasurement(self) -> None:
         try:
-            logger.debug("handle RPC params...")
-            with self.rpc_params:
-                rpc_params = self.rpc_params
-                if "reset" in rpc_params:
-                    self.view.setReset(rpc_params.get("reset"))
-                if "continuous" in rpc_params:
-                    self.view.setContinuous(rpc_params.get("continuous"))
-                if "auto_reconnect" in rpc_params:
-                    self.view.setAutoReconnect(rpc_params.get("auto_reconnect"))
-                if "end_voltage" in rpc_params:
-                    self.view.generalWidget.setEndVoltage(rpc_params.get("end_voltage"))
-                if "begin_voltage" in rpc_params:
-                    self.view.generalWidget.setBeginVoltage(rpc_params.get("begin_voltage"))
-                if "step_voltage" in rpc_params:
-                    self.view.generalWidget.setStepVoltage(rpc_params.get("step_voltage"))
-                if "waiting_time" in rpc_params:
-                    self.view.generalWidget.setWaitingTime(rpc_params.get("waiting_time"))
-                if "compliance" in rpc_params:
-                    self.view.generalWidget.setCurrentCompliance(rpc_params.get("compliance"))
-                if "waiting_time_continuous" in rpc_params:
-                    self.view.generalWidget.setWaitingTimeContinuous(rpc_params.get("waiting_time_continuous"))
-                self.rpc_params.clear()
-            logger.debug("handle RPC params... done.")
-
             logger.debug("preparing state...")
             state = self.prepareState()
             logger.debug("preparing state... done.")
@@ -986,6 +987,14 @@ class Controller(QtCore.QObject):
             self.failed.emit(exc)
         finally:
             self.finished.emit()
+
+    def requestChangeVoltage(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
+        state = self.snapshot().get("state")
+        if state != FSMState.CONTINUOUS:
+            raise RuntimeError(
+                f"Cannot change voltage in state '{state.value}'. Expected 'continuous'."
+            )
+        self.changeVoltageController.requestChangeVoltage(end_voltage, step_voltage, waiting_time)
 
 
 class IVPlotsController(QtCore.QObject):
@@ -1284,13 +1293,13 @@ class ChangeVoltageController(QtCore.QObject):
         dialog.setWaitingTime(self.view.generalWidget.waitingTime())
         dialog.exec()
         if dialog.result() == dialog.Accepted:
-            self.onRequestChangeVoltage(
+            self.requestChangeVoltage(
                 dialog.endVoltage(),
                 dialog.stepVoltage(),
                 dialog.waitingTime()
             )
 
-    def onRequestChangeVoltage(self, endVoltage: float, stepVoltage: float, waitingTime: float) -> None:
+    def requestChangeVoltage(self, endVoltage: float, stepVoltage: float, waitingTime: float) -> None:
         if self.view.isChangeVoltageEnabled():
             logger.info(
                 "updated change_voltage_continuous: end_voltage=%s, step_voltage=%s, waiting_time=%s",

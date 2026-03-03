@@ -242,6 +242,23 @@ class GeneralWidget(QtWidgets.QWidget):
     def currentMeasurement(self):
         return self.measurementComboBox.currentData()
 
+    def setCurrentMeasurement(self, measurement_id: str) -> None:
+        for index in range(self.measurementComboBox.count()):
+            data = self.measurementComboBox.itemData(index)
+            if isinstance(data, dict):
+                if data.get("id") == measurement_id:
+                    self.measurementComboBox.setCurrentIndex(index)
+                    return
+
+    def setMeasurementRoles(self, roles: list[str]) -> None:
+        self.setSMUEnabled("smu" in roles)
+        self.setSMU2Enabled("smu2" in roles)
+        self.setELMEnabled("elm" in roles)
+        self.setELM2Enabled("elm2" in roles)
+        self.setLCREnabled("lcr" in roles)
+        self.setDMMEnabled("dmm" in roles)
+        self.setSwitchEnabled("switch" in roles)
+
     def isSMUEnabled(self):
         return self.smuCheckBox.isChecked()
 
