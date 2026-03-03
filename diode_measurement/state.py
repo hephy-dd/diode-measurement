@@ -1,6 +1,15 @@
+from enum import Enum
 from typing import Any, Iterator, Optional
 
 __all__ = ["State"]
+
+
+class FSMState(str, Enum):
+    IDLE = "idle"
+    CONFIGURE = "configure"
+    RAMPING = "ramping"
+    CONTINUOUS = "continuous"
+    STOPPING = "stopping"
 
 
 class State:

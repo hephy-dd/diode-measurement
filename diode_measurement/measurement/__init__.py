@@ -1,7 +1,6 @@
 import contextlib
 import logging
 import time
-
 from typing import Any, Callable
 
 from ..resource import Resource, AutoReconnectResource
@@ -9,7 +8,7 @@ from ..driver import driver_factory
 
 from ..functions import LinearRange
 from ..estimate import Estimate
-from ..state import State
+from ..state import State, FSMState
 
 __all__ = ["Measurement", "RangeMeasurement"]
 
@@ -76,7 +75,7 @@ class Measurement:
         if code:
             raise RuntimeError(f"Instrument Error: {code}: {message}")
 
-    def update_rpc_state(self, state) -> None:
+    def set_fsm_state(self, state: FSMState) -> None:
         self.update_event({"rpc_state": state})
 
     def initialize(self) -> None:
@@ -91,7 +90,7 @@ class Measurement:
     def run(self) -> None:
         try:
             logger.debug("run measurement...")
-            self.update_rpc_state("configure")
+            self.set_fsm_state(FSMState.CONFIGURE)
             logger.debug("handle started callbacks...")
             self.started_event()
             logger.debug("handle started callbacks... done.")
@@ -116,7 +115,7 @@ class Measurement:
                     self.failed_event(exc)
                 finally:
                     logger.debug("finalize...")
-                    self.update_rpc_state("stopping")
+                    self.set_fsm_state(FSMState.STOPPING)
                     self.finalize()
                     logger.debug("finalize... done.")
         except Exception as exc:
@@ -127,7 +126,7 @@ class Measurement:
             self.finished_event()
             logger.debug("handle finished callbacks... done.")
             self.instruments.clear()
-            self.update_rpc_state("idle")
+            self.set_fsm_state(FSMState.IDLE)
             logger.debug("run measurement... done.")
 
 
@@ -263,10 +262,10 @@ class RangeMeasurement(Measurement):
         params = self.state.change_voltage_continuous
         if params is not None:
             self.state.pop_change_voltage_continuous()  # TODO
-            self.update_rpc_state("ramping")
+            self.set_fsm_state(FSMState.RAMPING)
             self.ramp_to_continuous(params.get("end_voltage"), params.get("step_voltage"), params.get("waiting_time"))
             if not self.state.stop_requested:  # hack
-                self.update_rpc_state("continuous")
+                self.set_fsm_state(FSMState.CONTINUOUS)
         self.it_change_voltage_ready_event()
 
     def update_message(self, message: str) -> None:
@@ -428,7 +427,7 @@ class RangeMeasurement(Measurement):
         self.update_message(f"Ramp to {ramp.end} V")
         estimate: Estimate = Estimate(len(ramp))
 
-        self.update_rpc_state("ramping")
+        self.set_fsm_state(FSMState.RAMPING)
 
         for step, voltage in enumerate(ramp):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
@@ -452,8 +451,6 @@ class RangeMeasurement(Measurement):
 
             estimate.advance()
 
-        self.update_rpc_state("measure")
-
         self.update_message("")
 
         if self.state.stop_requested:
@@ -462,7 +459,7 @@ class RangeMeasurement(Measurement):
 
         if self.state.is_continuous:
             self.update_message("Continuous measurement...")
-            self.update_rpc_state("continuous")
+            self.set_fsm_state(FSMState.CONTINUOUS)
             self.acquire_continuous_reading()
 
     def finalize(self) -> None:

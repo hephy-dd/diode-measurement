@@ -8,7 +8,7 @@ from . import __version__
 from .controller import Controller
 from .view.mainwindow import MainWindow
 from .plugins import PluginRegistry
-from .plugins.tcpserver import TCPServerPlugin
+from .plugins.rpcserver import RPCServerPlugin
 from .plugins.screenshot import ScreenshotPlugin
 
 __all__ = ["Application"]
@@ -53,7 +53,7 @@ class Application(QtWidgets.QApplication):
         controller.loadSettings()
 
         plugins = PluginRegistry(controller)
-        plugins.install(TCPServerPlugin())
+        plugins.install(RPCServerPlugin())
         plugins.install(ScreenshotPlugin())
 
         self.aboutToQuit.connect(lambda: controller.storeSettings())
