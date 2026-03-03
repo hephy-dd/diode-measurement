@@ -244,14 +244,10 @@ class K4215(LCRMeter):
     def _query(self, message):
         return self.resource.query(message).strip()
 
-    def set_correction_length(self, correction_length: int) -> None:
-        """Set cable length correction for the K4215.
-
-        Args:
-            correction_length: Cable length in meters (0, 1.5, or 3.0)
-        """
-        if correction_length not in [0, 1.5, 3.0]:
-            raise ValueError("Correction length must be 0, 1.5, or 3.0 meters")
+    def set_correction_length(self, correction_length: float) -> None:
+        """Set cable length correction for the K4215."""
+        if correction_length not in [0, 1.5, 3.0, 4.0, 5.0, 6.0, 7.0]:
+            raise ValueError("Correction length must be one of: 0, 1.5, 3.0, 4.0, 5.0, 6.0 or 7.0")
         self._write(f":CVU:LENGTH {correction_length:.1f}")
 
     def set_voltage_level(self, level: float) -> None:
