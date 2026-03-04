@@ -152,21 +152,24 @@ class K4215(LCRMeter):
         self._validate_correction_length(length)
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
-        self._query(f":CVU:CABLE:COMP:OPEN {length:.1f}")
+        self._write(f":CVU:CABLE:COMP:OPEN {length:.1f}")
+        self._query("*OPC?")
 
     def perform_short_correction(self, length: float) -> None:
         self._validate_correction_length(length)
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
-        self._query(f":CVU:CABLE:COMP:OPEN {length:.1f}")
+        self._write(f":CVU:CABLE:COMP:SHORT {length:.1f}")
+        self._query("*OPC?")
 
-    def perform_load_correction(self, length: float, load: float) -> None:
+    def perform_load_correction(self, length: float, load: int) -> None:
         self._validate_correction_length(length)
         if load < 0:
             raise ValueError("Correction load must be a positive value")
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
-        self._query(f":CVU:CABLE:COMP:LOAD {length:.1f}, {load}")
+        self._write(f":CVU:CABLE:COMP:LOAD {length:.1f}, {load}")
+        self._query("*OPC?")
 
     def _fetch(self, timeout=15.0, interval=0.250) -> str:
         """Fetch measurement data with proper synchronization.

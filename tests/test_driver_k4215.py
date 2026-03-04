@@ -270,6 +270,24 @@ def test_driver_k4215_aperture_control(res):
         d.set_aperture(delay_factor=150)  # Above max 100
 
 
+def test_driver_k4215_correction_length_validation(res):
+    """Test cable length correction with validation."""
+    d = K4215(res)
+
+    # Test valid cable lengths
+    valid_lengths = [0, 1.5, 3.0]
+    for length in valid_lengths:
+        res.buffer = []
+        assert d.set_correction_length(length) is None
+        assert res.buffer == [f":CVU:LENGTH {length:.1f}"]
+
+    # test invalid cable length
+    with pytest.raises(ValueError):
+        d.set_correction_length(8)
+    with pytest.raises(ValueError):
+        d.set_correction_length(-1)
+
+
 def test_driver_k4215_correction_functions(res):
     """Test correction and cable length functions."""
     d = K4215(res)
@@ -300,22 +318,40 @@ def test_driver_k4215_correction_functions(res):
     assert res.buffer == [":CVU:CORRECT 1,1,0"]
 
 
-def test_driver_k4215_correction_length_validation(res):
-    """Test cable length correction with validation."""
+def test_driver_k4215_perform_load_correction(res):
     d = K4215(res)
 
-    # Test valid cable lengths
-    valid_lengths = [0, 1.5, 3.0]
-    for length in valid_lengths:
-        res.buffer = []
-        assert d.set_correction_length(length) is None
-        assert res.buffer == [f":CVU:LENGTH {length:.1f}"]
+    res.buffer = ["1"]
+    assert d.perform_load_correction(1.5, 50) is None
+    assert res.buffer == [":CVU:CABLE:COMP:LOAD 1.5, 50", "*OPC?"]
 
-    # test invalid cable length
-    with pytest.raises(ValueError):
-        d.set_correction_length(5)
-    with pytest.raises(ValueError):
-        d.set_correction_length(-1)
+    res.buffer = ["1"]
+    assert d.perform_load_correction(4.0, 50) is None
+    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:LOAD 4.0, 50", "*OPC?"]
+
+
+def test_driver_k4215_perform_open_correction(res):
+    d = K4215(res)
+
+    res.buffer = ["1"]
+    assert d.perform_open_correction(1.5) is None
+    assert res.buffer == [":CVU:CABLE:COMP:OPEN 1.5", "*OPC?"]
+
+    res.buffer = ["1"]
+    assert d.perform_open_correction(4.0,) is None
+    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:OPEN 4.0", "*OPC?"]
+
+
+def test_driver_k4215_perform_short_correction(res):
+    d = K4215(res)
+
+    res.buffer = ["1"]
+    assert d.perform_short_correction(1.5) is None
+    assert res.buffer == [":CVU:CABLE:COMP:SHORT 1.5", "*OPC?"]
+
+    res.buffer = ["1"]
+    assert d.perform_short_correction(4.0) is None
+    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:SHORT 4.0", "*OPC?"]
 
 
 def test_driver_k4215_aci_range(res):

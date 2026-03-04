@@ -1,9 +1,8 @@
 import contextlib
 import logging
 import os
-import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Callable, Mapping, Optional, Protocol
 
 from .measurement import Measurement
 from .measurement.iv import IVMeasurement
@@ -17,19 +16,23 @@ from .writer import Writer
 logger = logging.getLogger(__name__)
 
 
+class Job(Protocol):
+    def __call__(self) -> None: ...
+
+
 @dataclass
 class MeasurementJob:
     measurement: Measurement
-    options: Optional[dict] = None
+    options: Mapping[str, Any]
 
     def create_writer(self, fp) -> Writer:
         writer: Writer = Writer(fp)
         # Configure writer
         timestamp_format = self.options.get("timestamp_format")
-        if timestamp_format:
+        if timestamp_format is not None:
             writer.timestamp_format = timestamp_format
         value_format = self.options.get("value_format")
-        if value_format:
+        if value_format is not None:
             writer.value_format = value_format
         return writer
 
@@ -72,8 +75,9 @@ class K4215PerformCorrectionJob:
     open_correction: bool
     short_correction: bool
     load_correction: Optional[int]
-    progress: object
-    message: object
+    # TODO
+    progress: Callable[[int, int, int], None]
+    message: Callable[[str], None]
 
     def __call__(self) -> None:
         logger.info("Performing cable correction...")

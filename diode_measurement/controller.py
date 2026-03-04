@@ -4,7 +4,6 @@ import os
 import threading
 import time
 import queue
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping, Optional
 
@@ -50,7 +49,7 @@ from .utils import get_resource
 from .utils import safe_filename
 from .utils import format_metric
 
-from .jobs import MeasurementJob, K4215PerformCorrectionJob
+from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
 from .cache import Cache
 from .settings import DEFAULTS
 from .state import State, FSMState
@@ -90,7 +89,7 @@ class Controller(QtCore.QObject):
         super().__init__(parent)
 
         self._shutdown_event = threading.Event()
-        self._background_inbox = queue.Queue()
+        self._background_inbox: queue.Queue[Job] = queue.Queue()
         self._background_thread = threading.Thread(target=self._handle_background_jobs)
         self._background_thread.start()
 
@@ -233,7 +232,7 @@ class Controller(QtCore.QObject):
         self.stateMachine.setInitialState(self.idleState)
         self.stateMachine.start()
 
-    def _submit_background_job(self, job) -> None:
+    def submit_background_job(self, job: Job) -> None:
         self._background_inbox.put_nowait(job)
         self.started.emit()
 
@@ -248,11 +247,11 @@ class Controller(QtCore.QObject):
                     try:
                         job()
                     except Exception as exc:
-                        self.failed.emit(KeyError(exc))
+                        self.failed.emit(exc)
                     finally:
                         self.finished.emit()
             except Exception as exc:
-                ...
+                logger.exception(exc)
 
     def snapshot(self):
         """Return application state snapshot."""
@@ -952,7 +951,7 @@ class Controller(QtCore.QObject):
             self.ivPlotsController.updateTimer.start(500)
             self.cvPlotsController.updateTimer.start(500)
 
-            self._submit_background_job(MeasurementJob(measurement, options))
+            self.submit_background_job(MeasurementJob(measurement, options))
 
         except Exception as exc:
             logger.exception(exc)
@@ -977,7 +976,7 @@ class Controller(QtCore.QObject):
                 if dialog.exec() != dialog.DialogCode.Accepted:
                     return
                 self.view.controlTabWidget.setEnabled(False)
-                self._submit_background_job(K4215PerformCorrectionJob(
+                self.submit_background_job(K4215PerformCorrectionJob(
                     model=model,
                     resource_name=role.resourceName(),
                     termination=role.termination(),
