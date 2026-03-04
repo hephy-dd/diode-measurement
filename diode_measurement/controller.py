@@ -26,7 +26,7 @@ from .view.panels import K6517BPanel
 from .view.panels import K595Panel
 from .view.panels import E4980APanel
 from .view.panels import A4284APanel
-from .view.panels import K4215Panel
+from .view.panels import K4215Panel, K4215CorrectionDialog
 
 # DMM
 from .view.panels import K2700Panel
@@ -973,13 +973,19 @@ class Controller(QtCore.QObject):
             model = role.model()
             config = role.configs().get(model, {})
             if model == "K4215":
+                dialog = K4215CorrectionDialog(self.view)
+                if dialog.exec() != dialog.DialogCode.Accepted:
+                    return
                 self.view.controlTabWidget.setEnabled(False)
                 self._submit_background_job(K4215PerformCorrectionJob(
                     model=model,
                     resource_name=role.resourceName(),
                     termination=role.termination(),
                     timeout=role.timeout(),
-                    config=config,
+                    cable_length=config.get("correction.length"),
+                    open_correction=dialog.is_open_correction(),
+                    short_correction=dialog.is_short_correction(),
+                    load_correction=dialog.get_load_correction(),
                     progress=self.progress_changed.emit,
                     message=self.message_changed.emit,
                 ))

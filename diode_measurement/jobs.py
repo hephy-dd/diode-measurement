@@ -68,18 +68,24 @@ class K4215PerformCorrectionJob:
     resource_name: str
     termination: str
     timeout: float
-    config: dict
+    cable_length: float
+    open_correction: bool
+    short_correction: bool
+    load_correction: Optional[int]
     progress: object
     message: object
 
     def __call__(self) -> None:
         logger.info("Performing cable correction...")
         self.message("Performing cable correction...")
+        self.progress(0, 0, 0)
         with open_resource(self.resource_name, self.termination, self.timeout) as res:
             instr = driver_factory(self.model)(res)
+            if self.open_correction:
+                instr.perform_open_correction(self.cable_length)
+            if self.short_correction:
+                instr.perform_short_correction(self.cable_length)
+            if self.load_correction is not None:
+                instr.perform_load_correction(self.cable_length, self.load_correction)
             logger.info(instr.identity())
-        # TODO mockup
-        for _ in range(3):
-            self.progress(0, 3, _+1)
-            time.sleep(1)
-        logger.info("Done")
+        logger.info("Cable correction done.")

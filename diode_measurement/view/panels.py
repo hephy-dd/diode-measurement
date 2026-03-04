@@ -22,6 +22,56 @@ __all__ = [
 ConfigType = dict[str, Any]
 
 
+class K4215CorrectionDialog(QtWidgets.QDialog):
+    def __init__(self, parent) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Perform Cable Correction")
+
+        self.combo_box = QtWidgets.QComboBox(self)
+        self.combo_box.addItem("OPEN correction", "open")
+        self.combo_box.addItem("SHORT correction", "short")
+        self.combo_box.addItem("LOAD correction", "load")
+
+        self.load_spin_box = QtWidgets.QSpinBox(self)
+        self.load_spin_box.setRange(1, 1_000_000)
+        self.load_spin_box.setSuffix(" Ω")
+
+        form_layout = QtWidgets.QFormLayout()
+        form_layout.addRow("Type", self.combo_box)
+        form_layout.addRow("Load", self.load_spin_box)
+
+        self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        self.dialog_button_box.accepted.connect(self.accept)
+        self.dialog_button_box.rejected.connect(self.reject)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addLayout(form_layout)
+        layout.addWidget(self.dialog_button_box)
+
+        self.combo_box.currentIndexChanged.connect(self._update_load_spin_box)
+        self._update_load_spin_box(self.combo_box.currentIndex())
+        
+    def _update_load_spin_box(self, index: int) -> None:
+        data = self.combo_box.itemData(index)
+        self.load_spin_box.setEnabled(data == "load")
+
+    def is_open_correction(self) -> bool:
+        data = self.combo_box.currentData()
+        return data == "open"
+
+    def is_short_correction(self) -> bool:
+        data = self.combo_box.currentData()
+        return data == "short"
+
+    def get_load_correction(self) -> Optional[int]:
+        data = self.combo_box.currentData()
+        if data == "load":
+            return self.load_spin_box.value()
+        return None
+
+
 class WidgetParameter:
     def __init__(self, widget) -> None:
         self.widget = widget
@@ -599,7 +649,7 @@ class K4215Panel(InstrumentPanel):
         self.loadEnabledCheckBox = QtWidgets.QCheckBox("LOAD")
         self.loadEnabledCheckBox.setStatusTip("Enable LOAD correction")
 
-        self.performCorrectionButton = QtWidgets.QPushButton("Perform Correction")
+        self.performCorrectionButton = QtWidgets.QPushButton("Perform Cable Correction")
         self.performCorrectionButton.clicked.connect(self.perform_correction_clicked.emit)
 
         modesLayout = QtWidgets.QHBoxLayout()
