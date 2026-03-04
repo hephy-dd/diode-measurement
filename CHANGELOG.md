@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Ruff linter errors and built-in typing (#130).
 - Renamed `changelog` to `CHANGELOG.md` (#131).
 - Formatted `CHANGELOG.md` to follow consistent Markdown/Keep a Changelog style (#131).
+- Replace `socketserver` with an asyncio-based TCP server for the RPC server plugin (#138)
+- Refactor FSM state handling using Python `Enum` (#138).
 
 ### Fixed
 
