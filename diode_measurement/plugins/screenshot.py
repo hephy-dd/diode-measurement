@@ -29,10 +29,10 @@ class ScreenshotPlugin(Plugin):
         layout = context.view.generalWidget.outputGroupBox.layout()
         layout.insertWidget(layout.count() - 1, self.saveScreenshotCheckBox)
 
-        self.context.finished.connect(self.saveScreenshot)
+        self.context.measurement_finished.connect(self.saveScreenshot)
 
     def removeWidgets(self, context) -> None:
-        context.finished.disconnect(self.saveScreenshot)
+        context.measurement_finished.disconnect(self.saveScreenshot)
 
         layout = context.view.generalWidget.outputGroupBox.layout()
         layout.removeWidget(self.saveScreenshotCheckBox)

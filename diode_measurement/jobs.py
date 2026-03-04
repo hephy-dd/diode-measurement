@@ -25,6 +25,7 @@ class Job(Protocol):
 class MeasurementJob:
     measurement: Measurement
     options: Mapping[str, Any]
+    has_finished: Callable[[], None]
 
     def create_writer(self, fp) -> Writer:
         writer: Writer = Writer(fp)
@@ -38,6 +39,12 @@ class MeasurementJob:
         return writer
 
     def __call__(self) -> None:
+        try:
+            self.run_measurement()
+        finally:
+            self.has_finished()
+
+    def run_measurement(self) -> None:
         measurement = self.measurement
         filename = measurement.state.get("filename")
         with contextlib.ExitStack() as stack:

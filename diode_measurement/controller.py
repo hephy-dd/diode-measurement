@@ -82,6 +82,7 @@ class Controller(QtCore.QObject):
 
     changeVoltageReady = QtCore.pyqtSignal()
 
+    measurement_finished = QtCore.pyqtSignal()
     message_changed = QtCore.pyqtSignal(str)
     progress_changed = QtCore.pyqtSignal(int, int, int)
 
@@ -951,7 +952,8 @@ class Controller(QtCore.QObject):
             self.ivPlotsController.updateTimer.start(500)
             self.cvPlotsController.updateTimer.start(500)
 
-            self.submit_background_job(MeasurementJob(measurement, options))
+            job = MeasurementJob(measurement, options, has_finished=self.measurement_finished.emit)
+            self.submit_background_job(job)
 
         except Exception as exc:
             logger.exception(exc)
