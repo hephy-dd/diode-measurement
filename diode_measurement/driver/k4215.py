@@ -6,7 +6,6 @@ __all__ = ["K4215"]
 
 
 class K4215(LCRMeter):
-
     def __init__(self, resource):
         super().__init__(resource)
         self._external_bias_tee_enabled = False
@@ -130,12 +129,47 @@ class K4215(LCRMeter):
         # not implemented in K4215
         return False
 
+    def _validate_correction_length(self, length: float) -> None:
+        if length not in [0, 1.5, 3.0, 4.0, 5.0, 6.0, 7.0]:
+            raise ValueError("Correction length must be one of: 0, 1.5, 3.0, 4.0, 5.0, 6.0 or 7.0")
+
+    def _is_custom_correction_length(self, length: float) -> bool:
+        return length == 4.0
+
+    def set_correction_length(self, length: float) -> None:
+        """Set cable length correction for the K4215."""
+        self._validate_correction_length(length)
+        self._write(f":CVU:LENGTH {length:.1f}")
+
     def set_correction(self, open_state=False, short_state=False, load_state=False):
         """Enable or disable open, short, and load compensation."""
         open_val = 1 if open_state else 0
         short_val = 1 if short_state else 0
         load_val = 1 if load_state else 0
         self._write(f":CVU:CORRECT {open_val},{short_val},{load_val}")
+
+    def perform_open_correction(self, length: float) -> None:
+        self._validate_correction_length(length)
+        if self._is_custom_correction_length(length):
+            self._write(":CVU:CABLE:COMP:MEASCUSTOM")
+        self._write(f":CVU:CABLE:COMP:OPEN {length:.1f}")
+        self._query("*OPC?")
+
+    def perform_short_correction(self, length: float) -> None:
+        self._validate_correction_length(length)
+        if self._is_custom_correction_length(length):
+            self._write(":CVU:CABLE:COMP:MEASCUSTOM")
+        self._write(f":CVU:CABLE:COMP:SHORT {length:.1f}")
+        self._query("*OPC?")
+
+    def perform_load_correction(self, length: float, load: int) -> None:
+        self._validate_correction_length(length)
+        if load < 0:
+            raise ValueError("Correction load must be a positive value")
+        if self._is_custom_correction_length(length):
+            self._write(":CVU:CABLE:COMP:MEASCUSTOM")
+        self._write(f":CVU:CABLE:COMP:LOAD {length:.1f}, {load}")
+        self._query("*OPC?")
 
     def _fetch(self, timeout=15.0, interval=0.250) -> str:
         """Fetch measurement data with proper synchronization.
@@ -243,16 +277,6 @@ class K4215(LCRMeter):
     @handle_exception
     def _query(self, message):
         return self.resource.query(message).strip()
-
-    def set_correction_length(self, correction_length: int) -> None:
-        """Set cable length correction for the K4215.
-
-        Args:
-            correction_length: Cable length in meters (0, 1.5, or 3.0)
-        """
-        if correction_length not in [0, 1.5, 3.0]:
-            raise ValueError("Correction length must be 0, 1.5, or 3.0 meters")
-        self._write(f":CVU:LENGTH {correction_length:.1f}")
 
     def set_voltage_level(self, level: float) -> None:
         """Set the DC bias voltage level."""

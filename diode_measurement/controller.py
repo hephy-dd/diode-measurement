@@ -1,9 +1,9 @@
-import contextlib
 import logging
 import math
 import os
 import threading
 import time
+import queue
 from datetime import datetime
 from typing import Any, Mapping, Optional
 
@@ -25,7 +25,7 @@ from .view.panels import K6517BPanel
 from .view.panels import K595Panel
 from .view.panels import E4980APanel
 from .view.panels import A4284APanel
-from .view.panels import K4215Panel
+from .view.panels import K4215Panel, K4215CorrectionDialog
 
 # DMM
 from .view.panels import K2700Panel
@@ -38,18 +38,18 @@ from .view.dialogs import ChangeVoltageDialog
 
 from .view.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
 
-from .measurement import Measurement, ReadingType
+from .measurement import ReadingType
 from .measurement.iv import IVMeasurement
 from .measurement.iv_bias import IVBiasMeasurement
 from .measurement.cv import CVMeasurement
 
 from .reader import Reader
-from .writer import Writer
 
 from .utils import get_resource
 from .utils import safe_filename
 from .utils import format_metric
 
+from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
 from .cache import Cache
 from .settings import DEFAULTS
 from .state import State, FSMState
@@ -73,60 +73,6 @@ ABOUT_TEXT: str = f"""
 """
 
 
-class MeasurementRunner:
-    """Measurement runner.
-
-    Accepted options:
-     - `timestamp_format` set timestamp format of file writer.
-     - `value_format` set value format of file writer.
-    """
-
-    def __init__(self, measurement: Measurement, options: Optional[dict] = None) -> None:
-        self.measurement = measurement
-        self.options: dict[str, Any] = {}
-        if options is not None:
-            self.options.update(options)
-
-    def create_writer(self, fp) -> Writer:
-        writer: Writer = Writer(fp)
-        # Configure writer
-        timestamp_format = self.options.get("timestamp_format")
-        if timestamp_format:
-            writer.timestamp_format = timestamp_format
-        value_format = self.options.get("value_format")
-        if value_format:
-            writer.value_format = value_format
-        return writer
-
-    def __call__(self) -> None:
-        measurement = self.measurement
-        filename = measurement.state.get("filename")
-        with contextlib.ExitStack() as stack:
-            if filename:
-                logger.info("preparing output file: %s", filename)
-
-                path = os.path.dirname(filename)
-                if not os.path.exists(path):
-                    logger.debug("create output dir: %s", path)
-                    os.makedirs(path)
-
-                fp = stack.enter_context(open(filename, "w", newline=""))
-                writer = self.create_writer(fp)
-                # TODO
-                # Note: using signals executes slots in main thread, should be worker thread
-                measurement.started_event.subscribe(lambda state=dict(measurement.state): writer.write_meta(state))
-                if isinstance(measurement, IVMeasurement):
-                    measurement.iv_reading_event.subscribe(lambda reading: writer.write_iv_row(reading))
-                    measurement.it_reading_event.subscribe(lambda reading: writer.write_it_row(reading))
-                if isinstance(measurement, IVBiasMeasurement):
-                    measurement.iv_reading_event.subscribe(lambda reading: writer.write_iv_bias_row(reading))
-                    measurement.it_reading_event.subscribe(lambda reading: writer.write_it_bias_row(reading))
-                if isinstance(measurement, CVMeasurement):
-                    measurement.cv_reading_event.subscribe(lambda reading: writer.write_cv_row(reading))
-                measurement.finished_event.subscribe(lambda: writer.flush())
-            measurement.run()
-
-
 class Controller(QtCore.QObject):
     started = QtCore.pyqtSignal()
     aborted = QtCore.pyqtSignal()
@@ -136,13 +82,21 @@ class Controller(QtCore.QObject):
 
     changeVoltageReady = QtCore.pyqtSignal()
 
+    message_changed = QtCore.pyqtSignal(str)
+    progress_changed = QtCore.pyqtSignal(int, int, int)
+
     def __init__(self, view, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
+
+        self._shutdown_event = threading.Event()
+        self._background_inbox: queue.Queue[Job] = queue.Queue()
+        self._background_thread = threading.Thread(target=self._handle_background_jobs)
+        self._background_thread.start()
+
         self.view = view
 
         self.isExceptionDialogActive: bool = False
-        self.abortRequested = threading.Event()
-        self.measurementThread: Optional[threading.Thread] = None
+
         self.state: State = State()
         self.cache: Cache = Cache()
 
@@ -188,7 +142,9 @@ class Controller(QtCore.QObject):
         role.addInstrumentPanel(K595Panel())
         role.addInstrumentPanel(E4980APanel())
         role.addInstrumentPanel(A4284APanel())
-        role.addInstrumentPanel(K4215Panel())
+        panel = K4215Panel()
+        panel.perform_correction_clicked.connect(self.on_lcr_perform_correction)
+        role.addInstrumentPanel(panel)
 
         # Temperatur
         role = self.view.addRole("DMM")
@@ -200,7 +156,7 @@ class Controller(QtCore.QObject):
 
         self.view.importAction.triggered.connect(lambda: self.onImportFile())
 
-        self.view.startAction.triggered.connect(self.started)
+        self.view.startAction.triggered.connect(self.startMeasurement)
         self.view.startButton.clicked.connect(self.view.startAction.trigger)
 
         self.view.stopAction.triggered.connect(self.aborted)
@@ -244,6 +200,9 @@ class Controller(QtCore.QObject):
         self.view.messageLabel.hide()
         self.view.progressBar.hide()
 
+        self.message_changed.connect(self.view.setMessage)
+        self.progress_changed.connect(self.view.setProgress)
+
         # States
 
         self.idleState = QtCore.QState()
@@ -272,6 +231,27 @@ class Controller(QtCore.QObject):
         self.stateMachine.addState(self.stoppingState)
         self.stateMachine.setInitialState(self.idleState)
         self.stateMachine.start()
+
+    def submit_background_job(self, job: Job) -> None:
+        self._background_inbox.put_nowait(job)
+        self.started.emit()
+
+    def _handle_background_jobs(self) -> None:
+        while not self._shutdown_event.is_set():
+            try:
+                try:
+                    job = self._background_inbox.get(timeout=0.25)
+                except queue.Empty:
+                    ...
+                else:
+                    try:
+                        job()
+                    except Exception as exc:
+                        self.failed.emit(exc)
+                    finally:
+                        self.finished.emit()
+            except Exception as exc:
+                logger.exception(exc)
 
     def snapshot(self):
         """Return application state snapshot."""
@@ -350,8 +330,9 @@ class Controller(QtCore.QObject):
         return state
 
     def shutdown(self):
+        self._shutdown_event.set()
+        self._background_thread.join(timeout=10.0)
         self.stateMachine.stop()
-        self.abortRequested.set()
 
     def loadSettings(self):
         settings = QtCore.QSettings()
@@ -600,6 +581,7 @@ class Controller(QtCore.QObject):
     # State slots
 
     def setIdleState(self):
+        self.view.controlTabWidget.setEnabled(True)
         self.view.setIdleState()
         self.view.clearMessage()
         self.view.clearProgress()
@@ -611,12 +593,6 @@ class Controller(QtCore.QObject):
 
     def setRunningState(self):
         self.view.setRunningState()
-        self.view.clear()
-        self.startMeasurement()
-        self.ivPlotsController.clear()
-        self.cvPlotsController.clear()
-        self.ivPlotsController.updateTimer.start(500)
-        self.cvPlotsController.updateTimer.start(500)
 
     def setStoppingState(self):
         self.view.setStoppingState()
@@ -969,24 +945,18 @@ class Controller(QtCore.QObject):
                 "value_format": valueFormat,
             })
 
-            self.abortRequested = threading.Event()
-            self.measurementThread = threading.Thread(target=self.runMeasurement, args=[measurement, options])
-            self.measurementThread.start()
+            self.view.clear()
+            self.ivPlotsController.clear()
+            self.cvPlotsController.clear()
+            self.ivPlotsController.updateTimer.start(500)
+            self.cvPlotsController.updateTimer.start(500)
+
+            self.submit_background_job(MeasurementJob(measurement, options))
 
         except Exception as exc:
             logger.exception(exc)
             self.failed.emit(exc)
             self.aborted.emit()
-            self.finished.emit()
-
-    def runMeasurement(self, measurement, options):
-        try:
-            MeasurementRunner(measurement, options)()
-        except Exception as exc:
-            logger.exception(exc)
-            self.failed.emit(exc)
-        finally:
-            self.finished.emit()
 
     def requestChangeVoltage(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
         state = self.snapshot().get("state")
@@ -995,6 +965,29 @@ class Controller(QtCore.QObject):
                 f"Cannot change voltage in state '{state.value}'. Expected 'continuous'."
             )
         self.changeVoltageController.requestChangeVoltage(end_voltage, step_voltage, waiting_time)
+
+    def on_lcr_perform_correction(self) -> None:
+        role = self.view.findRole("LCR")
+        if role:
+            model = role.model()
+            config = role.configs().get(model, {})
+            if model == "K4215":
+                dialog = K4215CorrectionDialog(self.view)
+                if dialog.exec() != dialog.DialogCode.Accepted:
+                    return
+                self.view.controlTabWidget.setEnabled(False)
+                self.submit_background_job(K4215PerformCorrectionJob(
+                    model=model,
+                    resource_name=role.resourceName(),
+                    termination=role.termination(),
+                    timeout=role.timeout(),
+                    cable_length=config.get("correction.length"),
+                    open_correction=dialog.is_open_correction(),
+                    short_correction=dialog.is_short_correction(),
+                    load_correction=dialog.get_load_correction(),
+                    progress=self.progress_changed.emit,
+                    message=self.message_changed.emit,
+                ))
 
 
 class IVPlotsController(QtCore.QObject):

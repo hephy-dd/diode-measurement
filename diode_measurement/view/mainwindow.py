@@ -20,7 +20,6 @@ def stylesheet_switch(state):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-
     prepareChangeVoltage = QtCore.pyqtSignal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:

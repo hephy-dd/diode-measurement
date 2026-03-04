@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 from .metric import MetricWidget
 
@@ -20,6 +20,63 @@ __all__ = [
 ]
 
 ConfigType = dict[str, Any]
+
+
+class K4215CorrectionDialog(QtWidgets.QDialog):
+    def __init__(self, parent) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Perform Cable Correction")
+
+        self.type_label = QtWidgets.QLabel("Type", self)
+
+        self.combo_box = QtWidgets.QComboBox(self)
+        self.combo_box.addItem("OPEN", "open")
+        self.combo_box.addItem("SHORT", "short")
+        self.combo_box.addItem("LOAD", "load")
+
+        self.load_label = QtWidgets.QLabel("Load", self)
+
+        self.load_spin_box = QtWidgets.QSpinBox(self)
+        self.load_spin_box.setRange(1, 1_000_000)
+        self.load_spin_box.setValue(50)
+        self.load_spin_box.setSuffix(" Ω")
+
+        form_layout = QtWidgets.QFormLayout()
+        form_layout.addRow(self.type_label, self.combo_box)
+        form_layout.addRow(self.load_label, self.load_spin_box)
+
+        self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        self.dialog_button_box.accepted.connect(self.accept)
+        self.dialog_button_box.rejected.connect(self.reject)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addLayout(form_layout)
+        layout.addWidget(self.dialog_button_box)
+
+        self.combo_box.currentIndexChanged.connect(self._update_load_spin_box)
+        self._update_load_spin_box(self.combo_box.currentIndex())
+        
+    def _update_load_spin_box(self, index: int) -> None:
+        data = self.combo_box.itemData(index)
+        enabled = data == "load"
+        self.load_label.setEnabled(enabled)
+        self.load_spin_box.setEnabled(enabled)
+
+    def is_open_correction(self) -> bool:
+        data = self.combo_box.currentData()
+        return data == "open"
+
+    def is_short_correction(self) -> bool:
+        data = self.combo_box.currentData()
+        return data == "short"
+
+    def get_load_correction(self) -> Optional[int]:
+        data = self.combo_box.currentData()
+        if data == "load":
+            return self.load_spin_box.value()
+        return None
 
 
 class WidgetParameter:
@@ -476,6 +533,8 @@ class K2700Panel(InstrumentPanel):
 
 class K4215Panel(InstrumentPanel):
 
+    perform_correction_clicked = QtCore.pyqtSignal()
+
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K4215", parent)
 
@@ -580,21 +639,37 @@ class K4215Panel(InstrumentPanel):
         self.lengthLabel = QtWidgets.QLabel("Cable Length")
 
         self.lengthComboBox = QtWidgets.QComboBox()
-        self.lengthComboBox.addItem("0 m", 0)
+        self.lengthComboBox.addItem("0 m", 0.0)
         self.lengthComboBox.addItem("1.5 m", 1.5)
-        self.lengthComboBox.addItem("3.0 m", 3)
+        self.lengthComboBox.addItem("3.0 m", 3.0)
+        self.lengthComboBox.addItem("Custom", 4.0)
+        self.lengthComboBox.addItem("CVIV 2W 1.5 m", 5.0)
+        self.lengthComboBox.addItem("CVIV 4W black 0.75 m", 6.0)
+        self.lengthComboBox.addItem("CVIV 4W blue 0.61 m", 7.0)
 
-        self.openEnabledCheckBox = QtWidgets.QCheckBox("Enable OPEN correction")
+        self.openEnabledCheckBox = QtWidgets.QCheckBox("OPEN")
         self.openEnabledCheckBox.setStatusTip("Enable OPEN correction")
 
-        self.shortEnabledCheckBox = QtWidgets.QCheckBox("Enable SHORT correction")
+        self.shortEnabledCheckBox = QtWidgets.QCheckBox("SHORT")
         self.shortEnabledCheckBox.setStatusTip("Enable SHORT correction")
+
+        self.loadEnabledCheckBox = QtWidgets.QCheckBox("LOAD")
+        self.loadEnabledCheckBox.setStatusTip("Enable LOAD correction")
+
+        self.performCorrectionButton = QtWidgets.QPushButton("Perform Cable Correction")
+        self.performCorrectionButton.clicked.connect(self.perform_correction_clicked.emit)
+
+        modesLayout = QtWidgets.QHBoxLayout()
+        modesLayout.addWidget(self.openEnabledCheckBox)
+        modesLayout.addWidget(self.shortEnabledCheckBox)
+        modesLayout.addWidget(self.loadEnabledCheckBox)
+        modesLayout.addStretch()
 
         correctionLayout = QtWidgets.QVBoxLayout(self.correctionGroupBox)
         correctionLayout.addWidget(self.lengthLabel)
         correctionLayout.addWidget(self.lengthComboBox)
-        correctionLayout.addWidget(self.openEnabledCheckBox)
-        correctionLayout.addWidget(self.shortEnabledCheckBox)
+        correctionLayout.addLayout(modesLayout)
+        correctionLayout.addWidget(self.performCorrectionButton)
         correctionLayout.addStretch()
 
         # Layout
@@ -641,6 +716,9 @@ class K4215Panel(InstrumentPanel):
         )
         self.bindParameter(
             "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        )
+        self.bindParameter(
+            "correction.load.enabled", WidgetParameter(self.loadEnabledCheckBox)
         )
         self.bindParameter(
             "external_bias_tee.enabled", WidgetParameter(self.externalBiasTeeCCheckBox)
@@ -751,6 +829,8 @@ class K4215Panel(InstrumentPanel):
         self.lengthComboBox.setEnabled(not state)
         self.openEnabledCheckBox.setEnabled(not state)
         self.shortEnabledCheckBox.setEnabled(not state)
+        self.loadEnabledCheckBox.setEnabled(not state)
+        self.performCorrectionButton.setEnabled(not state)
         self.externalBiasTeeCCheckBox.setEnabled(not state)
 
 
