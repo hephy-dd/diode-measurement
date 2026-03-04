@@ -93,6 +93,5 @@ class K4215PerformCorrectionJob:
             if self.load_correction is not None:
                 self.message("Performing LOAD correction...")
                 instr.perform_load_correction(self.cable_length, self.load_correction)
-            logger.info(instr.identity())
         self.message("")
         logger.info("Cable correction done.")
