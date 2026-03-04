@@ -27,18 +27,23 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Perform Cable Correction")
 
+        self.type_label = QtWidgets.QLabel("Type", self)
+
         self.combo_box = QtWidgets.QComboBox(self)
-        self.combo_box.addItem("OPEN correction", "open")
-        self.combo_box.addItem("SHORT correction", "short")
-        self.combo_box.addItem("LOAD correction", "load")
+        self.combo_box.addItem("OPEN", "open")
+        self.combo_box.addItem("SHORT", "short")
+        self.combo_box.addItem("LOAD", "load")
+
+        self.load_label = QtWidgets.QLabel("Load", self)
 
         self.load_spin_box = QtWidgets.QSpinBox(self)
         self.load_spin_box.setRange(1, 1_000_000)
+        self.load_spin_box.setValue(50)
         self.load_spin_box.setSuffix(" Ω")
 
         form_layout = QtWidgets.QFormLayout()
-        form_layout.addRow("Type", self.combo_box)
-        form_layout.addRow("Load", self.load_spin_box)
+        form_layout.addRow(self.type_label, self.combo_box)
+        form_layout.addRow(self.load_label, self.load_spin_box)
 
         self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
         self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
@@ -55,7 +60,9 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
         
     def _update_load_spin_box(self, index: int) -> None:
         data = self.combo_box.itemData(index)
-        self.load_spin_box.setEnabled(data == "load")
+        enabled = data == "load"
+        self.load_label.setEnabled(enabled)
+        self.load_spin_box.setEnabled(enabled)
 
     def is_open_correction(self) -> bool:
         data = self.combo_box.currentData()
