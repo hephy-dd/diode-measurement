@@ -7,17 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.23.0] - 2026-03-04
+
 ### Added
 
 - Added mypy checks to tox and fixed typing issues (#132).
+- Cable Correction dialog for the K4215CVU (#139).
+- Missing cable correction lengths for the K4215CVU.(#139).
+- Enable load correction option for the K4215CVU.(#139).
 
 ### Changed
 
 - Fixed Ruff linter errors and built-in typing (#130).
 - Renamed `changelog` to `CHANGELOG.md` (#131).
 - Formatted `CHANGELOG.md` to follow consistent Markdown/Keep a Changelog style (#131).
-- Replace `socketserver` with an asyncio-based TCP server for the RPC server plugin (#138)
-- Refactor FSM state handling using Python `Enum` (#138).
+- Replace `socketserver` with an asyncio-based TCP server for the RPC server plugin (#138).
+- Refactored FSM state handling using Python `Enum` (#138).
+- Refactored the background worker to use a job queue based background thread (#139).
 
 ### Fixed
 
@@ -449,7 +456,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.23.0...HEAD
+[0.23.0]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...0.23.0
 [0.22.2]: https://github.com/hephy-dd/diode-measurement/compare/0.22.1...0.22.2
 [0.22.1]: https://github.com/hephy-dd/diode-measurement/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...0.22.0
