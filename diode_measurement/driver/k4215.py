@@ -6,9 +6,11 @@ __all__ = ["K4215"]
 
 
 class K4215(LCRMeter):
+    correction_waiting_time: float = 5.0
+
     def __init__(self, resource):
         super().__init__(resource)
-        self._external_bias_tee_enabled = False
+        self._external_bias_tee_enabled: bool = False
 
     def identity(self) -> str:
         return self._query("*IDN?").strip()
@@ -153,14 +155,14 @@ class K4215(LCRMeter):
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:OPEN {length:.1f}")
-        self._query("*OPC?")
+        time.sleep(self.correction_waiting_time)
 
     def perform_short_correction(self, length: float) -> None:
         self._validate_correction_length(length)
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:SHORT {length:.1f}")
-        self._query("*OPC?")
+        time.sleep(self.correction_waiting_time)
 
     def perform_load_correction(self, length: float, load: int) -> None:
         self._validate_correction_length(length)
@@ -169,7 +171,7 @@ class K4215(LCRMeter):
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:LOAD {length:.1f}, {load}")
-        self._query("*OPC?")
+        time.sleep(self.correction_waiting_time)
 
     def _fetch(self, timeout=15.0, interval=0.250) -> str:
         """Fetch measurement data with proper synchronization.
