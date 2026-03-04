@@ -1,5 +1,6 @@
-from diode_measurement.driver.k4215 import K4215
 import pytest
+
+from diode_measurement.driver.k4215 import K4215
 
 from . import res
 

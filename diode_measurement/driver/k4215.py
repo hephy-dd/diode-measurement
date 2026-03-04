@@ -1,5 +1,7 @@
 import time
 
+import pyvisa.errors
+
 from .driver import LCRMeter, handle_exception
 
 __all__ = ["K4215"]
