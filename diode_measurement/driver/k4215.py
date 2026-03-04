@@ -152,44 +152,37 @@ class K4215(LCRMeter):
         load_val = 1 if load_state else 0
         self._write(f":CVU:CORRECT {open_val},{short_val},{load_val}")
 
-    def _wait_correction_finished(self) -> None:
+    def has_correction_finished(self) -> bool:
         """4215 CVU does not provide an operation complete meachanism. Starting
         a correction does render the SCPI interface not working, not even
         accepting writes. Only workaround is polling *IDN? until a response is
         returned.
         """
-        timeout_at = time.monotonic() + self.correction_timeout
-        while time.monotonic() < timeout_at:
-            try:
-                self.resource.query("*IDN?")
-            except pyvisa.errors.VisaIOError:
-                time.sleep(1.0)
-            else:
-                return
-        raise TimeoutError("Timeout expired before correction completed.")
+        try:
+            self.resource.query("*IDN?")
+        except pyvisa.errors.VisaIOError:
+            return False
+        return True
 
-    def perform_open_correction(self, length: float) -> None:
+    def start_open_correction(self, length: float) -> None:
         self._validate_correction_length(length)
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:OPEN {length:.1f}")
-        self._wait_correction_finished()
 
-    def perform_short_correction(self, length: float) -> None:
+    def start_short_correction(self, length: float) -> None:
         self._validate_correction_length(length)
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:SHORT {length:.1f}")
-        self._wait_correction_finished()
 
-    def perform_load_correction(self, length: float, load: int) -> None:
+    def start_load_correction(self, length: float, load: int) -> None:
         self._validate_correction_length(length)
         if load < 0:
             raise ValueError("Correction load must be a positive value")
         if self._is_custom_correction_length(length):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:LOAD {length:.1f}, {load}")
-        self._wait_correction_finished()
 
     def _fetch(self, timeout=15.0, interval=0.250) -> str:
         """Fetch measurement data with proper synchronization.

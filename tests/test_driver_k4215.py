@@ -319,40 +319,40 @@ def test_driver_k4215_correction_functions(res):
     assert res.buffer == [":CVU:CORRECT 1,1,0"]
 
 
-def test_driver_k4215_perform_load_correction(res):
+def test_driver_k4215_start_load_correction(res):
     d = K4215(res)
 
-    res.buffer = ["Ni!"]
-    assert d.perform_load_correction(1.5, 50) is None
-    assert res.buffer == [":CVU:CABLE:COMP:LOAD 1.5, 50", "*IDN?"]
+    res.buffer = []
+    assert d.start_load_correction(1.5, 50) is None
+    assert res.buffer == [":CVU:CABLE:COMP:LOAD 1.5, 50"]
 
-    res.buffer = ["Ni!"]
-    assert d.perform_load_correction(4.0, 50) is None
-    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:LOAD 4.0, 50", "*IDN?"]
+    res.buffer = []
+    assert d.start_load_correction(4.0, 50) is None
+    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:LOAD 4.0, 50"]
 
 
-def test_driver_k4215_perform_open_correction(res):
+def test_driver_k4215_start_open_correction(res):
     d = K4215(res)
 
-    res.buffer = ["Ni!"]
-    assert d.perform_open_correction(1.5) is None
-    assert res.buffer == [":CVU:CABLE:COMP:OPEN 1.5", "*IDN?"]
+    res.buffer = []
+    assert d.start_open_correction(1.5) is None
+    assert res.buffer == [":CVU:CABLE:COMP:OPEN 1.5"]
 
-    res.buffer = ["Ni!"]
-    assert d.perform_open_correction(4.0,) is None
-    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:OPEN 4.0", "*IDN?"]
+    res.buffer = []
+    assert d.start_open_correction(4.0,) is None
+    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:OPEN 4.0"]
 
 
-def test_driver_k4215_perform_short_correction(res):
+def test_driver_k4215_start_short_correction(res):
     d = K4215(res)
 
-    res.buffer = ["Ni!"]
-    assert d.perform_short_correction(1.5) is None
-    assert res.buffer == [":CVU:CABLE:COMP:SHORT 1.5", "*IDN?"]
+    res.buffer = []
+    assert d.start_short_correction(1.5) is None
+    assert res.buffer == [":CVU:CABLE:COMP:SHORT 1.5"]
 
-    res.buffer = ["Ni!"]
-    assert d.perform_short_correction(4.0) is None
-    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:SHORT 4.0", "*IDN?"]
+    res.buffer = []
+    assert d.start_short_correction(4.0) is None
+    assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:SHORT 4.0"]
 
 
 def test_driver_k4215_aci_range(res):

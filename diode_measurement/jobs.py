@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Optional, Protocol
 
@@ -80,18 +81,34 @@ class K4215PerformCorrectionJob:
     message: Callable[[str], None]
 
     def __call__(self) -> None:
+        correction_timeout: float = 120.0  # TODO
+
         logger.info("Performing cable correction...")
         self.progress(0, 0, 0)
+
+        def wait_until_done(instr, timeout = 120.0, interval = 1.0):
+            timeout_at = time.monotonic() + timeout
+            while time.monotonic() < timeout_at:
+                if instr.has_correction_finished():
+                    return
+                else:
+                    time.sleep(interval)
+            raise TimeoutError("Timeout expired before cable correction completed.")
+
         with open_resource(self.resource_name, self.termination, self.timeout) as res:
             instr = driver_factory(self.model)(res)
             if self.open_correction:
                 self.message("Performing OPEN correction...")
-                instr.perform_open_correction(self.cable_length)
+                instr.start_open_correction(self.cable_length)
+                wait_until_done(instr, correction_timeout)
             if self.short_correction:
                 self.message("Performing SHORT correction...")
-                instr.perform_short_correction(self.cable_length)
+                instr.start_short_correction(self.cable_length)
+                wait_until_done(instr, correction_timeout)
             if self.load_correction is not None:
                 self.message("Performing LOAD correction...")
-                instr.perform_load_correction(self.cable_length, self.load_correction)
+                instr.start_load_correction(self.cable_length, self.load_correction)
+                wait_until_done(instr, correction_timeout)
+
         self.message("")
         logger.info("Cable correction done.")
