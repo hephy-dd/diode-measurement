@@ -20,17 +20,16 @@ Building a Windows executable using PyInstaller.
 
 ```bash
 # Create build environment
-python -m venv build_env
+python3 -m venv build_env
 . build_env/Scripts/activate
 
 # Install dependencies
-pip install -U pip
-pip install wheel pyusb pyserial gpib-ctypes
-pip install pyinstaller pyinstaller-versionfile
-pip install .
+pip install --upgrade pip
+pip install -e .
+pip install -r .pyinstaller/requirements.txt
 
 # Build executable
-pyinstaller pyinstaller.spec
+pyinstaller ./.pyinstaller/windows_app.spec
 ```
 
 An executable will be created in `dist/diode-measurement-{version}.exe`
