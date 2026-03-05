@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Callable, Optional
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 __all__ = ["LogWindow", "LogWidget"]
 
@@ -36,7 +36,7 @@ class LogWidget(QtWidgets.QTextEdit):
     MaximumEntries: int = 1024 * 1024
     """Maximum number of visible log entries."""
 
-    received = QtCore.pyqtSignal(logging.LogRecord)
+    received = QtCore.Signal(logging.LogRecord)
     """Received is emitted when a new log record is appended by a logger."""
 
     updateInterval = 200
@@ -139,13 +139,13 @@ class LogWindow(QtWidgets.QWidget):
         self.setWindowTitle(self.tr("Logging"))
 
         self.logHeader = QtWidgets.QLabel()
-        self.logHeader.setTextFormat(QtCore.Qt.RichText)
+        self.logHeader.setTextFormat(QtCore.Qt.TextFormat.RichText)
         self.logHeader.setText("<span style=\"white-space:pre\">Time\t\tLevel\tMessage</span>")
 
         self.logWidget = LogWidget()
 
         self.buttonBox = QtWidgets.QDialogButtonBox()
-        self.buttonBox.setStandardButtons(self.buttonBox.Close)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Close)
         self.buttonBox.rejected.connect(lambda: self.hide())
 
         layout = QtWidgets.QGridLayout()

@@ -1,6 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
 
+from ..resource import Resource
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["Driver"]
@@ -22,7 +24,7 @@ class DriverError(Exception):
 
 class Driver(ABC):
 
-    def __init__(self, resource):
+    def __init__(self, resource: Resource) -> None:
         self.resource = resource
 
     @abstractmethod

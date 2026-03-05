@@ -2,7 +2,7 @@ import logging
 import webbrowser
 from typing import Optional
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..utils import format_metric, format_switch
 from .general import GeneralWidget
@@ -20,7 +20,7 @@ def stylesheet_switch(state):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    prepareChangeVoltage = QtCore.pyqtSignal()
+    prepareChangeVoltage = QtCore.Signal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -32,42 +32,42 @@ class MainWindow(QtWidgets.QMainWindow):
         self._createLayout()
 
     def _createActions(self) -> None:
-        self.importAction = QtWidgets.QAction("&Import File...")
+        self.importAction = QtGui.QAction("&Import File...")
         self.importAction.setStatusTip("Import measurement data")
 
-        self.quitAction = QtWidgets.QAction("&Quit")
+        self.quitAction = QtGui.QAction("&Quit")
         self.quitAction.setShortcut(QtGui.QKeySequence("Ctrl+Q"))
         self.quitAction.setStatusTip("Quit the application")
         self.quitAction.triggered.connect(self.close)
 
-        self.preferencesAction = QtWidgets.QAction("&Preferences...")
+        self.preferencesAction = QtGui.QAction("&Preferences...")
         self.preferencesAction.setStatusTip("Show preferences dialog")
         self.preferencesAction.triggered.connect(self.showPreferences)
 
-        self.startAction = QtWidgets.QAction("&Start")
+        self.startAction = QtGui.QAction("&Start")
         self.startAction.setStatusTip("Start a new measurement")
 
-        self.stopAction = QtWidgets.QAction("Sto&p")
+        self.stopAction = QtGui.QAction("Sto&p")
         self.stopAction.setStatusTip("Stop an active measurement")
 
-        self.continuousAction = QtWidgets.QAction("&Continuous Meas.")
+        self.continuousAction = QtGui.QAction("&Continuous Meas.")
         self.continuousAction.setCheckable(True)
         self.continuousAction.setStatusTip("Enable continuous measurement")
 
-        self.changeVoltageAction = QtWidgets.QAction("&Change Voltage...")
+        self.changeVoltageAction = QtGui.QAction("&Change Voltage...")
         self.changeVoltageAction.setStatusTip("Change voltage in continuous measurement")
         self.changeVoltageAction.triggered.connect(self.prepareChangeVoltage.emit)
 
-        self.contentsAction = QtWidgets.QAction("&Contents")
+        self.contentsAction = QtGui.QAction("&Contents")
         self.contentsAction.setStatusTip("Open the user manual")
         self.contentsAction.setShortcut(QtGui.QKeySequence("F1"))
         self.contentsAction.triggered.connect(self.showContents)
 
-        self.aboutQtAction = QtWidgets.QAction("About &Qt")
+        self.aboutQtAction = QtGui.QAction("About &Qt")
         self.aboutQtAction.setStatusTip("About the used Qt framework")
         self.aboutQtAction.triggered.connect(self.showAboutQt)
 
-        self.aboutAction = QtWidgets.QAction("&About")
+        self.aboutAction = QtGui.QAction("&About")
         self.aboutAction.setStatusTip("About the application")
         self.aboutAction.triggered.connect(self.showAbout)
 
@@ -146,67 +146,67 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.smuVoltageLineEdit = QtWidgets.QLineEdit("---")
         self.smuVoltageLineEdit.setReadOnly(True)
-        self.smuVoltageLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.smuVoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.smuCurrentLineEdit = QtWidgets.QLineEdit("---")
         self.smuCurrentLineEdit.setReadOnly(True)
-        self.smuCurrentLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.smuCurrentLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.smuOutputStateLineEdit = QtWidgets.QLineEdit()
         self.smuOutputStateLineEdit.setReadOnly(True)
-        self.smuOutputStateLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.smuOutputStateLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.smu2VoltageLineEdit = QtWidgets.QLineEdit("---")
         self.smu2VoltageLineEdit.setReadOnly(True)
-        self.smu2VoltageLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.smu2VoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.smu2CurrentLineEdit = QtWidgets.QLineEdit("---")
         self.smu2CurrentLineEdit.setReadOnly(True)
-        self.smu2CurrentLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.smu2CurrentLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.smu2OutputStateLineEdit = QtWidgets.QLineEdit()
         self.smu2OutputStateLineEdit.setReadOnly(True)
-        self.smu2OutputStateLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.smu2OutputStateLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.elmVoltageLineEdit = QtWidgets.QLineEdit("---")
         self.elmVoltageLineEdit.setReadOnly(True)
-        self.elmVoltageLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.elmVoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.elmCurrentLineEdit = QtWidgets.QLineEdit("---")
         self.elmCurrentLineEdit.setReadOnly(True)
-        self.elmCurrentLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.elmCurrentLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.elmOutputStateLineEdit = QtWidgets.QLineEdit("---")
         self.elmOutputStateLineEdit.setReadOnly(True)
-        self.elmOutputStateLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.elmOutputStateLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.elm2VoltageLineEdit = QtWidgets.QLineEdit("---")
         self.elm2VoltageLineEdit.setReadOnly(True)
-        self.elm2VoltageLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.elm2VoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.elm2CurrentLineEdit = QtWidgets.QLineEdit("---")
         self.elm2CurrentLineEdit.setReadOnly(True)
-        self.elm2CurrentLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.elm2CurrentLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.elm2OutputStateLineEdit = QtWidgets.QLineEdit("---")
         self.elm2OutputStateLineEdit.setReadOnly(True)
-        self.elm2OutputStateLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.elm2OutputStateLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.lcrVoltageLineEdit = QtWidgets.QLineEdit("---")
         self.lcrVoltageLineEdit.setReadOnly(True)
-        self.lcrVoltageLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.lcrVoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.lcrCurrentLineEdit = QtWidgets.QLineEdit("---")
         self.lcrCurrentLineEdit.setReadOnly(True)
-        self.lcrCurrentLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.lcrCurrentLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.lcrOutputStateLineEdit = QtWidgets.QLineEdit("---")
         self.lcrOutputStateLineEdit.setReadOnly(True)
-        self.lcrOutputStateLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.lcrOutputStateLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         self.dmmTemperatureLineEdit = QtWidgets.QLineEdit("---")
         self.dmmTemperatureLineEdit.setReadOnly(True)
-        self.dmmTemperatureLineEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.dmmTemperatureLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         centralWidget = QtWidgets.QWidget()
         self.setCentralWidget(centralWidget)
@@ -219,11 +219,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.loggingDockWidget = QtWidgets.QDockWidget("Logging")
         self.loggingDockWidget.setObjectName("loggingDockWidget")
-        self.loggingDockWidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.loggingDockWidget.setAllowedAreas(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
         self.loggingDockWidget.setWidget(self.loggingWidget)
-        self.loggingDockWidget.setFeatures(QtWidgets.QDockWidget.DockWidgetClosable)
+        self.loggingDockWidget.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable)
         self.loggingDockWidget.hide()
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.loggingDockWidget)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, self.loggingDockWidget)
 
         self.loggingAction = self.loggingDockWidget.toggleViewAction()
         self.loggingAction.setStatusTip("Toggle logging dock window")
@@ -572,7 +572,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def showPreferences(self) -> None:
         dialog = PreferencesDialog(self)
         dialog.readSettings()
-        if dialog.exec() == dialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             dialog.writeSettings()
 
     def showContents(self) -> None:

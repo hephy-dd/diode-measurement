@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from ..driver import driver_factory
 from ..utils import open_resource
@@ -11,10 +11,10 @@ __all__ = ["ResourceWidget"]
 
 class ResourceWidget(QtWidgets.QGroupBox):
 
-    modelChanged = QtCore.pyqtSignal(str)
-    resourceChanged = QtCore.pyqtSignal(str)
-    terminationChanged = QtCore.pyqtSignal(str)
-    timeoutChanged = QtCore.pyqtSignal(float)
+    modelChanged = QtCore.Signal(str)
+    resourceChanged = QtCore.Signal(str)
+    terminationChanged = QtCore.Signal(str)
+    timeoutChanged = QtCore.Signal(float)
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -126,7 +126,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
             instr = driver_factory(self.model())(res)
             return instr.identity()
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def testConntection(self) -> None:
         try:
             identity = self.readIdentity()

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 __all__ = ["MetricWidget"]
 
@@ -59,13 +59,13 @@ class MetricItem:
 class MetricWidget(QtWidgets.QWidget):
     """Metric input widget."""
 
-    valueChanged = QtCore.pyqtSignal(float)
-    editingFinished = QtCore.pyqtSignal()
+    valueChanged = QtCore.Signal(float)
+    editingFinished = QtCore.Signal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self._valueSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self._valueSpinBox.setStepType(QtWidgets.QAbstractSpinBox.AdaptiveDecimalStepType)
+        self._valueSpinBox.setStepType(QtWidgets.QAbstractSpinBox.StepType.AdaptiveDecimalStepType)
         self._unitComboBox = QtWidgets.QComboBox(self)
         self.setUnit("")
         self.setDecimals(0)

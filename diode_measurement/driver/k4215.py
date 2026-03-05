@@ -2,7 +2,7 @@ import time
 
 import pyvisa.errors
 
-from .driver import LCRMeter, handle_exception
+from .driver import Resource, LCRMeter, handle_exception
 
 __all__ = ["K4215"]
 
@@ -10,7 +10,7 @@ __all__ = ["K4215"]
 class K4215(LCRMeter):
     correction_timeout: float = 120.0
 
-    def __init__(self, resource):
+    def __init__(self, resource: Resource) -> None:
         super().__init__(resource)
         self._external_bias_tee_enabled: bool = False
 

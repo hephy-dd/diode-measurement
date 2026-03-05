@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets
+from PySide6 import QtWidgets
 
 __all__ = ["ChangeVoltageDialog"]
 

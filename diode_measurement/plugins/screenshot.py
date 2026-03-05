@@ -1,7 +1,9 @@
 import logging
 import pathlib
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from diode_measurement.utils import safe_bool
 
 from . import Plugin
 
@@ -42,12 +44,12 @@ class ScreenshotPlugin(Plugin):
 
     def loadSettings(self) -> None:
         settings = QtCore.QSettings()
-        enabled = settings.value("saveScreenshot", False, bool)
+        enabled = safe_bool(settings.value("saveScreenshot"), False)
         self.saveScreenshotCheckBox.setChecked(enabled)
 
     def storeSettings(self) -> None:
-        enabled = self.saveScreenshotCheckBox.isChecked()
         settings = QtCore.QSettings()
+        enabled = self.saveScreenshotCheckBox.isChecked()
         settings.setValue("saveScreenshot", enabled)
 
     def outputFilename(self) -> str:

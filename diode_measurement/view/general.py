@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from ..utils import ureg
 
@@ -7,10 +7,10 @@ __all__ = ["GeneralWidget"]
 
 class GeneralWidget(QtWidgets.QWidget):
 
-    instrumentsChanged = QtCore.pyqtSignal()
-    currentComplianceChanged = QtCore.pyqtSignal(float)
-    continueInComplianceChanged = QtCore.pyqtSignal(bool)
-    waitingTimeContinuousChanged = QtCore.pyqtSignal(float)
+    instrumentsChanged = QtCore.Signal()
+    currentComplianceChanged = QtCore.Signal(float)
+    continueInComplianceChanged = QtCore.Signal(bool)
+    waitingTimeContinuousChanged = QtCore.Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -23,25 +23,25 @@ class GeneralWidget(QtWidgets.QWidget):
         self.measurementComboBox = QtWidgets.QComboBox()
 
         self.smuCheckBox = QtWidgets.QCheckBox("SMU")
-        self.smuCheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.smuCheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.smu2CheckBox = QtWidgets.QCheckBox("SMU2")
-        self.smu2CheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.smu2CheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.elmCheckBox = QtWidgets.QCheckBox("ELM")
-        self.elmCheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.elmCheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.elm2CheckBox = QtWidgets.QCheckBox("ELM2")
-        self.elm2CheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.elm2CheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.lcrCheckBox = QtWidgets.QCheckBox("LCR")
-        self.lcrCheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.lcrCheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.dmmCheckBox = QtWidgets.QCheckBox("DMM")
-        self.dmmCheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.dmmCheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.switchCheckBox = QtWidgets.QCheckBox("Switch")
-        self.switchCheckBox.stateChanged.connect(self.instrumentsChanged)
+        self.switchCheckBox.checkStateChanged.connect(self.instrumentsChanged)
 
         self.beginVoltageSpinBox = QtWidgets.QDoubleSpinBox()
         self.beginVoltageSpinBox.setDecimals(3)
@@ -84,12 +84,20 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self.sampleLineEdit = QtWidgets.QLineEdit()
 
-        self.outputLineEdit = QtWidgets.QLineEdit()
-        completer = QtWidgets.QCompleter(self)
+        completer = QtWidgets.QCompleter()
         completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
-        model = QtWidgets.QDirModel(completer)
-        model.setFilter(QtCore.QDir.Dirs | QtCore.QDir.Drives | QtCore.QDir.NoDotAndDotDot | QtCore.QDir.AllDirs)
+
+        model = QtWidgets.QFileSystemModel(completer)
+        model.setFilter(
+            QtCore.QDir.Dirs
+            | QtCore.QDir.Drives
+            | QtCore.QDir.NoDotAndDotDot
+            | QtCore.QDir.AllDirs
+        )
+        model.setRootPath(QtCore.QDir.rootPath())
         completer.setModel(model)
+
+        self.outputLineEdit = QtWidgets.QLineEdit()
         self.outputLineEdit.setCompleter(completer)
 
         self.outputToolButton = QtWidgets.QToolButton()
