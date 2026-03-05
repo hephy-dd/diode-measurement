@@ -38,7 +38,7 @@ class K2470(SourceMeter):
         nplc = options.get("nplc", 1.0)
         self.set_sense_current_nplc(nplc)
 
-        system_breakdown_protection = options.get("system.breakdown.protection", "OFF")
+        system_breakdown_protection = options.get("system.breakdown.protection.v2", "OFF")
         self.set_system_breakdown_protection(system_breakdown_protection)
 
     def get_output_enabled(self) -> bool:

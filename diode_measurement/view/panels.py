@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets
@@ -134,13 +135,13 @@ class InstrumentPanel(QtWidgets.QWidget):
     def __init__(self, model: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self._parameters: dict[str, Any] = {}
-        self.setModel(model)
+        self._model = model
 
     def model(self) -> str:
-        return self.property("model")
+        return self._model
 
     def setModel(self, model: str) -> None:
-        self.setProperty("model", model)
+        self._model = model
 
     def restoreDefaults(self) -> None: ...
 
@@ -160,9 +161,14 @@ class InstrumentPanel(QtWidgets.QWidget):
     def setConfig(self, config: ConfigType) -> None:
         for key, value in config.items():
             parameter = self._parameters.get(key)
-            if parameter is None:
-                raise KeyError(f"No such parameter: {repr(key)}")
-            parameter.setValue(value)
+            if parameter is not None:
+                try:
+                    parameter.setValue(value)
+                except ValueError:
+                    logging.exception("Failed to set parameter for model %r: %r", self._model, key)
+            else:
+                logging.warning("No such parameter for model %r: %r", self._model, key)
+
 
 
 class K237Panel(InstrumentPanel):
@@ -427,19 +433,18 @@ class K2470Panel(InstrumentPanel):
             "route.terminals", WidgetParameter(self.routeTerminalsComboBox)
         )
         self.bindParameter(
-            "system.breakdown.protection",
+            "system.breakdown.protection.v2",
             MethodParameter(self.breakdownProtection, self.setBreakdownProtection),
         )
 
         self.restoreDefaults()
 
     def breakdownProtection(self) -> str:
-        data = self.breakdownProtectionComboBox.currentData()
-        return data if isinstance(data, str) else "OFF"
+        return self.breakdownProtectionComboBox.currentData()
 
     def setBreakdownProtection(self, value: str) -> None:
         index = self.breakdownProtectionComboBox.findData(value)
-        self.breakdownProtectionComboBox.setCurrentIndex(index if index >= 0 else 1)
+        self.breakdownProtectionComboBox.setCurrentIndex(index)
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
