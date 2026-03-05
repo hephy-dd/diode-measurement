@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Optional
 
-from PyQt5 import QtWidgets
+from PySide6 import QtWidgets
 
 from .panels import InstrumentPanel
 from .resource import ResourceWidget

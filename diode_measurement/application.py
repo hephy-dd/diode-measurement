@@ -2,7 +2,7 @@ import logging
 import sys
 import os
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import __version__
 from .controller import Controller

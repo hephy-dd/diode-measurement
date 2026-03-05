@@ -7,7 +7,7 @@ import queue
 from datetime import datetime
 from typing import Any, Mapping, Optional
 
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets, QtStateMachine
 
 from . import __version__
 
@@ -74,17 +74,17 @@ ABOUT_TEXT: str = f"""
 
 
 class Controller(QtCore.QObject):
-    started = QtCore.pyqtSignal()
-    aborted = QtCore.pyqtSignal()
-    update = QtCore.pyqtSignal(dict)
-    failed = QtCore.pyqtSignal(Exception)
-    finished = QtCore.pyqtSignal()
+    started = QtCore.Signal()
+    aborted = QtCore.Signal()
+    update = QtCore.Signal(dict)
+    failed = QtCore.Signal(Exception)
+    finished = QtCore.Signal()
 
-    changeVoltageReady = QtCore.pyqtSignal()
+    changeVoltageReady = QtCore.Signal()
 
-    measurement_finished = QtCore.pyqtSignal()
-    message_changed = QtCore.pyqtSignal(str)
-    progress_changed = QtCore.pyqtSignal(int, int, int)
+    measurement_finished = QtCore.Signal()
+    message_changed = QtCore.Signal(str)
+    progress_changed = QtCore.Signal(int, int, int)
 
     def __init__(self, view, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
@@ -164,7 +164,7 @@ class Controller(QtCore.QObject):
         self.view.stopButton.clicked.connect(self.view.stopAction.trigger)
 
         self.view.continuousAction.toggled.connect(self.onContinuousToggled)
-        self.view.continuousCheckBox.stateChanged.connect(self.onContinuousChanged)
+        self.view.continuousCheckBox.checkStateChanged.connect(self.onContinuousChanged)
 
         for spec in DEFAULTS:
             self.view.generalWidget.addMeasurement(spec)
@@ -206,13 +206,13 @@ class Controller(QtCore.QObject):
 
         # States
 
-        self.idleState = QtCore.QState()
+        self.idleState = QtStateMachine.QState()
         self.idleState.entered.connect(self.setIdleState)
 
-        self.runningState = QtCore.QState()
+        self.runningState = QtStateMachine.QState()
         self.runningState.entered.connect(self.setRunningState)
 
-        self.stoppingState = QtCore.QState()
+        self.stoppingState = QtStateMachine.QState()
         self.stoppingState.entered.connect(self.setStoppingState)
 
         # Transitions
@@ -226,7 +226,7 @@ class Controller(QtCore.QObject):
 
         # State machine
 
-        self.stateMachine = QtCore.QStateMachine()
+        self.stateMachine = QtStateMachine.QStateMachine()
         self.stateMachine.addState(self.idleState)
         self.stateMachine.addState(self.runningState)
         self.stateMachine.addState(self.stoppingState)
@@ -426,8 +426,8 @@ class Controller(QtCore.QObject):
             role.setResourceName(settings.value("resource", ""))
             role.setTermination(settings.value("termination", ""))
             role.setTimeout(settings.value("timeout", 4, int))
-            role.setResources(settings.value("resources", {}, dict))
-            role.setConfigs(settings.value("configs", {}, dict))
+            role.setResources(settings.value("resources", {}))
+            role.setConfigs(settings.value("configs", {}))
             settings.endGroup()
 
         settings.endGroup()
@@ -975,7 +975,7 @@ class Controller(QtCore.QObject):
             config = role.configs().get(model, {})
             if model == "K4215":
                 dialog = K4215CorrectionDialog(self.view)
-                if dialog.exec() != dialog.DialogCode.Accepted:
+                if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
                     return
                 self.view.controlTabWidget.setEnabled(False)
                 self.submit_background_job(K4215PerformCorrectionJob(
@@ -1286,8 +1286,7 @@ class ChangeVoltageController(QtCore.QObject):
         dialog.setEndVoltage(self.sourceVoltage())
         dialog.setStepVoltage(self.view.generalWidget.stepVoltage())
         dialog.setWaitingTime(self.view.generalWidget.waitingTime())
-        dialog.exec()
-        if dialog.result() == dialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             self.requestChangeVoltage(
                 dialog.endVoltage(),
                 dialog.stepVoltage(),

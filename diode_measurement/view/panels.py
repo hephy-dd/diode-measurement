@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from .metric import MetricWidget
 
@@ -57,7 +57,7 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
 
         self.combo_box.currentIndexChanged.connect(self._update_load_spin_box)
         self._update_load_spin_box(self.combo_box.currentIndex())
-        
+
     def _update_load_spin_box(self, index: int) -> None:
         data = self.combo_box.itemData(index)
         enabled = data == "load"
@@ -261,7 +261,7 @@ class K2410Panel(InstrumentPanel):
         self.nplcSpinBox.setRange(0.01, 10.0)
         self.nplcSpinBox.setDecimals(2)
         self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.AdaptiveDecimalStepType)
+        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
 
         integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
         integrationTimeLayout.addWidget(self.nplcLabel)
@@ -366,7 +366,7 @@ class K2470Panel(InstrumentPanel):
         self.nplcSpinBox.setRange(0.01, 10.0)
         self.nplcSpinBox.setDecimals(2)
         self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.AdaptiveDecimalStepType)
+        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
 
         integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
         integrationTimeLayout.addWidget(self.nplcLabel)
@@ -485,7 +485,7 @@ class K2657APanel(InstrumentPanel):
         self.nplcSpinBox.setRange(0.001, 25.0)
         self.nplcSpinBox.setDecimals(3)
         self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.AdaptiveDecimalStepType)
+        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
 
         integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
         integrationTimeLayout.addWidget(self.nplcLabel)
@@ -533,7 +533,7 @@ class K2700Panel(InstrumentPanel):
 
 class K4215Panel(InstrumentPanel):
 
-    perform_correction_clicked = QtCore.pyqtSignal()
+    perform_correction_clicked = QtCore.Signal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K4215", parent)
@@ -917,7 +917,7 @@ class K6514Panel(InstrumentPanel):
         self.nplcSpinBox.setRange(0.01, 10.0)
         self.nplcSpinBox.setDecimals(2)
         self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.AdaptiveDecimalStepType)
+        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
 
         integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
         integrationTimeLayout.addWidget(self.nplcLabel)
@@ -1083,7 +1083,7 @@ class K6517BPanel(InstrumentPanel):
         self.nplcSpinBox.setRange(0.01, 10.0)
         self.nplcSpinBox.setDecimals(2)
         self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.AdaptiveDecimalStepType)
+        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
 
         integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
         integrationTimeLayout.addWidget(self.nplcLabel)

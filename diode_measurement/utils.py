@@ -1,7 +1,7 @@
 import re
 import pint
 
-from typing import Iterable
+from typing import Any, Iterable
 
 import pyvisa
 
@@ -116,3 +116,53 @@ def limits(iterable: Iterable) -> tuple:
 def inverse_square(value: float) -> float:
     """Return 1/x^2 for value."""
     return 1. / value ** 2
+
+
+def safe_bool(value: Any, default: bool = False) -> bool:
+    """Return value converted to bool; return default if conversion fails."""
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        return default
+
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in {"1", "true", "yes", "on"}:
+            return True
+        if v in {"0", "false", "no", "off"}:
+            return False
+        return default
+
+    try:
+        return bool(value)
+    except Exception:
+        return default
+
+
+def safe_int(value: Any, default: int = 0) -> int:
+    """Return value converted to int; return default if conversion fails."""
+    if isinstance(value, int):
+        return value
+
+    if value is None:
+        return default
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_str(value: Any, default: str = "") -> str:
+    """Return value converted to str; return default if value is None."""
+    if isinstance(value, str):
+        return value
+
+    if value is None:
+        return default
+
+    try:
+        return str(value)
+    except Exception:
+        return default

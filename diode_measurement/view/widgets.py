@@ -1,20 +1,31 @@
 import traceback
+from typing import Optional
 
-from PyQt5 import QtWidgets
+from PySide6 import QtWidgets
 
 __all__ = ["showException"]
 
 
-def showException(exc, parent=None):
-    details = "".join(traceback.format_tb(exc.__traceback__))
+def showException(exc: Exception, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    detailed_text = "".join(traceback.format_tb(exc.__traceback__))
+
     dialog = QtWidgets.QMessageBox(parent)
     dialog.setWindowTitle("Exception occured")
-    dialog.setIcon(dialog.Critical)
-    dialog.setText(format(exc))
-    dialog.setDetailedText(details)
-    dialog.setStandardButtons(dialog.Ok)
-    dialog.setDefaultButton(dialog.Ok)
+    dialog.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+    dialog.setText(str(exc))
+    dialog.setDetailedText(detailed_text)
+    dialog.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
+    dialog.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
+
     # Fix message box width
-    spacer = QtWidgets.QSpacerItem(448, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-    dialog.layout().addItem(spacer, dialog.layout().rowCount(), 0, 1, dialog.layout().columnCount())
+    layout: Optional[QtWidgets.QLayout] = dialog.layout()
+    if isinstance(layout, QtWidgets.QGridLayout):
+        spacer_item = QtWidgets.QSpacerItem(
+            448,
+            0,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
+        layout.addItem(spacer_item, layout.rowCount(), 0, 1, layout.columnCount())
+
     dialog.exec()

@@ -14,10 +14,12 @@ from concurrent.futures import Future
 from queue import Queue, Empty
 from typing import Any, Callable, Optional
 
-from PyQt5 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
+
+from diode_measurement.utils import safe_bool, safe_int, safe_str
+from diode_measurement.controller import Controller
 
 from . import Plugin
-from ..controller import Controller
 
 __all__ = ["RPCServerPlugin"]
 
@@ -259,7 +261,7 @@ class RPCWidget(QtWidgets.QWidget):
     MaximumEntries: int = 1024
     """Maximum number of visible protocol entries."""
 
-    restart_signal = QtCore.pyqtSignal()
+    restart_signal = QtCore.Signal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -341,9 +343,9 @@ class RPCWidget(QtWidgets.QWidget):
 
 
 class RPCServerPlugin(Plugin, QtCore.QObject):
-    running = QtCore.pyqtSignal(bool)
-    failed = QtCore.pyqtSignal(object)
-    message_ready = QtCore.pyqtSignal(str)
+    running = QtCore.Signal(bool)
+    failed = QtCore.Signal(object)
+    message_ready = QtCore.Signal(str)
 
     def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
@@ -378,9 +380,9 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
     def read_settings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("tcpServer")
-        enabled = settings.value("enabled", False, bool)
-        hostname = settings.value("hostname", "", str)
-        port = settings.value("port", 8000, int)
+        enabled = safe_bool(settings.value("enabled"), False)
+        hostname = safe_str(settings.value("hostname"), "")
+        port = safe_int(settings.value("port"), 8000)
         settings.endGroup()
         self.rpc_widget.set_server_enabled(enabled)
         self.rpc_widget.set_hostname(hostname)

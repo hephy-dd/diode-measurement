@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import pyvisa
 
@@ -9,8 +9,7 @@ __all__ = ["ResourceError", "Resource", "AutoReconnectResource"]
 logger = logging.getLogger(__name__)
 
 
-class ResourceError(Exception):
-    ...
+class ResourceError(Exception): ...
 
 
 class Resource:
@@ -23,8 +22,8 @@ class Resource:
             "timeout": 8000
         }
         self.options.update(options)
-        self._rm = Optional[pyvisa.ResourceManager]
-        self._resource = None
+        self._rm: Optional[pyvisa.ResourceManager] = None
+        self._resource: Optional[pyvisa.resources.MessageBasedResource] = None
 
     def __enter__(self):
         try:
@@ -42,39 +41,46 @@ class Resource:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         finally:
             try:
-                self._rm.close()
+                if self._rm is not None:
+                    self._rm.close()
             finally:
                 self._rm = None
                 self._resource = None
             return False
 
-    def query(self, message):
+    @property
+    def resource(self) -> pyvisa.resources.MessageBasedResource:
+        if self._resource is None:
+            raise RuntimeError("no open resource")
+        return self._resource
+
+    def query(self, message: str) -> str:
         try:
             logger.debug("resource.write: `%s`", message)
-            result = self._resource.query(message)
+            result = self.resource.query(message)
             logger.debug("resource.read: `%s`", result)
             return result
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
 
-    def write(self, message):
+    def write(self, message: str) -> int:
         try:
             logger.debug("resource.write: `%s`", message)
-            return self._resource.write(message)
+            return self.resource.write(message)
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
 
-    def read(self):
+    def read(self) -> str:
         try:
-            result = self._resource.read()
+            result = self.resource.read()
             logger.debug("resource.read: `%s`", result)
             return result
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
 
-    def clear(self):
+    def clear(self) -> None:
         try:
-            self._resource.clear()
+            self.resource.clear()
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
 
@@ -83,7 +89,7 @@ class AutoReconnectResource(Resource):
     retry_attempts = 3
     retry_delay = 1.0
 
-    def _reconnect_retry(self, target, *args):
+    def _reconnect_retry(self, target: Callable, *args) -> Any:
         for attempt in range(self.retry_attempts + 1):
             try:
                 if attempt:
@@ -101,14 +107,14 @@ class AutoReconnectResource(Resource):
                 else:
                     raise
 
-    def query(self, message):
+    def query(self, message: str) -> str:
         return self._reconnect_retry(super().query, message)
 
-    def write(self, message):
+    def write(self, message: str) -> int:
         return self._reconnect_retry(super().write, message)
 
-    def read(self):
+    def read(self) -> str:
         return self._reconnect_retry(super().read)
 
-    def clear(self):
+    def clear(self) -> None:
         return self._reconnect_retry(super().clear)
