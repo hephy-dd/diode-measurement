@@ -38,7 +38,7 @@ class K2470(SourceMeter):
         nplc = options.get("nplc", 1.0)
         self.set_sense_current_nplc(nplc)
 
-        system_breakdown_protection = options.get("system.breakdown.protection", False)
+        system_breakdown_protection = options.get("system.breakdown.protection", "OFF")
         self.set_system_breakdown_protection(system_breakdown_protection)
 
     def get_output_enabled(self) -> bool:
@@ -92,8 +92,9 @@ class K2470(SourceMeter):
     def set_sense_current_nplc(self, nplc: float) -> None:
         self._write(f":SENS:CURR:NPLC {nplc:E}")
 
-    def set_system_breakdown_protection(self, state: bool) -> None:
-        value = "ON" if state else "OFF"  # 0 and 1 not supported?
+    def set_system_breakdown_protection(self, value: str) -> None:
+        if value not in ["AUTO", "OFF", "ON"]:
+            raise ValueError("Breakdown protection must be one of: 'AUTO', 'OFF' or 'ON'")
         self._write(f":SYST:BRE:PROT {value}")
 
     def is_interlock(self) -> bool:

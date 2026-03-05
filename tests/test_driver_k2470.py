@@ -1,3 +1,5 @@
+import pytest
+
 from diode_measurement.driver.k2470 import K2470
 
 from . import res
@@ -87,8 +89,19 @@ def test_driver_k2470(res):
     assert res.buffer == [":SENS:CURR:NPLC 4.200000E+00", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_system_breakdown_protection(True) is None
+    assert d.set_system_breakdown_protection("OFF") is None
+    assert res.buffer == [":SYST:BRE:PROT OFF", "*OPC?"]
+
+    res.buffer = ["1"]
+    assert d.set_system_breakdown_protection("ON") is None
     assert res.buffer == [":SYST:BRE:PROT ON", "*OPC?"]
+
+    res.buffer = ["1"]
+    assert d.set_system_breakdown_protection("AUTO") is None
+    assert res.buffer == [":SYST:BRE:PROT AUTO", "*OPC?"]
+
+    with pytest.raises(ValueError):
+        d.set_system_breakdown_protection("shrubbery")
 
     res.buffer = ["1"]
     assert d.is_interlock() is True

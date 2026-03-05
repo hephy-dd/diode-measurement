@@ -389,10 +389,17 @@ class K2470Panel(InstrumentPanel):
         self.systemGroupBox = QtWidgets.QGroupBox()
         self.systemGroupBox.setTitle("System")
 
-        self.breakdownProtectionCheckBox = QtWidgets.QCheckBox("Breakdown Protection")
+        self.breakdownProtectionLabel = QtWidgets.QLabel("Breakdown Protection")
+
+        self.breakdownProtectionComboBox = QtWidgets.QComboBox()
+        self.breakdownProtectionComboBox.setStatusTip("Protects against overcurrent from breakdown conditions")
+        self.breakdownProtectionComboBox.addItem("Auto", "AUTO")
+        self.breakdownProtectionComboBox.addItem("Off", "OFF")
+        self.breakdownProtectionComboBox.addItem("On", "ON")
 
         systemLayout = QtWidgets.QVBoxLayout(self.systemGroupBox)
-        systemLayout.addWidget(self.breakdownProtectionCheckBox)
+        systemLayout.addWidget(self.breakdownProtectionLabel)
+        systemLayout.addWidget(self.breakdownProtectionComboBox)
         systemLayout.addStretch()
 
         # Layout
@@ -421,18 +428,26 @@ class K2470Panel(InstrumentPanel):
         )
         self.bindParameter(
             "system.breakdown.protection",
-            WidgetParameter(self.breakdownProtectionCheckBox),
+            MethodParameter(self.breakdownProtection, self.setBreakdownProtection),
         )
 
         self.restoreDefaults()
+
+    def breakdownProtection(self) -> str:
+        data = self.breakdownProtectionComboBox.currentData()
+        return data if isinstance(data, str) else "OFF"
+
+    def setBreakdownProtection(self, value: str) -> None:
+        index = self.breakdownProtectionComboBox.findData(value)
+        self.breakdownProtectionComboBox.setCurrentIndex(index if index >= 0 else 1)
 
     def restoreDefaults(self) -> None:
         self.filterEnableCheckBox.setChecked(False)
         self.filterCountSpinBox.setValue(10)
         self.filterModeComboBox.setCurrentIndex(0)
         self.nplcSpinBox.setValue(1.0)
-        self.routeTerminalsComboBox.setCurrentIndex(0)
-        self.breakdownProtectionCheckBox.setChecked(False)
+        self.routeTerminalsComboBox.setCurrentIndex(0)  # FRON
+        self.setBreakdownProtection("OFF")
 
     def setLocked(self, state: bool) -> None:
         self.filterEnableCheckBox.setEnabled(not state)
@@ -440,7 +455,7 @@ class K2470Panel(InstrumentPanel):
         self.filterModeComboBox.setEnabled(not state)
         self.nplcSpinBox.setEnabled(not state)
         self.routeTerminalsComboBox.setEnabled(not state)
-        self.breakdownProtectionCheckBox.setEnabled(not state)
+        self.breakdownProtectionComboBox.setEnabled(not state)
 
 
 class K2657APanel(InstrumentPanel):
