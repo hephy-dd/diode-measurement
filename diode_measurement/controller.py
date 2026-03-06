@@ -92,7 +92,6 @@ class Controller(QtCore.QObject):
         self._shutdown_event = threading.Event()
         self._background_inbox: queue.Queue[Job] = queue.Queue()
         self._background_thread = threading.Thread(target=self._handle_background_jobs)
-        self._background_thread.start()
 
         self.view = view
 
@@ -329,6 +328,9 @@ class Controller(QtCore.QObject):
             logger.info("> %s: %s", key, value)
 
         return state
+
+    def start(self):
+        self._background_thread.start()
 
     def shutdown(self):
         self._shutdown_event.set()

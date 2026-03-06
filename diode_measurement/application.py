@@ -30,41 +30,36 @@ def create_icon(filename: str) -> QtGui.QIcon:
     return QtGui.QIcon(pixmap)
 
 
-class Application(QtWidgets.QApplication):
+def bootstrap(app):
+    app.setApplicationName("diode-measurement")
+    app.setApplicationVersion(__version__)
+    app.setApplicationDisplayName(f"Diode Measurement {__version__}")
+    app.setOrganizationName("HEPHY")
+    app.setOrganizationDomain("hephy.at")
+    app.setWindowIcon(create_icon("diode-measurement.svg"))
 
-    def __init__(self):
-        super().__init__(sys.argv)
-        self.setApplicationName("diode-measurement")
-        self.setApplicationVersion(__version__)
-        self.setApplicationDisplayName(f"Diode Measurement {__version__}")
-        self.setOrganizationName("HEPHY")
-        self.setOrganizationDomain("hephy.at")
-        self.setWindowIcon(create_icon("diode-measurement.svg"))
+    # Initialize settings
+    QtCore.QSettings()
 
-    def bootstrap(self):
-        # Initialize settings
-        QtCore.QSettings()
+    window = MainWindow()
+    window.show()
 
-        window = MainWindow()
+    logger.info("Diode Measurement, version %s", __version__)
 
-        logger.info("Diode Measurement, version %s", __version__)
+    controller = Controller(window)
 
-        controller = Controller(window)
-        controller.loadSettings()
+    plugins = PluginRegistry(controller)
 
-        plugins = PluginRegistry(controller)
-        plugins.install(RPCServerPlugin())
-        plugins.install(ScreenshotPlugin())
+    app.aboutToQuit.connect(controller.storeSettings)
+    app.aboutToQuit.connect(plugins.uninstall)
+    app.aboutToQuit.connect(controller.shutdown)
 
-        self.aboutToQuit.connect(lambda: controller.storeSettings())
-        window.show()
+    startup_timer = QtCore.QTimer(app)
+    startup_timer.setSingleShot(True)
+    startup_timer.timeout.connect(controller.start)
+    startup_timer.timeout.connect(controller.loadSettings)
+    startup_timer.timeout.connect(lambda: plugins.install(RPCServerPlugin()))
+    startup_timer.timeout.connect(lambda: plugins.install(ScreenshotPlugin()))
+    startup_timer.start(10)
 
-        # Interrupt timer
-        timer = QtCore.QTimer()
-        timer.timeout.connect(lambda: None)
-        timer.start(250)
-
-        self.exec()
-
-        controller.shutdown()
-        plugins.uninstall()
+    app.exec()
