@@ -92,7 +92,6 @@ class Controller(QtCore.QObject):
         self._shutdown_event = threading.Event()
         self._background_inbox: queue.Queue[Job] = queue.Queue()
         self._background_thread = threading.Thread(target=self._handle_background_jobs)
-        self._background_thread.start()
 
         self.view = view
 
@@ -330,10 +329,18 @@ class Controller(QtCore.QObject):
 
         return state
 
-    def shutdown(self):
+    def start(self) -> None:
+        if self._background_thread.ident is not None:
+            return
+        self._background_thread.start()
+
+    def shutdown(self) -> None:
         self._shutdown_event.set()
-        self._background_thread.join(timeout=10.0)
         self.stateMachine.stop()
+        if self._background_thread.is_alive():
+            self._background_thread.join(timeout=10.0)
+            if self._background_thread.is_alive():
+                logger.warning("Background thread did not stop within timeout")
 
     def loadSettings(self):
         settings = QtCore.QSettings()

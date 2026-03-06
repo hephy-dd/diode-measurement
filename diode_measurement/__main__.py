@@ -7,7 +7,7 @@ import traceback
 from PyQt5 import QtWidgets
 
 from . import __version__
-from .application import Application
+from .application import bootstrap
 from .view.widgets import showException
 
 __all__ = ["main"]
@@ -50,7 +50,7 @@ def main():
 
     configure_logger(args.debug)
 
-    app = Application()
+    app = QtWidgets.QApplication(sys.argv)
 
     # install custom exception hook
     sys.excepthook = exception_hook
@@ -64,7 +64,7 @@ def main():
     if args.style:
         app.setStyle(args.style)
 
-    app.bootstrap()
+    bootstrap(app)
 
 
 if __name__ == "__main__":

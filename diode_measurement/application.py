@@ -1,5 +1,4 @@
 import logging
-import sys
 import os
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -11,7 +10,7 @@ from .plugins import PluginRegistry
 from .plugins.rpcserver import RPCServerPlugin
 from .plugins.screenshot import ScreenshotPlugin
 
-__all__ = ["Application"]
+__all__ = ["bootstrap"]
 
 logger = logging.getLogger(__name__)
 
@@ -30,41 +29,34 @@ def create_icon(filename: str) -> QtGui.QIcon:
     return QtGui.QIcon(pixmap)
 
 
-class Application(QtWidgets.QApplication):
+def bootstrap(app: QtWidgets.QApplication) -> None:
+    app.setApplicationName("diode-measurement")
+    app.setApplicationVersion(__version__)
+    app.setApplicationDisplayName(f"Diode Measurement {__version__}")
+    app.setOrganizationName("HEPHY")
+    app.setOrganizationDomain("hephy.at")
+    app.setWindowIcon(create_icon("diode-measurement.svg"))
 
-    def __init__(self):
-        super().__init__(sys.argv)
-        self.setApplicationName("diode-measurement")
-        self.setApplicationVersion(__version__)
-        self.setApplicationDisplayName(f"Diode Measurement {__version__}")
-        self.setOrganizationName("HEPHY")
-        self.setOrganizationDomain("hephy.at")
-        self.setWindowIcon(create_icon("diode-measurement.svg"))
+    window = MainWindow()
+    window.show()
 
-    def bootstrap(self):
-        # Initialize settings
-        QtCore.QSettings()
+    logger.info("Diode Measurement, version %s", __version__)
 
-        window = MainWindow()
+    controller = Controller(window)
 
-        logger.info("Diode Measurement, version %s", __version__)
+    plugins = PluginRegistry(controller)
 
-        controller = Controller(window)
-        controller.loadSettings()
+    startup = QtCore.QTimer(app)
+    startup.setSingleShot(True)
+    startup.timeout.connect(controller.start)
+    startup.timeout.connect(controller.loadSettings)
+    startup.timeout.connect(lambda: plugins.install(RPCServerPlugin()))
+    startup.timeout.connect(lambda: plugins.install(ScreenshotPlugin()))
+    startup.start(10)
 
-        plugins = PluginRegistry(controller)
-        plugins.install(RPCServerPlugin())
-        plugins.install(ScreenshotPlugin())
+    app.aboutToQuit.connect(controller.storeSettings)
+    app.aboutToQuit.connect(controller.shutdown)
+    app.aboutToQuit.connect(plugins.uninstall)
 
-        self.aboutToQuit.connect(lambda: controller.storeSettings())
-        window.show()
+    app.exec()
 
-        # Interrupt timer
-        timer = QtCore.QTimer()
-        timer.timeout.connect(lambda: None)
-        timer.start(250)
-
-        self.exec()
-
-        controller.shutdown()
-        plugins.uninstall()
