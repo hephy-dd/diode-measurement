@@ -1,8 +1,7 @@
 import logging
-import sys
 import os
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui
 
 from . import __version__
 from .controller import Controller
@@ -11,7 +10,7 @@ from .plugins import PluginRegistry
 from .plugins.rpcserver import RPCServerPlugin
 from .plugins.screenshot import ScreenshotPlugin
 
-__all__ = ["Application"]
+__all__ = ["bootstrap"]
 
 logger = logging.getLogger(__name__)
 
