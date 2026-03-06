@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.23.2] - 2026-03-06
 
+### Added
+
+- Perform K4215-CVU open correction using a -10 V DC external bias tee when enabled (#142).
+
 ### Fixed
 
 - Disable K4215-CVU C-V bias voltage/offset after measurement; restores the fix previously released in 0.22.3 (#123).
