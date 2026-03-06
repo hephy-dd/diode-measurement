@@ -94,12 +94,12 @@ class RoleWidget(QtWidgets.QWidget):
 
     def setConfigs(self, configs: dict[str, dict[str, Any]]) -> None:
         for widget in self.instrumentPanels():
-            widget.setConfig(configs.get(widget.model(), {}))
+            widget.apply_config(configs.get(widget.model(), {}))
 
     def setLocked(self, state: bool) -> None:
         self.resourceWidget.setLocked(state)
         for widget in self.instrumentPanels():
-            widget.setLocked(state)
+            widget.set_locked(state)
         self.restoreDefaultsButton.setEnabled(not state)
 
     def addInstrumentPanel(self, widget: InstrumentPanel) -> None:
@@ -140,4 +140,4 @@ class RoleWidget(QtWidgets.QWidget):
     def restoreDefaults(self) -> None:
         widget = self.stackedWidget.currentWidget()
         if isinstance(widget, InstrumentPanel):
-            widget.restoreDefaults()
+            widget.restore_defaults()

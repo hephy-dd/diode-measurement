@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Callable, Optional, Protocol
 
 from PySide6 import QtCore, QtWidgets
 
@@ -51,7 +51,9 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
 
         self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
         self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
-        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        self.dialog_button_box.addButton(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
         self.dialog_button_box.accepted.connect(self.accept)
         self.dialog_button_box.rejected.connect(self.reject)
 
@@ -87,12 +89,17 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
         self.hint_label.setVisible(True)
 
 
+class Parameter(Protocol):
+    def value(self) -> Any: ...
+    def setValue(self, value: Any) -> None: ...
+
+
 class WidgetParameter:
-    def __init__(self, widget) -> None:
-        self.widget = widget
+    def __init__(self, widget: QtWidgets.QWidget) -> None:
+        self._widget = widget
 
     def value(self) -> Any:
-        widget = self.widget
+        widget = self._widget
         if isinstance(widget, QtWidgets.QCheckBox):
             return widget.isChecked()
         elif isinstance(widget, QtWidgets.QLineEdit):
@@ -105,10 +112,10 @@ class WidgetParameter:
             return widget.currentData()
         elif isinstance(widget, MetricWidget):
             return widget.value()
-        raise TypeError(f"Invalid widget type: {repr(widget)}")
+        raise TypeError(f"Invalid widget type: {widget!r}")
 
     def setValue(self, value: Any) -> None:
-        widget = self.widget
+        widget = self._widget
         if isinstance(widget, QtWidgets.QCheckBox):
             widget.setChecked(value)
         elif isinstance(widget, QtWidgets.QLineEdit):
@@ -123,40 +130,39 @@ class WidgetParameter:
         elif isinstance(widget, MetricWidget):
             widget.setValue(value)
         else:
-            raise TypeError(f"Invalid widget type: {repr(widget)}")
+            raise TypeError(f"Invalid widget type: {widget!r}")
 
 
 class MethodParameter:
-    def __init__(self, getter, setter) -> None:
-        self.getter = getter
-        self.setter = setter
+    def __init__(
+        self, getter: Callable[[], Any], setter: Callable[[Any], None]
+    ) -> None:
+        self._getter = getter
+        self._setter = setter
 
     def value(self) -> Any:
-        return self.getter()
+        return self._getter()
 
     def setValue(self, value: Any) -> None:
-        self.setter(value)
+        self._setter(value)
 
 
 class InstrumentPanel(QtWidgets.QWidget):
     def __init__(self, model: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
-        self._parameters: dict[str, Any] = {}
-        self.setModel(model)
+        self._parameters: dict[str, Parameter] = {}
+        self._model = model
 
     def model(self) -> str:
-        return self.property("model")
+        return self._model
 
-    def setModel(self, model: str) -> None:
-        self.setProperty("model", model)
+    def restore_defaults(self) -> None: ...
 
-    def restoreDefaults(self) -> None: ...
+    def set_locked(self, state: bool) -> None: ...
 
-    def setLocked(self, state: bool) -> None: ...
-
-    def bindParameter(self, key: str, parameter: Any) -> None:
+    def bind_parameter(self, key: str, parameter: Parameter) -> None:
         if key in self._parameters:
-            raise KeyError(f"Parameter already exists: {repr(key)}")
+            raise KeyError(f"Parameter already exists: {key!r}")
         self._parameters[key] = parameter
 
     def config(self) -> ConfigType:
@@ -165,382 +171,389 @@ class InstrumentPanel(QtWidgets.QWidget):
             config[key] = parameter.value()
         return config
 
-    def setConfig(self, config: ConfigType) -> None:
+    def apply_config(self, config: ConfigType) -> None:
         for key, value in config.items():
             parameter = self._parameters.get(key)
             if parameter is None:
-                raise KeyError(f"No such parameter: {repr(key)}")
+                raise KeyError(f"No such parameter: {key!r}")
             parameter.setValue(value)
 
 
 class K237Panel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K237", parent)
 
         # Filter
 
-        self.filterGroupBox = QtWidgets.QGroupBox()
-        self.filterGroupBox.setTitle("Filter")
+        self.filter_group_box = QtWidgets.QGroupBox()
+        self.filter_group_box.setTitle("Filter")
 
-        self.filterModeLabel = QtWidgets.QLabel("Mode")
+        self.filter_mode_label = QtWidgets.QLabel("Mode")
 
-        self.filterModeComboBox = QtWidgets.QComboBox()
-        self.filterModeComboBox.addItem("Disabled", 0)
-        self.filterModeComboBox.addItem("2-readings", 1)
-        self.filterModeComboBox.addItem("4-readings", 2)
-        self.filterModeComboBox.addItem("8-readings", 3)
-        self.filterModeComboBox.addItem("16-readings", 4)
-        self.filterModeComboBox.addItem("32-readings", 5)
+        self.filter_mode_combo_box = QtWidgets.QComboBox()
+        self.filter_mode_combo_box.addItem("Disabled", 0)
+        self.filter_mode_combo_box.addItem("2-readings", 1)
+        self.filter_mode_combo_box.addItem("4-readings", 2)
+        self.filter_mode_combo_box.addItem("8-readings", 3)
+        self.filter_mode_combo_box.addItem("16-readings", 4)
+        self.filter_mode_combo_box.addItem("32-readings", 5)
 
-        filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
-        filterLayout.addWidget(self.filterModeLabel)
-        filterLayout.addWidget(self.filterModeComboBox)
-        filterLayout.addStretch()
+        filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
+        filter_layout.addWidget(self.filter_mode_label)
+        filter_layout.addWidget(self.filter_mode_combo_box)
+        filter_layout.addStretch()
 
         # Layout
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.filterGroupBox)
+        layout.addWidget(self.filter_group_box)
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
         # Parameters
 
-        self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
+        self.bind_parameter("filter.mode", WidgetParameter(self.filter_mode_combo_box))
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def restoreDefaults(self) -> None:
-        self.filterModeComboBox.setCurrentIndex(0)
+    def restore_defaults(self) -> None:
+        self.filter_mode_combo_box.setCurrentIndex(0)
 
-    def setLocked(self, state: bool) -> None:
-        self.filterModeComboBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.filter_mode_combo_box.setEnabled(not state)
 
 
 class K595Panel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K595", parent)
 
 
 class K2410Panel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2410", parent)
 
         # Filter
 
-        self.filterGroupBox = QtWidgets.QGroupBox()
-        self.filterGroupBox.setTitle("Filter")
-        self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
+        self.filter_group_box = QtWidgets.QGroupBox()
+        self.filter_group_box.setTitle("Filter")
+        self.filter_enable_check_box = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filter_count_label = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filter_count_spin_box = QtWidgets.QSpinBox()
+        self.filter_count_spin_box.setSingleStep(1)
+        self.filter_count_spin_box.setRange(2, 100)
 
-        self.filterModeLabel = QtWidgets.QLabel("Mode")
+        self.filter_mode_label = QtWidgets.QLabel("Mode")
 
-        self.filterModeComboBox = QtWidgets.QComboBox()
-        self.filterModeComboBox.addItem("Repeat", "REP")
-        self.filterModeComboBox.addItem("Moving", "MOV")
+        self.filter_mode_combo_box = QtWidgets.QComboBox()
+        self.filter_mode_combo_box.addItem("Repeat", "REP")
+        self.filter_mode_combo_box.addItem("Moving", "MOV")
 
-        filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
-        filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
-        filterLayout.addWidget(self.filterModeLabel)
-        filterLayout.addWidget(self.filterModeComboBox)
-        filterLayout.addStretch()
+        filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
+        filter_layout.addWidget(self.filter_enable_check_box)
+        filter_layout.addWidget(self.filter_count_label)
+        filter_layout.addWidget(self.filter_count_spin_box)
+        filter_layout.addWidget(self.filter_mode_label)
+        filter_layout.addWidget(self.filter_mode_combo_box)
+        filter_layout.addStretch()
 
         # Integration Time
 
-        self.integrationTimeGroupBox = QtWidgets.QGroupBox()
-        self.integrationTimeGroupBox.setTitle("Integration Time")
+        self.integration_time_group_box = QtWidgets.QGroupBox()
+        self.integration_time_group_box.setTitle("Integration Time")
 
-        self.nplcLabel = QtWidgets.QLabel("NPLC")
+        self.nplc_label = QtWidgets.QLabel("NPLC")
 
-        self.nplcSpinBox = QtWidgets.QDoubleSpinBox()
-        self.nplcSpinBox.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
-        self.nplcSpinBox.setRange(0.01, 10.0)
-        self.nplcSpinBox.setDecimals(2)
-        self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
+        self.nplc_spin_box = QtWidgets.QDoubleSpinBox()
+        self.nplc_spin_box.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
+        self.nplc_spin_box.setRange(0.01, 10.0)
+        self.nplc_spin_box.setDecimals(2)
+        self.nplc_spin_box.setSingleStep(0.1)
+        self.nplc_spin_box.setStepType(
+            QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType
+        )
 
-        integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
-        integrationTimeLayout.addWidget(self.nplcLabel)
-        integrationTimeLayout.addWidget(self.nplcSpinBox)
+        integration_time_layout = QtWidgets.QVBoxLayout(self.integration_time_group_box)
+        integration_time_layout.addWidget(self.nplc_label)
+        integration_time_layout.addWidget(self.nplc_spin_box)
 
         # Route terminals
 
-        self.routeTerminalsGroupBox = QtWidgets.QGroupBox()
-        self.routeTerminalsGroupBox.setTitle("Route Terminals")
+        self.route_terminals_group_box = QtWidgets.QGroupBox()
+        self.route_terminals_group_box.setTitle("Route Terminals")
 
-        self.routeTerminalsComboBox = QtWidgets.QComboBox()
-        self.routeTerminalsComboBox.addItem("Front", "FRON")
-        self.routeTerminalsComboBox.addItem("Rear", "REAR")
+        self.route_terminals_combo_box = QtWidgets.QComboBox()
+        self.route_terminals_combo_box.addItem("Front", "FRON")
+        self.route_terminals_combo_box.addItem("Rear", "REAR")
 
-        routeTerminalsLayout = QtWidgets.QVBoxLayout(self.routeTerminalsGroupBox)
-        routeTerminalsLayout.addWidget(self.routeTerminalsComboBox)
-        routeTerminalsLayout.addStretch()
+        route_terminals_layout = QtWidgets.QVBoxLayout(self.route_terminals_group_box)
+        route_terminals_layout.addWidget(self.route_terminals_combo_box)
+        route_terminals_layout.addStretch()
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.filterGroupBox)
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.filter_group_box)
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.integrationTimeGroupBox)
-        rightLayout.addWidget(self.routeTerminalsGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.integration_time_group_box)
+        right_layout.addWidget(self.route_terminals_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
-        layout.addLayout(rightLayout)
+        layout.addLayout(left_layout)
+        layout.addLayout(right_layout)
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
         # Parameters
 
-        self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
-        self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
-        self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
-        self.bindParameter(
-            "route.terminals", WidgetParameter(self.routeTerminalsComboBox)
+        self.bind_parameter(
+            "filter.enable", WidgetParameter(self.filter_enable_check_box)
+        )
+        self.bind_parameter("filter.count", WidgetParameter(self.filter_count_spin_box))
+        self.bind_parameter("filter.mode", WidgetParameter(self.filter_mode_combo_box))
+        self.bind_parameter("nplc", WidgetParameter(self.nplc_spin_box))
+        self.bind_parameter(
+            "route.terminals", WidgetParameter(self.route_terminals_combo_box)
         )
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def restoreDefaults(self) -> None:
-        self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
-        self.filterModeComboBox.setCurrentIndex(0)
-        self.nplcSpinBox.setValue(1.0)
-        self.routeTerminalsComboBox.setCurrentIndex(0)
+    def restore_defaults(self) -> None:
+        self.filter_enable_check_box.setChecked(False)
+        self.filter_count_spin_box.setValue(10)
+        self.filter_mode_combo_box.setCurrentIndex(0)
+        self.nplc_spin_box.setValue(1.0)
+        self.route_terminals_combo_box.setCurrentIndex(0)
 
-    def setLocked(self, state: bool) -> None:
-        self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
-        self.filterModeComboBox.setEnabled(not state)
-        self.nplcSpinBox.setEnabled(not state)
-        self.routeTerminalsComboBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.filter_enable_check_box.setEnabled(not state)
+        self.filter_count_spin_box.setEnabled(not state)
+        self.filter_mode_combo_box.setEnabled(not state)
+        self.nplc_spin_box.setEnabled(not state)
+        self.route_terminals_combo_box.setEnabled(not state)
 
 
 class K2470Panel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2470", parent)
 
         # Filter
 
-        self.filterGroupBox = QtWidgets.QGroupBox()
-        self.filterGroupBox.setTitle("Filter")
-        self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
+        self.filter_group_box = QtWidgets.QGroupBox()
+        self.filter_group_box.setTitle("Filter")
+        self.filter_enable_check_box = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filter_count_label = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filter_count_spin_box = QtWidgets.QSpinBox()
+        self.filter_count_spin_box.setSingleStep(1)
+        self.filter_count_spin_box.setRange(2, 100)
 
-        self.filterModeLabel = QtWidgets.QLabel("Mode")
+        self.filter_mode_label = QtWidgets.QLabel("Mode")
 
-        self.filterModeComboBox = QtWidgets.QComboBox()
-        self.filterModeComboBox.addItem("Repeat", "REP")
-        self.filterModeComboBox.addItem("Moving", "MOV")
+        self.filter_mode_combo_box = QtWidgets.QComboBox()
+        self.filter_mode_combo_box.addItem("Repeat", "REP")
+        self.filter_mode_combo_box.addItem("Moving", "MOV")
 
-        filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
-        filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
-        filterLayout.addWidget(self.filterModeLabel)
-        filterLayout.addWidget(self.filterModeComboBox)
-        filterLayout.addStretch()
+        filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
+        filter_layout.addWidget(self.filter_enable_check_box)
+        filter_layout.addWidget(self.filter_count_label)
+        filter_layout.addWidget(self.filter_count_spin_box)
+        filter_layout.addWidget(self.filter_mode_label)
+        filter_layout.addWidget(self.filter_mode_combo_box)
+        filter_layout.addStretch()
 
         # Integration Time
 
-        self.integrationTimeGroupBox = QtWidgets.QGroupBox()
-        self.integrationTimeGroupBox.setTitle("Integration Time")
+        self.integration_time_group_box = QtWidgets.QGroupBox()
+        self.integration_time_group_box.setTitle("Integration Time")
 
-        self.nplcLabel = QtWidgets.QLabel("NPLC")
+        self.nplc_label = QtWidgets.QLabel("NPLC")
 
-        self.nplcSpinBox = QtWidgets.QDoubleSpinBox()
-        self.nplcSpinBox.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
-        self.nplcSpinBox.setRange(0.01, 10.0)
-        self.nplcSpinBox.setDecimals(2)
-        self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
+        self.nplc_spin_box = QtWidgets.QDoubleSpinBox()
+        self.nplc_spin_box.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
+        self.nplc_spin_box.setRange(0.01, 10.0)
+        self.nplc_spin_box.setDecimals(2)
+        self.nplc_spin_box.setSingleStep(0.1)
+        self.nplc_spin_box.setStepType(
+            QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType
+        )
 
-        integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
-        integrationTimeLayout.addWidget(self.nplcLabel)
-        integrationTimeLayout.addWidget(self.nplcSpinBox)
+        integration_time_layout = QtWidgets.QVBoxLayout(self.integration_time_group_box)
+        integration_time_layout.addWidget(self.nplc_label)
+        integration_time_layout.addWidget(self.nplc_spin_box)
 
         # Route Terminals
 
-        self.routeTerminalsComboBox = QtWidgets.QComboBox()
-        self.routeTerminalsComboBox.addItem("Front", "FRON")
-        self.routeTerminalsComboBox.addItem("Rear", "REAR")
+        self.route_terminals_combo_box = QtWidgets.QComboBox()
+        self.route_terminals_combo_box.addItem("Front", "FRON")
+        self.route_terminals_combo_box.addItem("Rear", "REAR")
 
-        self.routeTerminalsGroupBox = QtWidgets.QGroupBox()
-        self.routeTerminalsGroupBox.setTitle("Route Terminals")
+        self.route_terminals_group_box = QtWidgets.QGroupBox()
+        self.route_terminals_group_box.setTitle("Route Terminals")
 
-        routeTerminalsLayout = QtWidgets.QVBoxLayout(self.routeTerminalsGroupBox)
-        routeTerminalsLayout.addWidget(self.routeTerminalsComboBox)
+        route_terminals_layout = QtWidgets.QVBoxLayout(self.route_terminals_group_box)
+        route_terminals_layout.addWidget(self.route_terminals_combo_box)
 
         # System
 
-        self.systemGroupBox = QtWidgets.QGroupBox()
-        self.systemGroupBox.setTitle("System")
+        self.system_group_box = QtWidgets.QGroupBox()
+        self.system_group_box.setTitle("System")
 
-        self.breakdownProtectionCheckBox = QtWidgets.QCheckBox("Breakdown Protection")
+        self.breakdown_protection_check_box = QtWidgets.QCheckBox(
+            "Breakdown Protection"
+        )
 
-        systemLayout = QtWidgets.QVBoxLayout(self.systemGroupBox)
-        systemLayout.addWidget(self.breakdownProtectionCheckBox)
-        systemLayout.addStretch()
+        system_layout = QtWidgets.QVBoxLayout(self.system_group_box)
+        system_layout.addWidget(self.breakdown_protection_check_box)
+        system_layout.addStretch()
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.filterGroupBox)
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.filter_group_box)
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.integrationTimeGroupBox)
-        rightLayout.addWidget(self.routeTerminalsGroupBox)
-        rightLayout.addWidget(self.systemGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.integration_time_group_box)
+        right_layout.addWidget(self.route_terminals_group_box)
+        right_layout.addWidget(self.system_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
-        layout.addLayout(rightLayout)
+        layout.addLayout(left_layout)
+        layout.addLayout(right_layout)
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
-        self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
-        self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
-        self.bindParameter(
-            "route.terminals", WidgetParameter(self.routeTerminalsComboBox)
+        self.bind_parameter(
+            "filter.enable", WidgetParameter(self.filter_enable_check_box)
         )
-        self.bindParameter(
+        self.bind_parameter("filter.count", WidgetParameter(self.filter_count_spin_box))
+        self.bind_parameter("filter.mode", WidgetParameter(self.filter_mode_combo_box))
+        self.bind_parameter("nplc", WidgetParameter(self.nplc_spin_box))
+        self.bind_parameter(
+            "route.terminals", WidgetParameter(self.route_terminals_combo_box)
+        )
+        self.bind_parameter(
             "system.breakdown.protection",
-            WidgetParameter(self.breakdownProtectionCheckBox),
+            WidgetParameter(self.breakdown_protection_check_box),
         )
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def restoreDefaults(self) -> None:
-        self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
-        self.filterModeComboBox.setCurrentIndex(0)
-        self.nplcSpinBox.setValue(1.0)
-        self.routeTerminalsComboBox.setCurrentIndex(0)
-        self.breakdownProtectionCheckBox.setChecked(False)
+    def restore_defaults(self) -> None:
+        self.filter_enable_check_box.setChecked(False)
+        self.filter_count_spin_box.setValue(10)
+        self.filter_mode_combo_box.setCurrentIndex(0)
+        self.nplc_spin_box.setValue(1.0)
+        self.route_terminals_combo_box.setCurrentIndex(0)
+        self.breakdown_protection_check_box.setChecked(False)
 
-    def setLocked(self, state: bool) -> None:
-        self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
-        self.filterModeComboBox.setEnabled(not state)
-        self.nplcSpinBox.setEnabled(not state)
-        self.routeTerminalsComboBox.setEnabled(not state)
-        self.breakdownProtectionCheckBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.filter_enable_check_box.setEnabled(not state)
+        self.filter_count_spin_box.setEnabled(not state)
+        self.filter_mode_combo_box.setEnabled(not state)
+        self.nplc_spin_box.setEnabled(not state)
+        self.route_terminals_combo_box.setEnabled(not state)
+        self.breakdown_protection_check_box.setEnabled(not state)
 
 
 class K2657APanel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2657A", parent)
 
-        self.filterGroupBox = QtWidgets.QGroupBox()
-        self.filterGroupBox.setTitle("Filter")
-        self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
+        self.filter_group_box = QtWidgets.QGroupBox()
+        self.filter_group_box.setTitle("Filter")
+        self.filter_enable_check_box = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filter_count_label = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filter_count_spin_box = QtWidgets.QSpinBox()
+        self.filter_count_spin_box.setSingleStep(1)
+        self.filter_count_spin_box.setRange(2, 100)
 
-        self.filterModeLabel = QtWidgets.QLabel("Mode")
+        self.filter_mode_label = QtWidgets.QLabel("Mode")
 
-        self.filterModeComboBox = QtWidgets.QComboBox()
-        self.filterModeComboBox.addItem("Repeat", "REPEAT_AVG")
-        self.filterModeComboBox.addItem("Moving", "MOVING_AVG")
-        self.filterModeComboBox.addItem("Median", "MEDIAN")
+        self.filter_mode_combo_box = QtWidgets.QComboBox()
+        self.filter_mode_combo_box.addItem("Repeat", "REPEAT_AVG")
+        self.filter_mode_combo_box.addItem("Moving", "MOVING_AVG")
+        self.filter_mode_combo_box.addItem("Median", "MEDIAN")
 
-        filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
-        filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
-        filterLayout.addWidget(self.filterModeLabel)
-        filterLayout.addWidget(self.filterModeComboBox)
-        filterLayout.addStretch()
+        filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
+        filter_layout.addWidget(self.filter_enable_check_box)
+        filter_layout.addWidget(self.filter_count_label)
+        filter_layout.addWidget(self.filter_count_spin_box)
+        filter_layout.addWidget(self.filter_mode_label)
+        filter_layout.addWidget(self.filter_mode_combo_box)
+        filter_layout.addStretch()
 
         # Integration Time
 
-        self.integrationTimeGroupBox = QtWidgets.QGroupBox()
-        self.integrationTimeGroupBox.setTitle("Integration Time")
+        self.integration_time_group_box = QtWidgets.QGroupBox()
+        self.integration_time_group_box.setTitle("Integration Time")
 
-        self.nplcLabel = QtWidgets.QLabel("NPLC")
+        self.nplc_label = QtWidgets.QLabel("NPLC")
 
-        self.nplcSpinBox = QtWidgets.QDoubleSpinBox()
-        self.nplcSpinBox.setStatusTip("Number of Power Line Cycles (0.001 to 25)")
-        self.nplcSpinBox.setRange(0.001, 25.0)
-        self.nplcSpinBox.setDecimals(3)
-        self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
+        self.nplc_spin_box = QtWidgets.QDoubleSpinBox()
+        self.nplc_spin_box.setStatusTip("Number of Power Line Cycles (0.001 to 25)")
+        self.nplc_spin_box.setRange(0.001, 25.0)
+        self.nplc_spin_box.setDecimals(3)
+        self.nplc_spin_box.setSingleStep(0.1)
+        self.nplc_spin_box.setStepType(
+            QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType
+        )
 
-        integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
-        integrationTimeLayout.addWidget(self.nplcLabel)
-        integrationTimeLayout.addWidget(self.nplcSpinBox)
-        integrationTimeLayout.addStretch()
+        integration_time_layout = QtWidgets.QVBoxLayout(self.integration_time_group_box)
+        integration_time_layout.addWidget(self.nplc_label)
+        integration_time_layout.addWidget(self.nplc_spin_box)
+        integration_time_layout.addStretch()
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.filterGroupBox)
-        leftLayout.addWidget(self.integrationTimeGroupBox)
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.filter_group_box)
+        left_layout.addWidget(self.integration_time_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
+        layout.addLayout(left_layout)
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
-        self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
-        self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
+        self.bind_parameter(
+            "filter.enable", WidgetParameter(self.filter_enable_check_box)
+        )
+        self.bind_parameter("filter.count", WidgetParameter(self.filter_count_spin_box))
+        self.bind_parameter("filter.mode", WidgetParameter(self.filter_mode_combo_box))
+        self.bind_parameter("nplc", WidgetParameter(self.nplc_spin_box))
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def restoreDefaults(self) -> None:
-        self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
-        self.filterModeComboBox.setCurrentIndex(0)
-        self.nplcSpinBox.setValue(1.0)
+    def restore_defaults(self) -> None:
+        self.filter_enable_check_box.setChecked(False)
+        self.filter_count_spin_box.setValue(10)
+        self.filter_mode_combo_box.setCurrentIndex(0)
+        self.nplc_spin_box.setValue(1.0)
 
-    def setLocked(self, state: bool) -> None:
-        self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
-        self.filterModeComboBox.setEnabled(not state)
-        self.nplcSpinBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.filter_enable_check_box.setEnabled(not state)
+        self.filter_count_spin_box.setEnabled(not state)
+        self.filter_mode_combo_box.setEnabled(not state)
+        self.nplc_spin_box.setEnabled(not state)
 
 
 class K2700Panel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K2700", parent)
 
 
 class K4215Panel(InstrumentPanel):
-
     perform_correction_clicked = QtCore.Signal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
@@ -548,204 +561,211 @@ class K4215Panel(InstrumentPanel):
 
         # AC amplitude
 
-        self.amplitudeGroupBox = QtWidgets.QGroupBox()
-        self.amplitudeGroupBox.setTitle("AC Amplitude")
+        self.amplitude_group_box = QtWidgets.QGroupBox()
+        self.amplitude_group_box.setTitle("AC Amplitude")
 
-        self.amplitudeVoltageTimeLabel = QtWidgets.QLabel("Voltage")
+        self.amplitude_voltage_time_label = QtWidgets.QLabel("Voltage")
 
-        self.amplitudeVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.amplitudeVoltageSpinBox.setSuffix(" mV")
-        self.amplitudeVoltageSpinBox.setDecimals(0)
-        self.amplitudeVoltageSpinBox.setRange(5, 20e3)
-        self.amplitudeVoltageSpinBox.setValue(100.0)
+        self.amplitude_voltage_spin_box = QtWidgets.QDoubleSpinBox()
+        self.amplitude_voltage_spin_box.setSuffix(" mV")
+        self.amplitude_voltage_spin_box.setDecimals(0)
+        self.amplitude_voltage_spin_box.setRange(5, 20e3)
+        self.amplitude_voltage_spin_box.setValue(100.0)
 
-        self.amplitudeFrequencyTimeLabel = QtWidgets.QLabel("Frequency")
+        self.amplitude_frequency_time_label = QtWidgets.QLabel("Frequency")
 
-        self.amplitudeFrequencySpinBox = QtWidgets.QDoubleSpinBox()
-        self.amplitudeFrequencySpinBox.setSuffix(" kHz")
-        self.amplitudeFrequencySpinBox.setDecimals(3)
-        self.amplitudeFrequencySpinBox.setRange(0.020, 2e6)
-        self.amplitudeFrequencySpinBox.setValue(1e5)
+        self.amplitude_frequency_spin_box = QtWidgets.QDoubleSpinBox()
+        self.amplitude_frequency_spin_box.setSuffix(" kHz")
+        self.amplitude_frequency_spin_box.setDecimals(3)
+        self.amplitude_frequency_spin_box.setRange(0.020, 2e6)
+        self.amplitude_frequency_spin_box.setValue(1e5)
 
-        self.amplitudeAlcCheckBox = QtWidgets.QCheckBox("Auto Level Control (ALC)")
+        self.amplitude_alc_check_box = QtWidgets.QCheckBox("Auto Level Control (ALC)")
 
-        amplitudeLayout = QtWidgets.QVBoxLayout(self.amplitudeGroupBox)
-        amplitudeLayout.addWidget(self.amplitudeVoltageTimeLabel)
-        amplitudeLayout.addWidget(self.amplitudeVoltageSpinBox)
-        amplitudeLayout.addWidget(self.amplitudeFrequencyTimeLabel)
-        amplitudeLayout.addWidget(self.amplitudeFrequencySpinBox)
-        # amplitudeLayout.addWidget(self.amplitudeAlcCheckBox)
-        amplitudeLayout.addStretch()
+        amplitude_layout = QtWidgets.QVBoxLayout(self.amplitude_group_box)
+        amplitude_layout.addWidget(self.amplitude_voltage_time_label)
+        amplitude_layout.addWidget(self.amplitude_voltage_spin_box)
+        amplitude_layout.addWidget(self.amplitude_frequency_time_label)
+        amplitude_layout.addWidget(self.amplitude_frequency_spin_box)
+        # amplitude_layout.addWidget(self.amplitude_alc_check_box)
+        amplitude_layout.addStretch()
 
         # External Bias Tee section
-        self.externalBiasTeeGroupBox = QtWidgets.QGroupBox()
-        self.externalBiasTeeGroupBox.setTitle("External Bias Tee")
+        self.external_bias_tee_group_box = QtWidgets.QGroupBox()
+        self.external_bias_tee_group_box.setTitle("External Bias Tee")
 
-        self.externalBiasTeeCCheckBox = QtWidgets.QCheckBox(
+        self.external_bias_tee_check_box = QtWidgets.QCheckBox(
             "-10V DC Bias (only for P3 Bias Tee)"
         )
-        self.externalBiasTeeCCheckBox.setStatusTip(
+        self.external_bias_tee_check_box.setStatusTip(
             "Use external bias tee for DC bias voltage. When enabled, internal bias voltage control is disabled."
         )
 
-        externalBiasTeeLayout = QtWidgets.QVBoxLayout(self.externalBiasTeeGroupBox)
-        externalBiasTeeLayout.addWidget(self.externalBiasTeeCCheckBox)
-        externalBiasTeeLayout.addStretch()
+        external_bias_tee_layout = QtWidgets.QVBoxLayout(self.external_bias_tee_group_box)
+        external_bias_tee_layout.addWidget(self.external_bias_tee_check_box)
+        external_bias_tee_layout.addStretch()
 
         # Aperture
 
-        self.apertureGroupBox = QtWidgets.QGroupBox()
-        self.apertureGroupBox.setTitle("Aperture")
+        self.aperture_group_box = QtWidgets.QGroupBox()
+        self.aperture_group_box.setTitle("Aperture")
 
-        self.integrationTimeLabel = QtWidgets.QLabel("Integration Time")
+        self.integration_time_label = QtWidgets.QLabel("Integration Time")
 
-        self.integrationTimeComboBox = QtWidgets.QComboBox()
-        self.integrationTimeComboBox.addItem("Fast", "SHOR")
-        self.integrationTimeComboBox.addItem("Normal", "MED")
-        self.integrationTimeComboBox.addItem("Quiet", "LONG")
-        self.integrationTimeComboBox.addItem("Custom", "CUSTOM")
+        self.integration_time_combo_box = QtWidgets.QComboBox()
+        self.integration_time_combo_box.addItem("Fast", "SHOR")
+        self.integration_time_combo_box.addItem("Normal", "MED")
+        self.integration_time_combo_box.addItem("Quiet", "LONG")
+        self.integration_time_combo_box.addItem("Custom", "CUSTOM")
 
-        self.averagingRateLabel = QtWidgets.QLabel("Aperture (PLC)")
+        self.averaging_rate_label = QtWidgets.QLabel("Aperture (PLC)")
 
-        self.averagingRateSpinBox = QtWidgets.QDoubleSpinBox()
-        self.averagingRateSpinBox.setRange(0.006, 10.002)
-        self.averagingRateSpinBox.setDecimals(4)
-        self.averagingRateSpinBox.setValue(10.0)
+        self.averaging_rate_spin_box = QtWidgets.QDoubleSpinBox()
+        self.averaging_rate_spin_box.setRange(0.006, 10.002)
+        self.averaging_rate_spin_box.setDecimals(4)
+        self.averaging_rate_spin_box.setValue(10.0)
 
-        self.filterFactorLabel = QtWidgets.QLabel("Filter Factor")
+        self.filter_factor_label = QtWidgets.QLabel("Filter Factor")
 
-        self.filterFactorSpinBox = QtWidgets.QDoubleSpinBox()
-        self.filterFactorSpinBox.setRange(0, 707.0)
-        self.filterFactorSpinBox.setDecimals(1)
-        self.filterFactorSpinBox.setValue(2.0)
-        self.filterFactorSpinBox.setStatusTip("Filter factor for noise reduction")
+        self.filter_factor_spin_box = QtWidgets.QDoubleSpinBox()
+        self.filter_factor_spin_box.setRange(0, 707.0)
+        self.filter_factor_spin_box.setDecimals(1)
+        self.filter_factor_spin_box.setValue(2.0)
+        self.filter_factor_spin_box.setStatusTip("Filter factor for noise reduction")
 
-        self.delayFactorLabel = QtWidgets.QLabel("Delay Factor")
+        self.delay_factor_label = QtWidgets.QLabel("Delay Factor")
 
-        self.delayFactorSpinBox = QtWidgets.QDoubleSpinBox()
-        self.delayFactorSpinBox.setRange(0.1, 100.0)
-        self.delayFactorSpinBox.setDecimals(1)
-        self.delayFactorSpinBox.setValue(1.0)
-        self.delayFactorSpinBox.setStatusTip("Delay factor for measurement timing")
+        self.delay_factor_spin_box = QtWidgets.QDoubleSpinBox()
+        self.delay_factor_spin_box.setRange(0.1, 100.0)
+        self.delay_factor_spin_box.setDecimals(1)
+        self.delay_factor_spin_box.setValue(1.0)
+        self.delay_factor_spin_box.setStatusTip("Delay factor for measurement timing")
 
-        apertureLayout = QtWidgets.QVBoxLayout(self.apertureGroupBox)
-        apertureLayout.addWidget(self.integrationTimeLabel)
-        apertureLayout.addWidget(self.integrationTimeComboBox)
-        apertureLayout.addWidget(self.averagingRateLabel)
-        apertureLayout.addWidget(self.averagingRateSpinBox)
-        apertureLayout.addWidget(self.filterFactorLabel)
-        apertureLayout.addWidget(self.filterFactorSpinBox)
-        apertureLayout.addWidget(self.delayFactorLabel)
-        apertureLayout.addWidget(self.delayFactorSpinBox)
-        apertureLayout.addStretch()
+        aperture_layout = QtWidgets.QVBoxLayout(self.aperture_group_box)
+        aperture_layout.addWidget(self.integration_time_label)
+        aperture_layout.addWidget(self.integration_time_combo_box)
+        aperture_layout.addWidget(self.averaging_rate_label)
+        aperture_layout.addWidget(self.averaging_rate_spin_box)
+        aperture_layout.addWidget(self.filter_factor_label)
+        aperture_layout.addWidget(self.filter_factor_spin_box)
+        aperture_layout.addWidget(self.delay_factor_label)
+        aperture_layout.addWidget(self.delay_factor_spin_box)
+        aperture_layout.addStretch()
 
         # Correction
 
-        self.correctionGroupBox = QtWidgets.QGroupBox()
-        self.correctionGroupBox.setTitle("Correction")
+        self.correction_group_box = QtWidgets.QGroupBox()
+        self.correction_group_box.setTitle("Correction")
 
-        self.lengthLabel = QtWidgets.QLabel("Cable Length")
+        self.length_label = QtWidgets.QLabel("Cable Length")
 
-        self.lengthComboBox = QtWidgets.QComboBox()
-        self.lengthComboBox.addItem("0 m", 0.0)
-        self.lengthComboBox.addItem("1.5 m", 1.5)
-        self.lengthComboBox.addItem("3.0 m", 3.0)
-        self.lengthComboBox.addItem("Custom", 4.0)
-        self.lengthComboBox.addItem("CVIV 2W 1.5 m", 5.0)
-        self.lengthComboBox.addItem("CVIV 4W black 0.75 m", 6.0)
-        self.lengthComboBox.addItem("CVIV 4W blue 0.61 m", 7.0)
+        self.length_combo_box = QtWidgets.QComboBox()
+        self.length_combo_box.addItem("0 m", 0.0)
+        self.length_combo_box.addItem("1.5 m", 1.5)
+        self.length_combo_box.addItem("3.0 m", 3.0)
+        self.length_combo_box.addItem("Custom", 4.0)
+        self.length_combo_box.addItem("CVIV 2W 1.5 m", 5.0)
+        self.length_combo_box.addItem("CVIV 4W black 0.75 m", 6.0)
+        self.length_combo_box.addItem("CVIV 4W blue 0.61 m", 7.0)
 
-        self.openEnabledCheckBox = QtWidgets.QCheckBox("OPEN")
-        self.openEnabledCheckBox.setStatusTip("Enable OPEN correction")
+        self.open_enabled_check_box = QtWidgets.QCheckBox("OPEN")
+        self.open_enabled_check_box.setStatusTip("Enable OPEN correction")
 
-        self.shortEnabledCheckBox = QtWidgets.QCheckBox("SHORT")
-        self.shortEnabledCheckBox.setStatusTip("Enable SHORT correction")
+        self.short_enabled_check_box = QtWidgets.QCheckBox("SHORT")
+        self.short_enabled_check_box.setStatusTip("Enable SHORT correction")
 
-        self.loadEnabledCheckBox = QtWidgets.QCheckBox("LOAD")
-        self.loadEnabledCheckBox.setStatusTip("Enable LOAD correction")
+        self.load_enabled_check_box = QtWidgets.QCheckBox("LOAD")
+        self.load_enabled_check_box.setStatusTip("Enable LOAD correction")
 
         self.performCorrectionButton = QtWidgets.QPushButton("Perform Cable Correction")
-        self.performCorrectionButton.clicked.connect(self.perform_correction_clicked.emit)
+        self.performCorrectionButton.clicked.connect(
+            self.perform_correction_clicked.emit
+        )
 
-        modesLayout = QtWidgets.QHBoxLayout()
-        modesLayout.addWidget(self.openEnabledCheckBox)
-        modesLayout.addWidget(self.shortEnabledCheckBox)
-        modesLayout.addWidget(self.loadEnabledCheckBox)
-        modesLayout.addStretch()
+        modes_layout = QtWidgets.QHBoxLayout()
+        modes_layout.addWidget(self.open_enabled_check_box)
+        modes_layout.addWidget(self.short_enabled_check_box)
+        modes_layout.addWidget(self.load_enabled_check_box)
+        modes_layout.addStretch()
 
-        correctionLayout = QtWidgets.QVBoxLayout(self.correctionGroupBox)
-        correctionLayout.addWidget(self.lengthLabel)
-        correctionLayout.addWidget(self.lengthComboBox)
-        correctionLayout.addLayout(modesLayout)
-        correctionLayout.addWidget(self.performCorrectionButton)
-        correctionLayout.addStretch()
+        correction_layout = QtWidgets.QVBoxLayout(self.correction_group_box)
+        correction_layout.addWidget(self.length_label)
+        correction_layout.addWidget(self.length_combo_box)
+        correction_layout.addLayout(modes_layout)
+        correction_layout.addWidget(self.performCorrectionButton)
+        correction_layout.addStretch()
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.amplitudeGroupBox)
-        leftLayout.addWidget(self.externalBiasTeeGroupBox)
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.amplitude_group_box)
+        left_layout.addWidget(self.external_bias_tee_group_box)
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.apertureGroupBox)
-        rightLayout.addWidget(self.correctionGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.aperture_group_box)
+        right_layout.addWidget(self.correction_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
-        layout.addLayout(rightLayout)
+        layout.addLayout(left_layout)
+        layout.addLayout(right_layout)
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter(
-            "voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage)
+        self.bind_parameter(
+            "voltage",
+            MethodParameter(self.amplitude_voltage, self.set_amplitude_voltage),
         )
-        self.bindParameter(
+        self.bind_parameter(
             "frequency",
-            MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency),
+            MethodParameter(self.amplitude_frequency, self.set_amplitude_frequency),
         )
-        self.bindParameter("amplitude.alc", WidgetParameter(self.amplitudeAlcCheckBox))
-        self.bindParameter(
-            "aperture.integration_time", WidgetParameter(self.integrationTimeComboBox)
+        self.bind_parameter(
+            "amplitude.alc", WidgetParameter(self.amplitude_alc_check_box)
         )
-        self.bindParameter(
-            "aperture.aperture", WidgetParameter(self.averagingRateSpinBox)
+        self.bind_parameter(
+            "aperture.integration_time",
+            WidgetParameter(self.integration_time_combo_box),
         )
-        self.bindParameter(
-            "aperture.filter_count", WidgetParameter(self.filterFactorSpinBox)
+        self.bind_parameter(
+            "aperture.aperture", WidgetParameter(self.averaging_rate_spin_box)
         )
-        self.bindParameter(
-            "aperture.delay_factor", WidgetParameter(self.delayFactorSpinBox)
+        self.bind_parameter(
+            "aperture.filter_count", WidgetParameter(self.filter_factor_spin_box)
         )
-        self.bindParameter("correction.length", WidgetParameter(self.lengthComboBox))
-        self.bindParameter(
-            "correction.open.enabled", WidgetParameter(self.openEnabledCheckBox)
+        self.bind_parameter(
+            "aperture.delay_factor", WidgetParameter(self.delay_factor_spin_box)
         )
-        self.bindParameter(
-            "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        self.bind_parameter("correction.length", WidgetParameter(self.length_combo_box))
+        self.bind_parameter(
+            "correction.open.enabled", WidgetParameter(self.open_enabled_check_box)
         )
-        self.bindParameter(
-            "correction.load.enabled", WidgetParameter(self.loadEnabledCheckBox)
+        self.bind_parameter(
+            "correction.short.enabled", WidgetParameter(self.short_enabled_check_box)
         )
-        self.bindParameter(
-            "external_bias_tee.enabled", WidgetParameter(self.externalBiasTeeCCheckBox)
+        self.bind_parameter(
+            "correction.load.enabled", WidgetParameter(self.load_enabled_check_box)
+        )
+        self.bind_parameter(
+            "external_bias_tee.enabled",
+            WidgetParameter(self.external_bias_tee_check_box),
         )
 
         # Connect signal to handle bias voltage control state
-        self.externalBiasTeeCCheckBox.toggled.connect(self.onExternalBiasTeeCToggled)
+        self.external_bias_tee_check_box.toggled.connect(self.onExternalBiasTeeCToggled)
 
         # Connect signal to handle integration time preset changes
-        self.integrationTimeComboBox.currentTextChanged.connect(
-            self.onIntegrationTimeChanged
+        self.integration_time_combo_box.currentTextChanged.connect(
+            self.on_integration_time_changed
         )
 
         # Connect signals to switch to Custom when manual changes are made
-        self.averagingRateSpinBox.valueChanged.connect(self.onManualParameterChange)
-        self.filterFactorSpinBox.valueChanged.connect(self.onManualParameterChange)
-        self.delayFactorSpinBox.valueChanged.connect(self.onManualParameterChange)
+        self.averaging_rate_spin_box.valueChanged.connect(self.on_manual_parameter_change)
+        self.filter_factor_spin_box.valueChanged.connect(self.on_manual_parameter_change)
+        self.delay_factor_spin_box.valueChanged.connect(self.on_manual_parameter_change)
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
     def onExternalBiasTeeCToggled(self, checked: bool) -> None:
         """Handle external bias tee checkbox toggle."""
@@ -759,7 +779,7 @@ class K4215Panel(InstrumentPanel):
                 "External bias tee disabled - internal bias voltage control is available"
             )
 
-    def onIntegrationTimeChanged(self, text: str) -> None:
+    def on_integration_time_changed(self, text: str) -> None:
         """Handle integration time preset changes."""
         # Define presets based on K4215 manual
         presets = {
@@ -785,776 +805,786 @@ class K4215Panel(InstrumentPanel):
             preset = presets[text]
 
             # Update delay factor (already scaled for display)
-            self.delayFactorSpinBox.setValue(preset["delay_factor"])
+            self.delay_factor_spin_box.setValue(preset["delay_factor"])
 
             # Update filter count
-            self.filterFactorSpinBox.setValue(preset["filter_factor"])
+            self.filter_factor_spin_box.setValue(preset["filter_factor"])
 
             # Set aperture time from preset
-            self.averagingRateSpinBox.setValue(preset["aperture_time"])
+            self.averaging_rate_spin_box.setValue(preset["aperture_time"])
 
-    def onManualParameterChange(self) -> None:
+    def on_manual_parameter_change(self) -> None:
         """Switch to Custom mode when user manually changes parameters."""
         # Only switch to Custom if currently on a preset
-        current_text = self.integrationTimeComboBox.currentText()
+        current_text = self.integration_time_combo_box.currentText()
         if current_text != "Custom":
             # Temporarily disconnect the signal to avoid recursion
-            self.integrationTimeComboBox.currentTextChanged.disconnect()
-            self.integrationTimeComboBox.setCurrentText("Custom")
-            self.integrationTimeComboBox.currentTextChanged.connect(
-                self.onIntegrationTimeChanged
+            self.integration_time_combo_box.currentTextChanged.disconnect()
+            self.integration_time_combo_box.setCurrentText("Custom")
+            self.integration_time_combo_box.currentTextChanged.connect(
+                self.on_integration_time_changed
             )
 
-    def amplitudeVoltage(self) -> float:
-        return self.amplitudeVoltageSpinBox.value() / 1e3  # mV to V
+    def amplitude_voltage(self) -> float:
+        return self.amplitude_voltage_spin_box.value() / 1e3  # mV to V
 
-    def setAmplitudeVoltage(self, voltage: float) -> None:
-        self.amplitudeVoltageSpinBox.setValue(voltage * 1e3)  # V to mV
+    def set_amplitude_voltage(self, voltage: float) -> None:
+        self.amplitude_voltage_spin_box.setValue(voltage * 1e3)  # V to mV
 
-    def amplitudeFrequency(self) -> float:
-        return self.amplitudeFrequencySpinBox.value() * 1e3  # kHz to Hz
+    def amplitude_frequency(self) -> float:
+        return self.amplitude_frequency_spin_box.value() * 1e3  # kHz to Hz
 
-    def setAmplitudeFrequency(self, frequency: float) -> None:
-        self.amplitudeFrequencySpinBox.setValue(frequency / 1e3)  # Hz to kHz
+    def set_amplitude_frequency(self, frequency: float) -> None:
+        self.amplitude_frequency_spin_box.setValue(frequency / 1e3)  # Hz to kHz
 
-    def restoreDefaults(self) -> None:
-        self.setAmplitudeVoltage(1e-1)
-        self.setAmplitudeFrequency(100e3)
-        self.amplitudeAlcCheckBox.setChecked(False)
-        self.integrationTimeComboBox.setCurrentIndex(1)
-        self.averagingRateSpinBox.setValue(10.0)
-        self.lengthComboBox.setCurrentIndex(0)
-        self.openEnabledCheckBox.setChecked(False)
-        self.shortEnabledCheckBox.setChecked(False)
-        self.externalBiasTeeCCheckBox.setChecked(False)
+    def restore_defaults(self) -> None:
+        self.set_amplitude_voltage(1e-1)
+        self.set_amplitude_frequency(100e3)
+        self.amplitude_alc_check_box.setChecked(False)
+        self.integration_time_combo_box.setCurrentIndex(1)
+        self.averaging_rate_spin_box.setValue(10.0)
+        self.length_combo_box.setCurrentIndex(0)
+        self.open_enabled_check_box.setChecked(False)
+        self.short_enabled_check_box.setChecked(False)
+        self.external_bias_tee_check_box.setChecked(False)
 
-    def setLocked(self, state: bool) -> None:
-        self.amplitudeVoltageSpinBox.setEnabled(not state)
-        self.amplitudeFrequencySpinBox.setEnabled(not state)
-        self.amplitudeAlcCheckBox.setEnabled(not state)
-        self.integrationTimeComboBox.setEnabled(not state)
-        self.averagingRateSpinBox.setEnabled(not state)
-        self.lengthComboBox.setEnabled(not state)
-        self.openEnabledCheckBox.setEnabled(not state)
-        self.shortEnabledCheckBox.setEnabled(not state)
-        self.loadEnabledCheckBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.amplitude_voltage_spin_box.setEnabled(not state)
+        self.amplitude_frequency_spin_box.setEnabled(not state)
+        self.amplitude_alc_check_box.setEnabled(not state)
+        self.integration_time_combo_box.setEnabled(not state)
+        self.averaging_rate_spin_box.setEnabled(not state)
+        self.length_combo_box.setEnabled(not state)
+        self.open_enabled_check_box.setEnabled(not state)
+        self.short_enabled_check_box.setEnabled(not state)
+        self.load_enabled_check_box.setEnabled(not state)
         self.performCorrectionButton.setEnabled(not state)
-        self.externalBiasTeeCCheckBox.setEnabled(not state)
+        self.external_bias_tee_check_box.setEnabled(not state)
 
 
 class K6514Panel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K6514", parent)
 
         # Range
 
-        self.rangeGroupBox = QtWidgets.QGroupBox()
-        self.rangeGroupBox.setTitle("Sense Range")
+        self.range_group_box = QtWidgets.QGroupBox()
+        self.range_group_box.setTitle("Sense Range")
 
-        self.senseRangeMetric = MetricWidget()
-        self.senseRangeMetric.setDecimals(3)
-        self.senseRangeMetric.setRange(0, 999)  # TODO
-        self.senseRangeMetric.setUnit("A")
-        self.senseRangeMetric.setPrefixes("munp")
+        self.sense_range_metric = MetricWidget()
+        self.sense_range_metric.setDecimals(3)
+        self.sense_range_metric.setRange(0, 999)  # TODO
+        self.sense_range_metric.setUnit("A")
+        self.sense_range_metric.setPrefixes("munp")
 
-        self.autoRangeLLimitLabel = QtWidgets.QLabel("Lower Limit")
+        self.auto_range_llimit_label = QtWidgets.QLabel("Lower Limit")
 
-        self.autoRangeLLimitMetric = MetricWidget()
-        self.autoRangeLLimitMetric.setDecimals(3)
-        self.autoRangeLLimitMetric.setRange(0, 999)  # TODO
-        self.autoRangeLLimitMetric.setUnit("A")
-        self.autoRangeLLimitMetric.setPrefixes("munp")
+        self.auto_range_llimit_metric = MetricWidget()
+        self.auto_range_llimit_metric.setDecimals(3)
+        self.auto_range_llimit_metric.setRange(0, 999)  # TODO
+        self.auto_range_llimit_metric.setUnit("A")
+        self.auto_range_llimit_metric.setPrefixes("munp")
 
-        self.autoRangeULimitLabel = QtWidgets.QLabel("Upper Limit")
+        self.auto_range_ulimit_label = QtWidgets.QLabel("Upper Limit")
 
-        self.autoRangeULimitMetric = MetricWidget()
-        self.autoRangeULimitMetric.setDecimals(3)
-        self.autoRangeULimitMetric.setRange(0, 999)  # TODO
-        self.autoRangeULimitMetric.setUnit("A")
-        self.autoRangeULimitMetric.setPrefixes("munp")
+        self.auto_range_ulimit_metric = MetricWidget()
+        self.auto_range_ulimit_metric.setDecimals(3)
+        self.auto_range_ulimit_metric.setRange(0, 999)  # TODO
+        self.auto_range_ulimit_metric.setUnit("A")
+        self.auto_range_ulimit_metric.setPrefixes("munp")
 
-        self.autoRangeCheckBox = QtWidgets.QCheckBox("Auto Range")
-        self.autoRangeCheckBox.toggled.connect(self.updateState)
+        self.auto_range_check_box = QtWidgets.QCheckBox("Auto Range")
+        self.auto_range_check_box.toggled.connect(self.on_auto_range_check_changed)
 
-        rangeLayout = QtWidgets.QVBoxLayout(self.rangeGroupBox)
-        rangeLayout.addWidget(self.senseRangeMetric)
-        rangeLayout.addWidget(self.autoRangeCheckBox)
-        rangeLayout.addWidget(self.autoRangeLLimitLabel)
-        rangeLayout.addWidget(self.autoRangeLLimitMetric)
-        rangeLayout.addWidget(self.autoRangeULimitLabel)
-        rangeLayout.addWidget(self.autoRangeULimitMetric)
-        rangeLayout.addStretch()
+        range_layout = QtWidgets.QVBoxLayout(self.range_group_box)
+        range_layout.addWidget(self.sense_range_metric)
+        range_layout.addWidget(self.auto_range_check_box)
+        range_layout.addWidget(self.auto_range_llimit_label)
+        range_layout.addWidget(self.auto_range_llimit_metric)
+        range_layout.addWidget(self.auto_range_ulimit_label)
+        range_layout.addWidget(self.auto_range_ulimit_metric)
+        range_layout.addStretch()
 
         # Filter
 
-        self.filterGroupBox = QtWidgets.QGroupBox()
-        self.filterGroupBox.setTitle("Filter")
+        self.filter_group_box = QtWidgets.QGroupBox()
+        self.filter_group_box.setTitle("Filter")
 
-        self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
+        self.filter_enable_check_box = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filter_count_label = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filter_count_spin_box = QtWidgets.QSpinBox()
+        self.filter_count_spin_box.setSingleStep(1)
+        self.filter_count_spin_box.setRange(2, 100)
 
-        self.filterModeLabel = QtWidgets.QLabel("Mode")
+        self.filter_mode_label = QtWidgets.QLabel("Mode")
 
-        self.filterModeComboBox = QtWidgets.QComboBox()
-        self.filterModeComboBox.addItem("Repeat", "REP")
-        self.filterModeComboBox.addItem("Moving", "MOV")
+        self.filter_mode_combo_box = QtWidgets.QComboBox()
+        self.filter_mode_combo_box.addItem("Repeat", "REP")
+        self.filter_mode_combo_box.addItem("Moving", "MOV")
 
-        filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
-        filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
-        filterLayout.addWidget(self.filterModeLabel)
-        filterLayout.addWidget(self.filterModeComboBox)
-        # filterLayout.addStretch()
+        filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
+        filter_layout.addWidget(self.filter_enable_check_box)
+        filter_layout.addWidget(self.filter_count_label)
+        filter_layout.addWidget(self.filter_count_spin_box)
+        filter_layout.addWidget(self.filter_mode_label)
+        filter_layout.addWidget(self.filter_mode_combo_box)
+        # filter_layout.addStretch()
 
         # Integration Time
 
-        self.integrationTimeGroupBox = QtWidgets.QGroupBox()
-        self.integrationTimeGroupBox.setTitle("Integration Time")
+        self.integration_time_group_box = QtWidgets.QGroupBox()
+        self.integration_time_group_box.setTitle("Integration Time")
 
-        self.nplcLabel = QtWidgets.QLabel("NPLC")
+        self.nplc_label = QtWidgets.QLabel("NPLC")
 
-        self.nplcSpinBox = QtWidgets.QDoubleSpinBox()
-        self.nplcSpinBox.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
-        self.nplcSpinBox.setRange(0.01, 10.0)
-        self.nplcSpinBox.setDecimals(2)
-        self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
+        self.nplc_spin_box = QtWidgets.QDoubleSpinBox()
+        self.nplc_spin_box.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
+        self.nplc_spin_box.setRange(0.01, 10.0)
+        self.nplc_spin_box.setDecimals(2)
+        self.nplc_spin_box.setSingleStep(0.1)
+        self.nplc_spin_box.setStepType(
+            QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType
+        )
 
-        integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
-        integrationTimeLayout.addWidget(self.nplcLabel)
-        integrationTimeLayout.addWidget(self.nplcSpinBox)
-        integrationTimeLayout.addStretch()
+        integration_time_layout = QtWidgets.QVBoxLayout(self.integration_time_group_box)
+        integration_time_layout.addWidget(self.nplc_label)
+        integration_time_layout.addWidget(self.nplc_spin_box)
+        integration_time_layout.addStretch()
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.rangeGroupBox)
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.range_group_box)
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.filterGroupBox)
-        rightLayout.addWidget(self.integrationTimeGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.filter_group_box)
+        right_layout.addWidget(self.integration_time_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
-        layout.addLayout(rightLayout)
+        layout.addLayout(left_layout)
+        layout.addLayout(right_layout)
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
         # Parameters
 
-        self.bindParameter("sense.range", WidgetParameter(self.senseRangeMetric))
-        self.bindParameter("sense.auto_range", WidgetParameter(self.autoRangeCheckBox))
-        self.bindParameter(
-            "sense.auto_range.lower_limit", WidgetParameter(self.autoRangeLLimitMetric)
+        self.bind_parameter("sense.range", WidgetParameter(self.sense_range_metric))
+        self.bind_parameter(
+            "sense.auto_range", WidgetParameter(self.auto_range_check_box)
         )
-        self.bindParameter(
-            "sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric)
+        self.bind_parameter(
+            "sense.auto_range.lower_limit", WidgetParameter(self.auto_range_llimit_metric)
         )
-        self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
-        self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
-        self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
+        self.bind_parameter(
+            "sense.auto_range.upper_limit", WidgetParameter(self.auto_range_ulimit_metric)
+        )
+        self.bind_parameter(
+            "filter.enable", WidgetParameter(self.filter_enable_check_box)
+        )
+        self.bind_parameter("filter.count", WidgetParameter(self.filter_count_spin_box))
+        self.bind_parameter("filter.mode", WidgetParameter(self.filter_mode_combo_box))
+        self.bind_parameter("nplc", WidgetParameter(self.nplc_spin_box))
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def restoreDefaults(self) -> None:
-        self.senseRangeMetric.setValue(200e-6)
-        self.autoRangeCheckBox.setChecked(True)
-        self.autoRangeLLimitMetric.setValue(2e-12)
-        self.autoRangeULimitMetric.setValue(20e-3)
-        self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
-        self.filterModeComboBox.setCurrentIndex(0)
-        self.nplcSpinBox.setValue(5.0)
-        self.updateState(self.autoRangeCheckBox.isChecked())
+    def restore_defaults(self) -> None:
+        self.sense_range_metric.setValue(200e-6)
+        self.auto_range_check_box.setChecked(True)
+        self.auto_range_llimit_metric.setValue(2e-12)
+        self.auto_range_ulimit_metric.setValue(20e-3)
+        self.filter_enable_check_box.setChecked(False)
+        self.filter_count_spin_box.setValue(10)
+        self.filter_mode_combo_box.setCurrentIndex(0)
+        self.nplc_spin_box.setValue(5.0)
+        self.on_auto_range_check_changed(self.auto_range_check_box.isChecked())
 
-    def setLocked(self, state: bool) -> None:
-        self.senseRangeMetric.setEnabled(not state)
-        self.autoRangeCheckBox.setEnabled(not state)
-        self.autoRangeLLimitMetric.setEnabled(not state)
-        self.autoRangeULimitMetric.setEnabled(not state)
-        self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
-        self.filterModeComboBox.setEnabled(not state)
-        self.nplcSpinBox.setEnabled(not state)
-        self.updateState(self.autoRangeCheckBox.isChecked())
+    def set_locked(self, state: bool) -> None:
+        self.sense_range_metric.setEnabled(not state)
+        self.auto_range_check_box.setEnabled(not state)
+        self.auto_range_llimit_metric.setEnabled(not state)
+        self.auto_range_ulimit_metric.setEnabled(not state)
+        self.filter_enable_check_box.setEnabled(not state)
+        self.filter_count_spin_box.setEnabled(not state)
+        self.filter_mode_combo_box.setEnabled(not state)
+        self.nplc_spin_box.setEnabled(not state)
+        self.on_auto_range_check_changed(self.auto_range_check_box.isChecked())
 
-    def updateState(self, checked) -> None:
-        enabled = self.autoRangeCheckBox.isEnabled()
-        self.senseRangeMetric.setEnabled(enabled and not checked)
-        self.autoRangeLLimitLabel.setEnabled(enabled and checked)
-        self.autoRangeLLimitMetric.setEnabled(enabled and checked)
-        self.autoRangeULimitLabel.setEnabled(enabled and checked)
-        self.autoRangeULimitMetric.setEnabled(enabled and checked)
+    def on_auto_range_check_changed(self, checked) -> None:
+        enabled = self.auto_range_check_box.isEnabled()
+        self.sense_range_metric.setEnabled(enabled and not checked)
+        self.auto_range_llimit_label.setEnabled(enabled and checked)
+        self.auto_range_llimit_metric.setEnabled(enabled and checked)
+        self.auto_range_ulimit_label.setEnabled(enabled and checked)
+        self.auto_range_ulimit_metric.setEnabled(enabled and checked)
 
 
 class K6517BPanel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K6517B", parent)
 
         # Range
 
-        self.rangeGroupBox = QtWidgets.QGroupBox()
-        self.rangeGroupBox.setTitle("Sense Range")
+        self.range_group_box = QtWidgets.QGroupBox()
+        self.range_group_box.setTitle("Sense Range")
 
-        self.senseRangeMetric = MetricWidget()
-        self.senseRangeMetric.setDecimals(3)
-        self.senseRangeMetric.setRange(0, 999)  # TODO
-        self.senseRangeMetric.setUnit("A")
-        self.senseRangeMetric.setPrefixes("munp")
+        self.sense_range_metric = MetricWidget()
+        self.sense_range_metric.setDecimals(3)
+        self.sense_range_metric.setRange(0, 999)  # TODO
+        self.sense_range_metric.setUnit("A")
+        self.sense_range_metric.setPrefixes("munp")
 
-        self.autoRangeLLimitLabel = QtWidgets.QLabel("Lower Limit")
+        self.auto_range_llimit_label = QtWidgets.QLabel("Lower Limit")
 
-        self.autoRangeLLimitMetric = MetricWidget()
-        self.autoRangeLLimitMetric.setDecimals(3)
-        self.autoRangeLLimitMetric.setRange(0, 999)  # TODO
-        self.autoRangeLLimitMetric.setUnit("A")
-        self.autoRangeLLimitMetric.setPrefixes("munp")
+        self.auto_range_llimit_metric = MetricWidget()
+        self.auto_range_llimit_metric.setDecimals(3)
+        self.auto_range_llimit_metric.setRange(0, 999)  # TODO
+        self.auto_range_llimit_metric.setUnit("A")
+        self.auto_range_llimit_metric.setPrefixes("munp")
 
-        self.autoRangeULimitLabel = QtWidgets.QLabel("Upper Limit")
+        self.auto_range_ulimit_label = QtWidgets.QLabel("Upper Limit")
 
-        self.autoRangeULimitMetric = MetricWidget()
-        self.autoRangeULimitMetric.setDecimals(3)
-        self.autoRangeULimitMetric.setRange(0, 999)  # TODO
-        self.autoRangeULimitMetric.setUnit("A")
-        self.autoRangeULimitMetric.setPrefixes("munp")
+        self.auto_range_ulimit_metric = MetricWidget()
+        self.auto_range_ulimit_metric.setDecimals(3)
+        self.auto_range_ulimit_metric.setRange(0, 999)  # TODO
+        self.auto_range_ulimit_metric.setUnit("A")
+        self.auto_range_ulimit_metric.setPrefixes("munp")
 
-        self.autoRangeCheckBox = QtWidgets.QCheckBox("Auto Range")
-        self.autoRangeCheckBox.toggled.connect(self.updateState)
+        self.auto_range_check_box = QtWidgets.QCheckBox("Auto Range")
+        self.auto_range_check_box.toggled.connect(self.on_auto_range_check_changed)
 
-        rangeLayout = QtWidgets.QVBoxLayout(self.rangeGroupBox)
-        rangeLayout.addWidget(self.senseRangeMetric)
-        rangeLayout.addWidget(self.autoRangeCheckBox)
-        rangeLayout.addWidget(self.autoRangeLLimitLabel)
-        rangeLayout.addWidget(self.autoRangeLLimitMetric)
-        rangeLayout.addWidget(self.autoRangeULimitLabel)
-        rangeLayout.addWidget(self.autoRangeULimitMetric)
+        range_layout = QtWidgets.QVBoxLayout(self.range_group_box)
+        range_layout.addWidget(self.sense_range_metric)
+        range_layout.addWidget(self.auto_range_check_box)
+        range_layout.addWidget(self.auto_range_llimit_label)
+        range_layout.addWidget(self.auto_range_llimit_metric)
+        range_layout.addWidget(self.auto_range_ulimit_label)
+        range_layout.addWidget(self.auto_range_ulimit_metric)
 
         # Source
 
-        self.sourceGroupBox = QtWidgets.QGroupBox()
-        self.sourceGroupBox.setTitle("Source")
+        self.source_group_box = QtWidgets.QGroupBox()
+        self.source_group_box.setTitle("Source")
 
-        self.meterConnectCheckBox = QtWidgets.QCheckBox("Meter Connect")
-        self.meterConnectCheckBox.setStatusTip(
+        self.meter_connect_check_box = QtWidgets.QCheckBox("Meter Connect")
+        self.meter_connect_check_box.setStatusTip(
             "Enable or disable V-source LO to ammeter LO connection."
         )
 
-        sourceLayout = QtWidgets.QVBoxLayout(self.sourceGroupBox)
-        sourceLayout.addWidget(self.meterConnectCheckBox)
-        sourceLayout.addStretch()
+        source_layout = QtWidgets.QVBoxLayout(self.source_group_box)
+        source_layout.addWidget(self.meter_connect_check_box)
+        source_layout.addStretch()
 
         # Filter
 
-        self.filterGroupBox = QtWidgets.QGroupBox()
-        self.filterGroupBox.setTitle("Filter")
-        self.filterEnableCheckBox = QtWidgets.QCheckBox("Enabled")
+        self.filter_group_box = QtWidgets.QGroupBox()
+        self.filter_group_box.setTitle("Filter")
+        self.filter_enable_check_box = QtWidgets.QCheckBox("Enabled")
 
-        self.filterCountLabel = QtWidgets.QLabel("Count")
+        self.filter_count_label = QtWidgets.QLabel("Count")
 
-        self.filterCountSpinBox = QtWidgets.QSpinBox()
-        self.filterCountSpinBox.setSingleStep(1)
-        self.filterCountSpinBox.setRange(2, 100)
+        self.filter_count_spin_box = QtWidgets.QSpinBox()
+        self.filter_count_spin_box.setSingleStep(1)
+        self.filter_count_spin_box.setRange(2, 100)
 
-        self.filterModeLabel = QtWidgets.QLabel("Mode")
+        self.filter_mode_label = QtWidgets.QLabel("Mode")
 
-        self.filterModeComboBox = QtWidgets.QComboBox()
-        self.filterModeComboBox.addItem("Repeat", "REP")
-        self.filterModeComboBox.addItem("Moving", "MOV")
+        self.filter_mode_combo_box = QtWidgets.QComboBox()
+        self.filter_mode_combo_box.addItem("Repeat", "REP")
+        self.filter_mode_combo_box.addItem("Moving", "MOV")
 
-        filterLayout = QtWidgets.QVBoxLayout(self.filterGroupBox)
-        filterLayout.addWidget(self.filterEnableCheckBox)
-        filterLayout.addWidget(self.filterCountLabel)
-        filterLayout.addWidget(self.filterCountSpinBox)
-        filterLayout.addWidget(self.filterModeLabel)
-        filterLayout.addWidget(self.filterModeComboBox)
-        # filterLayout.addStretch()
+        filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
+        filter_layout.addWidget(self.filter_enable_check_box)
+        filter_layout.addWidget(self.filter_count_label)
+        filter_layout.addWidget(self.filter_count_spin_box)
+        filter_layout.addWidget(self.filter_mode_label)
+        filter_layout.addWidget(self.filter_mode_combo_box)
+        # filter_layout.addStretch()
 
         # Integration Time
 
-        self.integrationTimeGroupBox = QtWidgets.QGroupBox()
-        self.integrationTimeGroupBox.setTitle("Integration Time")
+        self.integration_time_group_box = QtWidgets.QGroupBox()
+        self.integration_time_group_box.setTitle("Integration Time")
 
-        self.nplcLabel = QtWidgets.QLabel("NPLC")
+        self.nplc_label = QtWidgets.QLabel("NPLC")
 
-        self.nplcSpinBox = QtWidgets.QDoubleSpinBox()
-        self.nplcSpinBox.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
-        self.nplcSpinBox.setRange(0.01, 10.0)
-        self.nplcSpinBox.setDecimals(2)
-        self.nplcSpinBox.setSingleStep(0.1)
-        self.nplcSpinBox.setStepType(QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType)
+        self.nplc_spin_box = QtWidgets.QDoubleSpinBox()
+        self.nplc_spin_box.setStatusTip("Number of Power Line Cycles (0.01 to 10)")
+        self.nplc_spin_box.setRange(0.01, 10.0)
+        self.nplc_spin_box.setDecimals(2)
+        self.nplc_spin_box.setSingleStep(0.1)
+        self.nplc_spin_box.setStepType(
+            QtWidgets.QDoubleSpinBox.StepType.AdaptiveDecimalStepType
+        )
 
-        integrationTimeLayout = QtWidgets.QVBoxLayout(self.integrationTimeGroupBox)
-        integrationTimeLayout.addWidget(self.nplcLabel)
-        integrationTimeLayout.addWidget(self.nplcSpinBox)
-        integrationTimeLayout.addStretch()
+        integration_time_layout = QtWidgets.QVBoxLayout(self.integration_time_group_box)
+        integration_time_layout.addWidget(self.nplc_label)
+        integration_time_layout.addWidget(self.nplc_spin_box)
+        integration_time_layout.addStretch()
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.rangeGroupBox)
-        leftLayout.addWidget(self.sourceGroupBox)
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.range_group_box)
+        left_layout.addWidget(self.source_group_box)
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.filterGroupBox)
-        rightLayout.addWidget(self.integrationTimeGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.filter_group_box)
+        right_layout.addWidget(self.integration_time_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
-        layout.addLayout(rightLayout)
+        layout.addLayout(left_layout)
+        layout.addLayout(right_layout)
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
         # Parameters
 
-        self.bindParameter("sense.range", WidgetParameter(self.senseRangeMetric))
-        self.bindParameter("sense.auto_range", WidgetParameter(self.autoRangeCheckBox))
-        self.bindParameter(
-            "sense.auto_range.lower_limit", WidgetParameter(self.autoRangeLLimitMetric)
+        self.bind_parameter("sense.range", WidgetParameter(self.sense_range_metric))
+        self.bind_parameter(
+            "sense.auto_range", WidgetParameter(self.auto_range_check_box)
         )
-        self.bindParameter(
-            "sense.auto_range.upper_limit", WidgetParameter(self.autoRangeULimitMetric)
+        self.bind_parameter(
+            "sense.auto_range.lower_limit", WidgetParameter(self.auto_range_llimit_metric)
         )
-        self.bindParameter(
-            "source.meter_connect", WidgetParameter(self.meterConnectCheckBox)
+        self.bind_parameter(
+            "sense.auto_range.upper_limit", WidgetParameter(self.auto_range_ulimit_metric)
         )
-        self.bindParameter("filter.enable", WidgetParameter(self.filterEnableCheckBox))
-        self.bindParameter("filter.count", WidgetParameter(self.filterCountSpinBox))
-        self.bindParameter("filter.mode", WidgetParameter(self.filterModeComboBox))
-        self.bindParameter("nplc", WidgetParameter(self.nplcSpinBox))
+        self.bind_parameter(
+            "source.meter_connect", WidgetParameter(self.meter_connect_check_box)
+        )
+        self.bind_parameter(
+            "filter.enable", WidgetParameter(self.filter_enable_check_box)
+        )
+        self.bind_parameter("filter.count", WidgetParameter(self.filter_count_spin_box))
+        self.bind_parameter("filter.mode", WidgetParameter(self.filter_mode_combo_box))
+        self.bind_parameter("nplc", WidgetParameter(self.nplc_spin_box))
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def restoreDefaults(self) -> None:
-        self.senseRangeMetric.setValue(20e-3)
-        self.autoRangeCheckBox.setChecked(True)
-        self.autoRangeLLimitMetric.setValue(2e-12)
-        self.autoRangeULimitMetric.setValue(20e-3)
-        self.meterConnectCheckBox.setChecked(False)
-        self.filterEnableCheckBox.setChecked(False)
-        self.filterCountSpinBox.setValue(10)
-        self.filterModeComboBox.setCurrentIndex(0)
-        self.nplcSpinBox.setValue(1.0)
+    def restore_defaults(self) -> None:
+        self.sense_range_metric.setValue(20e-3)
+        self.auto_range_check_box.setChecked(True)
+        self.auto_range_llimit_metric.setValue(2e-12)
+        self.auto_range_ulimit_metric.setValue(20e-3)
+        self.meter_connect_check_box.setChecked(False)
+        self.filter_enable_check_box.setChecked(False)
+        self.filter_count_spin_box.setValue(10)
+        self.filter_mode_combo_box.setCurrentIndex(0)
+        self.nplc_spin_box.setValue(1.0)
 
-    def setLocked(self, state: bool) -> None:
-        self.senseRangeMetric.setEnabled(not state)
-        self.autoRangeCheckBox.setEnabled(not state)
-        self.autoRangeLLimitMetric.setEnabled(not state)
-        self.autoRangeULimitMetric.setEnabled(not state)
-        self.meterConnectCheckBox.setEnabled(not state)
-        self.filterEnableCheckBox.setEnabled(not state)
-        self.filterCountSpinBox.setEnabled(not state)
-        self.filterModeComboBox.setEnabled(not state)
-        self.nplcSpinBox.setEnabled(not state)
-        self.updateState(self.autoRangeCheckBox.isChecked())
+    def set_locked(self, state: bool) -> None:
+        self.sense_range_metric.setEnabled(not state)
+        self.auto_range_check_box.setEnabled(not state)
+        self.auto_range_llimit_metric.setEnabled(not state)
+        self.auto_range_ulimit_metric.setEnabled(not state)
+        self.meter_connect_check_box.setEnabled(not state)
+        self.filter_enable_check_box.setEnabled(not state)
+        self.filter_count_spin_box.setEnabled(not state)
+        self.filter_mode_combo_box.setEnabled(not state)
+        self.nplc_spin_box.setEnabled(not state)
+        self.on_auto_range_check_changed(self.auto_range_check_box.isChecked())
 
-    def updateState(self, checked) -> None:
-        enabled = self.autoRangeCheckBox.isEnabled()
-        self.senseRangeMetric.setEnabled(enabled and not checked)
-        self.autoRangeLLimitLabel.setEnabled(enabled and checked)
-        self.autoRangeLLimitMetric.setEnabled(enabled and checked)
-        self.autoRangeULimitLabel.setEnabled(enabled and checked)
-        self.autoRangeULimitMetric.setEnabled(enabled and checked)
+    def on_auto_range_check_changed(self, checked) -> None:
+        enabled = self.auto_range_check_box.isEnabled()
+        self.sense_range_metric.setEnabled(enabled and not checked)
+        self.auto_range_llimit_label.setEnabled(enabled and checked)
+        self.auto_range_llimit_metric.setEnabled(enabled and checked)
+        self.auto_range_ulimit_label.setEnabled(enabled and checked)
+        self.auto_range_ulimit_metric.setEnabled(enabled and checked)
 
 
 class A4284APanel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("A4284A", parent)
 
         # AC amplitude
 
-        self.amplitudeGroupBox = QtWidgets.QGroupBox()
-        self.amplitudeGroupBox.setTitle("AC Amplitude")
+        self.amplitude_group_box = QtWidgets.QGroupBox()
+        self.amplitude_group_box.setTitle("AC Amplitude")
 
-        self.amplitudeVoltageTimeLabel = QtWidgets.QLabel("Voltage")
+        self.amplitude_voltage_time_label = QtWidgets.QLabel("Voltage")
 
-        self.amplitudeVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.amplitudeVoltageSpinBox.setSuffix(" mV")
-        self.amplitudeVoltageSpinBox.setDecimals(0)
-        self.amplitudeVoltageSpinBox.setRange(5, 20e3)
+        self.amplitude_voltage_spin_box = QtWidgets.QDoubleSpinBox()
+        self.amplitude_voltage_spin_box.setSuffix(" mV")
+        self.amplitude_voltage_spin_box.setDecimals(0)
+        self.amplitude_voltage_spin_box.setRange(5, 20e3)
 
-        self.amplitudeFrequencyTimeLabel = QtWidgets.QLabel("Frequency")
+        self.amplitude_frequency_time_label = QtWidgets.QLabel("Frequency")
 
-        self.amplitudeFrequencySpinBox = QtWidgets.QDoubleSpinBox()
-        self.amplitudeFrequencySpinBox.setSuffix(" kHz")
-        self.amplitudeFrequencySpinBox.setDecimals(3)
-        self.amplitudeFrequencySpinBox.setRange(0.020, 2e6)
+        self.amplitude_frequency_spin_box = QtWidgets.QDoubleSpinBox()
+        self.amplitude_frequency_spin_box.setSuffix(" kHz")
+        self.amplitude_frequency_spin_box.setDecimals(3)
+        self.amplitude_frequency_spin_box.setRange(0.020, 2e6)
 
-        self.amplitudeAlcCheckBox = QtWidgets.QCheckBox("Auto Level Control (ALC)")
+        self.amplitude_alc_check_box = QtWidgets.QCheckBox("Auto Level Control (ALC)")
 
-        amplitudeLayout = QtWidgets.QVBoxLayout(self.amplitudeGroupBox)
-        amplitudeLayout.addWidget(self.amplitudeVoltageTimeLabel)
-        amplitudeLayout.addWidget(self.amplitudeVoltageSpinBox)
-        amplitudeLayout.addWidget(self.amplitudeFrequencyTimeLabel)
-        amplitudeLayout.addWidget(self.amplitudeFrequencySpinBox)
-        amplitudeLayout.addWidget(self.amplitudeAlcCheckBox)
-        amplitudeLayout.addStretch()
+        amplitude_layout = QtWidgets.QVBoxLayout(self.amplitude_group_box)
+        amplitude_layout.addWidget(self.amplitude_voltage_time_label)
+        amplitude_layout.addWidget(self.amplitude_voltage_spin_box)
+        amplitude_layout.addWidget(self.amplitude_frequency_time_label)
+        amplitude_layout.addWidget(self.amplitude_frequency_spin_box)
+        amplitude_layout.addWidget(self.amplitude_alc_check_box)
+        amplitude_layout.addStretch()
 
         # Aperture
 
-        self.apertureGroupBox = QtWidgets.QGroupBox()
-        self.apertureGroupBox.setTitle("Aperture")
+        self.aperture_group_box = QtWidgets.QGroupBox()
+        self.aperture_group_box.setTitle("Aperture")
 
-        self.integrationTimeLabel = QtWidgets.QLabel("Integration Time")
+        self.integration_time_label = QtWidgets.QLabel("Integration Time")
 
-        self.integrationTimeComboBox = QtWidgets.QComboBox()
-        self.integrationTimeComboBox.addItem("Short", "SHOR")
-        self.integrationTimeComboBox.addItem("Medium", "MED")
-        self.integrationTimeComboBox.addItem("Long", "LONG")
+        self.integration_time_combo_box = QtWidgets.QComboBox()
+        self.integration_time_combo_box.addItem("Short", "SHOR")
+        self.integration_time_combo_box.addItem("Medium", "MED")
+        self.integration_time_combo_box.addItem("Long", "LONG")
 
-        self.averagingRateLabel = QtWidgets.QLabel("Averaging Rate")
+        self.averaging_rate_label = QtWidgets.QLabel("Averaging Rate")
 
-        self.averagingRateSpinBox = QtWidgets.QSpinBox()
-        self.averagingRateSpinBox.setRange(1, 128)
+        self.averaging_rate_spin_box = QtWidgets.QSpinBox()
+        self.averaging_rate_spin_box.setRange(1, 128)
 
-        apertureLayout = QtWidgets.QVBoxLayout(self.apertureGroupBox)
-        apertureLayout.addWidget(self.integrationTimeLabel)
-        apertureLayout.addWidget(self.integrationTimeComboBox)
-        apertureLayout.addWidget(self.averagingRateLabel)
-        apertureLayout.addWidget(self.averagingRateSpinBox)
+        aperture_layout = QtWidgets.QVBoxLayout(self.aperture_group_box)
+        aperture_layout.addWidget(self.integration_time_label)
+        aperture_layout.addWidget(self.integration_time_combo_box)
+        aperture_layout.addWidget(self.averaging_rate_label)
+        aperture_layout.addWidget(self.averaging_rate_spin_box)
 
         # Correction
 
-        self.correctionGroupBox = QtWidgets.QGroupBox()
-        self.correctionGroupBox.setTitle("Correction")
+        self.correction_group_box = QtWidgets.QGroupBox()
+        self.correction_group_box.setTitle("Correction")
 
-        self.lengthLabel = QtWidgets.QLabel("Cable Length")
+        self.length_label = QtWidgets.QLabel("Cable Length")
 
-        self.lengthComboBox = QtWidgets.QComboBox()
-        self.lengthComboBox.addItem("0 m", 0)
-        self.lengthComboBox.addItem("1 m", 1)
-        self.lengthComboBox.addItem("2 m", 2)
+        self.length_combo_box = QtWidgets.QComboBox()
+        self.length_combo_box.addItem("0 m", 0)
+        self.length_combo_box.addItem("1 m", 1)
+        self.length_combo_box.addItem("2 m", 2)
 
-        self.openEnabledCheckBox = QtWidgets.QCheckBox("Enable OPEN correction")
-        self.openEnabledCheckBox.setStatusTip("Enable OPEN correction")
+        self.open_enabled_check_box = QtWidgets.QCheckBox("Enable OPEN correction")
+        self.open_enabled_check_box.setStatusTip("Enable OPEN correction")
 
-        self.shortEnabledCheckBox = QtWidgets.QCheckBox("Enable SHORT correction")
-        self.shortEnabledCheckBox.setStatusTip("Enable SHORT correction")
+        self.short_enabled_check_box = QtWidgets.QCheckBox("Enable SHORT correction")
+        self.short_enabled_check_box.setStatusTip("Enable SHORT correction")
 
-        correctionLayout = QtWidgets.QVBoxLayout(self.correctionGroupBox)
-        correctionLayout.addWidget(self.lengthLabel)
-        correctionLayout.addWidget(self.lengthComboBox)
-        correctionLayout.addWidget(self.openEnabledCheckBox)
-        correctionLayout.addWidget(self.shortEnabledCheckBox)
-        correctionLayout.addStretch()
+        correction_layout = QtWidgets.QVBoxLayout(self.correction_group_box)
+        correction_layout.addWidget(self.length_label)
+        correction_layout.addWidget(self.length_combo_box)
+        correction_layout.addWidget(self.open_enabled_check_box)
+        correction_layout.addWidget(self.short_enabled_check_box)
+        correction_layout.addStretch()
 
         # Layout
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.apertureGroupBox)
-        rightLayout.addWidget(self.correctionGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.aperture_group_box)
+        right_layout.addWidget(self.correction_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.amplitudeGroupBox)
-        layout.addLayout(rightLayout)
+        layout.addWidget(self.amplitude_group_box)
+        layout.addLayout(right_layout)
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter(
-            "voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage)
+        self.bind_parameter(
+            "voltage",
+            MethodParameter(self.amplitude_voltage, self.set_amplitude_voltage),
         )
-        self.bindParameter(
+        self.bind_parameter(
             "frequency",
-            MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency),
+            MethodParameter(self.amplitude_frequency, self.set_amplitude_frequency),
         )
-        self.bindParameter("amplitude.alc", WidgetParameter(self.amplitudeAlcCheckBox))
-        self.bindParameter(
-            "aperture.integration_time", WidgetParameter(self.integrationTimeComboBox)
+        self.bind_parameter(
+            "amplitude.alc", WidgetParameter(self.amplitude_alc_check_box)
         )
-        self.bindParameter(
-            "aperture.averaging_rate", WidgetParameter(self.averagingRateSpinBox)
+        self.bind_parameter(
+            "aperture.integration_time",
+            WidgetParameter(self.integration_time_combo_box),
         )
-        self.bindParameter("correction.length", WidgetParameter(self.lengthComboBox))
-        self.bindParameter(
-            "correction.open.enabled", WidgetParameter(self.openEnabledCheckBox)
+        self.bind_parameter(
+            "aperture.averaging_rate", WidgetParameter(self.averaging_rate_spin_box)
         )
-        self.bindParameter(
-            "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        self.bind_parameter("correction.length", WidgetParameter(self.length_combo_box))
+        self.bind_parameter(
+            "correction.open.enabled", WidgetParameter(self.open_enabled_check_box)
+        )
+        self.bind_parameter(
+            "correction.short.enabled", WidgetParameter(self.short_enabled_check_box)
         )
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def amplitudeVoltage(self) -> float:
-        return self.amplitudeVoltageSpinBox.value() / 1e3  # mV to V
+    def amplitude_voltage(self) -> float:
+        return self.amplitude_voltage_spin_box.value() / 1e3  # mV to V
 
-    def setAmplitudeVoltage(self, voltage: float) -> None:
-        self.amplitudeVoltageSpinBox.setValue(voltage * 1e3)  # V to mV
+    def set_amplitude_voltage(self, voltage: float) -> None:
+        self.amplitude_voltage_spin_box.setValue(voltage * 1e3)  # V to mV
 
-    def amplitudeFrequency(self) -> float:
-        return self.amplitudeFrequencySpinBox.value() * 1e3  # kHz to Hz
+    def amplitude_frequency(self) -> float:
+        return self.amplitude_frequency_spin_box.value() * 1e3  # kHz to Hz
 
-    def setAmplitudeFrequency(self, frequency: float) -> None:
-        self.amplitudeFrequencySpinBox.setValue(frequency / 1e3)  # Hz to kHz
+    def set_amplitude_frequency(self, frequency: float) -> None:
+        self.amplitude_frequency_spin_box.setValue(frequency / 1e3)  # Hz to kHz
 
-    def restoreDefaults(self) -> None:
-        self.setAmplitudeVoltage(1e0)
-        self.setAmplitudeFrequency(1e3)
-        self.amplitudeAlcCheckBox.setChecked(False)
-        self.integrationTimeComboBox.setCurrentIndex(1)
-        self.averagingRateSpinBox.setValue(1)
-        self.lengthComboBox.setCurrentIndex(0)
-        self.openEnabledCheckBox.setChecked(False)
-        self.shortEnabledCheckBox.setChecked(False)
+    def restore_defaults(self) -> None:
+        self.set_amplitude_voltage(1e0)
+        self.set_amplitude_frequency(1e3)
+        self.amplitude_alc_check_box.setChecked(False)
+        self.integration_time_combo_box.setCurrentIndex(1)
+        self.averaging_rate_spin_box.setValue(1)
+        self.length_combo_box.setCurrentIndex(0)
+        self.open_enabled_check_box.setChecked(False)
+        self.short_enabled_check_box.setChecked(False)
 
-    def setLocked(self, state: bool) -> None:
-        self.amplitudeVoltageSpinBox.setEnabled(not state)
-        self.amplitudeFrequencySpinBox.setEnabled(not state)
-        self.amplitudeAlcCheckBox.setEnabled(not state)
-        self.integrationTimeComboBox.setEnabled(not state)
-        self.averagingRateSpinBox.setEnabled(not state)
-        self.lengthComboBox.setEnabled(not state)
-        self.openEnabledCheckBox.setEnabled(not state)
-        self.shortEnabledCheckBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.amplitude_voltage_spin_box.setEnabled(not state)
+        self.amplitude_frequency_spin_box.setEnabled(not state)
+        self.amplitude_alc_check_box.setEnabled(not state)
+        self.integration_time_combo_box.setEnabled(not state)
+        self.averaging_rate_spin_box.setEnabled(not state)
+        self.length_combo_box.setEnabled(not state)
+        self.open_enabled_check_box.setEnabled(not state)
+        self.short_enabled_check_box.setEnabled(not state)
 
 
 class E4980APanel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("E4980A", parent)
 
         # AC amplitude
 
-        self.amplitudeGroupBox = QtWidgets.QGroupBox()
-        self.amplitudeGroupBox.setTitle("AC Amplitude")
+        self.amplitude_group_box = QtWidgets.QGroupBox()
+        self.amplitude_group_box.setTitle("AC Amplitude")
 
-        self.amplitudeVoltageTimeLabel = QtWidgets.QLabel("Voltage")
+        self.amplitude_voltage_time_label = QtWidgets.QLabel("Voltage")
 
-        self.amplitudeVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.amplitudeVoltageSpinBox.setSuffix(" mV")
-        self.amplitudeVoltageSpinBox.setDecimals(0)
-        self.amplitudeVoltageSpinBox.setRange(0, 20e3)
+        self.amplitude_voltage_spin_box = QtWidgets.QDoubleSpinBox()
+        self.amplitude_voltage_spin_box.setSuffix(" mV")
+        self.amplitude_voltage_spin_box.setDecimals(0)
+        self.amplitude_voltage_spin_box.setRange(0, 20e3)
 
-        self.amplitudeFrequencyTimeLabel = QtWidgets.QLabel("Frequency")
+        self.amplitude_frequency_time_label = QtWidgets.QLabel("Frequency")
 
-        self.amplitudeFrequencySpinBox = QtWidgets.QDoubleSpinBox()
-        self.amplitudeFrequencySpinBox.setSuffix(" kHz")
-        self.amplitudeFrequencySpinBox.setDecimals(3)
-        self.amplitudeFrequencySpinBox.setRange(0.020, 2e6)
+        self.amplitude_frequency_spin_box = QtWidgets.QDoubleSpinBox()
+        self.amplitude_frequency_spin_box.setSuffix(" kHz")
+        self.amplitude_frequency_spin_box.setDecimals(3)
+        self.amplitude_frequency_spin_box.setRange(0.020, 2e6)
 
-        self.amplitudeAlcCheckBox = QtWidgets.QCheckBox("Auto Level Control (ALC)")
+        self.amplitude_alc_check_box = QtWidgets.QCheckBox("Auto Level Control (ALC)")
 
-        amplitudeLayout = QtWidgets.QVBoxLayout(self.amplitudeGroupBox)
-        amplitudeLayout.addWidget(self.amplitudeVoltageTimeLabel)
-        amplitudeLayout.addWidget(self.amplitudeVoltageSpinBox)
-        amplitudeLayout.addWidget(self.amplitudeFrequencyTimeLabel)
-        amplitudeLayout.addWidget(self.amplitudeFrequencySpinBox)
-        amplitudeLayout.addWidget(self.amplitudeAlcCheckBox)
-        amplitudeLayout.addStretch()
+        amplitude_layout = QtWidgets.QVBoxLayout(self.amplitude_group_box)
+        amplitude_layout.addWidget(self.amplitude_voltage_time_label)
+        amplitude_layout.addWidget(self.amplitude_voltage_spin_box)
+        amplitude_layout.addWidget(self.amplitude_frequency_time_label)
+        amplitude_layout.addWidget(self.amplitude_frequency_spin_box)
+        amplitude_layout.addWidget(self.amplitude_alc_check_box)
+        amplitude_layout.addStretch()
 
         # Aperture
 
-        self.apertureGroupBox = QtWidgets.QGroupBox()
-        self.apertureGroupBox.setTitle("Aperture")
+        self.aperture_group_box = QtWidgets.QGroupBox()
+        self.aperture_group_box.setTitle("Aperture")
 
-        self.integrationTimeLabel = QtWidgets.QLabel("Integration Time")
+        self.integration_time_label = QtWidgets.QLabel("Integration Time")
 
-        self.integrationTimeComboBox = QtWidgets.QComboBox()
-        self.integrationTimeComboBox.addItem("Short", "SHOR")
-        self.integrationTimeComboBox.addItem("Medium", "MED")
-        self.integrationTimeComboBox.addItem("Long", "LONG")
+        self.integration_time_combo_box = QtWidgets.QComboBox()
+        self.integration_time_combo_box.addItem("Short", "SHOR")
+        self.integration_time_combo_box.addItem("Medium", "MED")
+        self.integration_time_combo_box.addItem("Long", "LONG")
 
-        self.averagingRateLabel = QtWidgets.QLabel("Averaging Rate")
+        self.averaging_rate_label = QtWidgets.QLabel("Averaging Rate")
 
-        self.averagingRateSpinBox = QtWidgets.QSpinBox()
-        self.averagingRateSpinBox.setRange(1, 128)
+        self.averaging_rate_spin_box = QtWidgets.QSpinBox()
+        self.averaging_rate_spin_box.setRange(1, 128)
 
-        apertureLayout = QtWidgets.QVBoxLayout(self.apertureGroupBox)
-        apertureLayout.addWidget(self.integrationTimeLabel)
-        apertureLayout.addWidget(self.integrationTimeComboBox)
-        apertureLayout.addWidget(self.averagingRateLabel)
-        apertureLayout.addWidget(self.averagingRateSpinBox)
+        aperture_layout = QtWidgets.QVBoxLayout(self.aperture_group_box)
+        aperture_layout.addWidget(self.integration_time_label)
+        aperture_layout.addWidget(self.integration_time_combo_box)
+        aperture_layout.addWidget(self.averaging_rate_label)
+        aperture_layout.addWidget(self.averaging_rate_spin_box)
 
         # Correction
 
-        self.correctionGroupBox = QtWidgets.QGroupBox()
-        self.correctionGroupBox.setTitle("Correction")
+        self.correction_group_box = QtWidgets.QGroupBox()
+        self.correction_group_box.setTitle("Correction")
 
-        self.lengthLabel = QtWidgets.QLabel("Cable Length")
+        self.length_label = QtWidgets.QLabel("Cable Length")
 
-        self.lengthComboBox = QtWidgets.QComboBox()
-        self.lengthComboBox.addItem("0 m", 0)
-        self.lengthComboBox.addItem("1 m", 1)
-        self.lengthComboBox.addItem("2 m", 2)
-        self.lengthComboBox.addItem("4 m", 4)
+        self.length_combo_box = QtWidgets.QComboBox()
+        self.length_combo_box.addItem("0 m", 0)
+        self.length_combo_box.addItem("1 m", 1)
+        self.length_combo_box.addItem("2 m", 2)
+        self.length_combo_box.addItem("4 m", 4)
 
-        self.openEnabledCheckBox = QtWidgets.QCheckBox("Enable OPEN correction")
-        self.openEnabledCheckBox.setStatusTip("Enable OPEN correction")
+        self.open_enabled_check_box = QtWidgets.QCheckBox("Enable OPEN correction")
+        self.open_enabled_check_box.setStatusTip("Enable OPEN correction")
 
-        self.shortEnabledCheckBox = QtWidgets.QCheckBox("Enable SHORT correction")
-        self.shortEnabledCheckBox.setStatusTip("Enable SHORT correction")
+        self.short_enabled_check_box = QtWidgets.QCheckBox("Enable SHORT correction")
+        self.short_enabled_check_box.setStatusTip("Enable SHORT correction")
 
-        correctionLayout = QtWidgets.QVBoxLayout(self.correctionGroupBox)
-        correctionLayout.addWidget(self.lengthLabel)
-        correctionLayout.addWidget(self.lengthComboBox)
-        correctionLayout.addWidget(self.openEnabledCheckBox)
-        correctionLayout.addWidget(self.shortEnabledCheckBox)
-        correctionLayout.addStretch()
+        correction_layout = QtWidgets.QVBoxLayout(self.correction_group_box)
+        correction_layout.addWidget(self.length_label)
+        correction_layout.addWidget(self.length_combo_box)
+        correction_layout.addWidget(self.open_enabled_check_box)
+        correction_layout.addWidget(self.short_enabled_check_box)
+        correction_layout.addStretch()
 
         # Layout
 
-        rightLayout = QtWidgets.QVBoxLayout()
-        rightLayout.addWidget(self.apertureGroupBox)
-        rightLayout.addWidget(self.correctionGroupBox)
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addWidget(self.aperture_group_box)
+        right_layout.addWidget(self.correction_group_box)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.amplitudeGroupBox)
-        layout.addLayout(rightLayout)
+        layout.addWidget(self.amplitude_group_box)
+        layout.addLayout(right_layout)
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
-        self.bindParameter(
-            "voltage", MethodParameter(self.amplitudeVoltage, self.setAmplitudeVoltage)
+        self.bind_parameter(
+            "voltage",
+            MethodParameter(self.amplitude_voltage, self.set_amplitude_voltage),
         )
-        self.bindParameter(
+        self.bind_parameter(
             "frequency",
-            MethodParameter(self.amplitudeFrequency, self.setAmplitudeFrequency),
+            MethodParameter(self.amplitude_frequency, self.set_amplitude_frequency),
         )
-        self.bindParameter("amplitude.alc", WidgetParameter(self.amplitudeAlcCheckBox))
-        self.bindParameter(
-            "aperture.integration_time", WidgetParameter(self.integrationTimeComboBox)
+        self.bind_parameter(
+            "amplitude.alc", WidgetParameter(self.amplitude_alc_check_box)
         )
-        self.bindParameter(
-            "aperture.averaging_rate", WidgetParameter(self.averagingRateSpinBox)
+        self.bind_parameter(
+            "aperture.integration_time",
+            WidgetParameter(self.integration_time_combo_box),
         )
-        self.bindParameter("correction.length", WidgetParameter(self.lengthComboBox))
-        self.bindParameter(
-            "correction.open.enabled", WidgetParameter(self.openEnabledCheckBox)
+        self.bind_parameter(
+            "aperture.averaging_rate", WidgetParameter(self.averaging_rate_spin_box)
         )
-        self.bindParameter(
-            "correction.short.enabled", WidgetParameter(self.shortEnabledCheckBox)
+        self.bind_parameter("correction.length", WidgetParameter(self.length_combo_box))
+        self.bind_parameter(
+            "correction.open.enabled", WidgetParameter(self.open_enabled_check_box)
+        )
+        self.bind_parameter(
+            "correction.short.enabled", WidgetParameter(self.short_enabled_check_box)
         )
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def amplitudeVoltage(self) -> float:
-        return self.amplitudeVoltageSpinBox.value() / 1e3  # mV to V
+    def amplitude_voltage(self) -> float:
+        return self.amplitude_voltage_spin_box.value() / 1e3  # mV to V
 
-    def setAmplitudeVoltage(self, voltage: float) -> None:
-        self.amplitudeVoltageSpinBox.setValue(voltage * 1e3)  # V to mV
+    def set_amplitude_voltage(self, voltage: float) -> None:
+        self.amplitude_voltage_spin_box.setValue(voltage * 1e3)  # V to mV
 
-    def amplitudeFrequency(self) -> float:
-        return self.amplitudeFrequencySpinBox.value() * 1e3  # kHz to Hz
+    def amplitude_frequency(self) -> float:
+        return self.amplitude_frequency_spin_box.value() * 1e3  # kHz to Hz
 
-    def setAmplitudeFrequency(self, frequency: float) -> None:
-        self.amplitudeFrequencySpinBox.setValue(frequency / 1e3)  # Hz to kHz
+    def set_amplitude_frequency(self, frequency: float) -> None:
+        self.amplitude_frequency_spin_box.setValue(frequency / 1e3)  # Hz to kHz
 
-    def restoreDefaults(self) -> None:
-        self.setAmplitudeVoltage(1e0)
-        self.setAmplitudeFrequency(1e3)
-        self.amplitudeAlcCheckBox.setChecked(False)
-        self.integrationTimeComboBox.setCurrentIndex(1)
-        self.averagingRateSpinBox.setValue(1)
-        self.lengthComboBox.setCurrentIndex(0)
-        self.openEnabledCheckBox.setChecked(False)
-        self.shortEnabledCheckBox.setChecked(False)
+    def restore_defaults(self) -> None:
+        self.set_amplitude_voltage(1e0)
+        self.set_amplitude_frequency(1e3)
+        self.amplitude_alc_check_box.setChecked(False)
+        self.integration_time_combo_box.setCurrentIndex(1)
+        self.averaging_rate_spin_box.setValue(1)
+        self.length_combo_box.setCurrentIndex(0)
+        self.open_enabled_check_box.setChecked(False)
+        self.short_enabled_check_box.setChecked(False)
 
-    def setLocked(self, state: bool) -> None:
-        self.amplitudeVoltageSpinBox.setEnabled(not state)
-        self.amplitudeFrequencySpinBox.setEnabled(not state)
-        self.amplitudeAlcCheckBox.setEnabled(not state)
-        self.integrationTimeComboBox.setEnabled(not state)
-        self.averagingRateSpinBox.setEnabled(not state)
-        self.lengthComboBox.setEnabled(not state)
-        self.openEnabledCheckBox.setEnabled(not state)
-        self.shortEnabledCheckBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.amplitude_voltage_spin_box.setEnabled(not state)
+        self.amplitude_frequency_spin_box.setEnabled(not state)
+        self.amplitude_alc_check_box.setEnabled(not state)
+        self.integration_time_combo_box.setEnabled(not state)
+        self.averaging_rate_spin_box.setEnabled(not state)
+        self.length_combo_box.setEnabled(not state)
+        self.open_enabled_check_box.setEnabled(not state)
+        self.short_enabled_check_box.setEnabled(not state)
 
 
 class BrandBoxPanel(InstrumentPanel):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("BrandBox", parent)
 
         # Channels
 
-        self.a1CheckBox = QtWidgets.QCheckBox("A1")
-        self.a2CheckBox = QtWidgets.QCheckBox("A2")
-        self.b1CheckBox = QtWidgets.QCheckBox("B1")
-        self.b2CheckBox = QtWidgets.QCheckBox("B2")
-        self.c1CheckBox = QtWidgets.QCheckBox("C1")
-        self.c2CheckBox = QtWidgets.QCheckBox("C2")
+        self.a1_check_box = QtWidgets.QCheckBox("A1")
+        self.a2_check_box = QtWidgets.QCheckBox("A2")
+        self.b1_check_box = QtWidgets.QCheckBox("B1")
+        self.b2_check_box = QtWidgets.QCheckBox("B2")
+        self.c1_check_box = QtWidgets.QCheckBox("C1")
+        self.c2_check_box = QtWidgets.QCheckBox("C2")
 
-        self.channelsGroupBox = QtWidgets.QGroupBox("Channels")
+        self.channels_group_box = QtWidgets.QGroupBox("Channels")
 
-        channelsLayout = QtWidgets.QGridLayout(self.channelsGroupBox)
-        channelsLayout.addWidget(self.a1CheckBox, 0, 0)
-        channelsLayout.addWidget(self.a2CheckBox, 1, 0)
-        channelsLayout.addWidget(self.b1CheckBox, 0, 1)
-        channelsLayout.addWidget(self.b2CheckBox, 1, 1)
-        channelsLayout.addWidget(self.c1CheckBox, 0, 2)
-        channelsLayout.addWidget(self.c2CheckBox, 1, 2)
+        channels_layout = QtWidgets.QGridLayout(self.channels_group_box)
+        channels_layout.addWidget(self.a1_check_box, 0, 0)
+        channels_layout.addWidget(self.a2_check_box, 1, 0)
+        channels_layout.addWidget(self.b1_check_box, 0, 1)
+        channels_layout.addWidget(self.b2_check_box, 1, 1)
+        channels_layout.addWidget(self.c1_check_box, 0, 2)
+        channels_layout.addWidget(self.c2_check_box, 1, 2)
 
         # Layout
 
-        leftLayout = QtWidgets.QVBoxLayout()
-        leftLayout.addWidget(self.channelsGroupBox)
-        leftLayout.addStretch()
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.addWidget(self.channels_group_box)
+        left_layout.addStretch()
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(leftLayout)
+        layout.addLayout(left_layout)
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
 
         # Parameters
 
-        self.bindParameter(
-            "channels", MethodParameter(self.closedChannels, self.setClosedChannels)
+        self.bind_parameter(
+            "channels", MethodParameter(self.closed_channels, self.set_closed_channels)
         )
 
-        self.restoreDefaults()
+        self.restore_defaults()
 
-    def closedChannels(self) -> list:
-        channels = []
-        if self.a1CheckBox.isChecked():
+    def closed_channels(self) -> list[str]:
+        channels: list[str] = []
+        if self.a1_check_box.isChecked():
             channels.append("A1")
-        if self.a2CheckBox.isChecked():
+        if self.a2_check_box.isChecked():
             channels.append("A2")
-        if self.b1CheckBox.isChecked():
+        if self.b1_check_box.isChecked():
             channels.append("B1")
-        if self.b2CheckBox.isChecked():
+        if self.b2_check_box.isChecked():
             channels.append("B2")
-        if self.c1CheckBox.isChecked():
+        if self.c1_check_box.isChecked():
             channels.append("C1")
-        if self.c2CheckBox.isChecked():
+        if self.c2_check_box.isChecked():
             channels.append("C2")
         return channels
 
-    def setClosedChannels(self, channels: list) -> None:
-        self.a1CheckBox.setChecked("A1" in channels)
-        self.a2CheckBox.setChecked("A2" in channels)
-        self.b1CheckBox.setChecked("B1" in channels)
-        self.b2CheckBox.setChecked("B2" in channels)
-        self.c1CheckBox.setChecked("C1" in channels)
-        self.c2CheckBox.setChecked("C2" in channels)
+    def set_closed_channels(self, channels: list[str]) -> None:
+        self.a1_check_box.setChecked("A1" in channels)
+        self.a2_check_box.setChecked("A2" in channels)
+        self.b1_check_box.setChecked("B1" in channels)
+        self.b2_check_box.setChecked("B2" in channels)
+        self.c1_check_box.setChecked("C1" in channels)
+        self.c2_check_box.setChecked("C2" in channels)
 
-    def restoreDefaults(self) -> None:
-        self.a1CheckBox.setChecked(False)
-        self.a2CheckBox.setChecked(False)
-        self.b1CheckBox.setChecked(False)
-        self.b2CheckBox.setChecked(False)
-        self.c1CheckBox.setChecked(False)
-        self.c2CheckBox.setChecked(False)
+    def restore_defaults(self) -> None:
+        self.set_closed_channels([])
 
-    def setLocked(self, state: bool) -> None:
-        self.a1CheckBox.setEnabled(not state)
-        self.a2CheckBox.setEnabled(not state)
-        self.b1CheckBox.setEnabled(not state)
-        self.b2CheckBox.setEnabled(not state)
-        self.c1CheckBox.setEnabled(not state)
-        self.c2CheckBox.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.a1_check_box.setEnabled(not state)
+        self.a2_check_box.setEnabled(not state)
+        self.b1_check_box.setEnabled(not state)
+        self.b2_check_box.setEnabled(not state)
+        self.c1_check_box.setEnabled(not state)
+        self.c2_check_box.setEnabled(not state)
