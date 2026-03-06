@@ -57,7 +57,7 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
 
         self.combo_box.currentIndexChanged.connect(self._update_load_spin_box)
         self._update_load_spin_box(self.combo_box.currentIndex())
-        
+
     def _update_load_spin_box(self, index: int) -> None:
         data = self.combo_box.itemData(index)
         enabled = data == "load"
@@ -135,7 +135,6 @@ class InstrumentPanel(QtWidgets.QWidget):
         super().__init__(parent)
         self._parameters: dict[str, Any] = {}
         self.setModel(model)
-        self.model_title: str = model
 
     def model(self) -> str:
         return self.property("model")
