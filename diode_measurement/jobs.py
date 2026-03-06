@@ -83,6 +83,7 @@ class K4215PerformCorrectionJob:
     open_correction: bool
     short_correction: bool
     load_correction: Optional[int]
+    external_bias_tee: bool
     # TODO
     progress: Callable[[int, int, int], None]
     message: Callable[[str], None]
@@ -104,14 +105,29 @@ class K4215PerformCorrectionJob:
 
         with open_resource(self.resource_name, self.termination, self.timeout) as res:
             instr = driver_factory(self.model)(res)
+
             if self.open_correction:
-                self.message("Performing OPEN correction...")
-                instr.start_open_correction(self.cable_length)
-                wait_until_done(instr, correction_timeout)
+                if self.external_bias_tee:
+                    self.message("Performing OPEN correction with Bias Tee...")
+                    logger.info("Enable external Bias Tee (-10V DC)")
+                    try:
+                        instr._enable_bias_tee_dc_voltage()
+                        time.sleep(1)
+                        instr.start_open_correction(self.cable_length)
+                        wait_until_done(instr, correction_timeout)
+                    finally:
+                        logger.info("Reset external Bias Tee")
+                        instr._reset_bias_tee_dc_voltage()
+                else:
+                    self.message("Performing OPEN correction...")
+                    instr.start_open_correction(self.cable_length)
+                    wait_until_done(instr, correction_timeout)
+
             if self.short_correction:
                 self.message("Performing SHORT correction...")
                 instr.start_short_correction(self.cable_length)
                 wait_until_done(instr, correction_timeout)
+
             if self.load_correction is not None:
                 self.message("Performing LOAD correction...")
                 instr.start_load_correction(self.cable_length, self.load_correction)

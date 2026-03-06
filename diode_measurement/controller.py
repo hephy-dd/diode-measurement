@@ -982,6 +982,9 @@ class Controller(QtCore.QObject):
             config = role.configs().get(model, {})
             if model == "K4215":
                 dialog = K4215CorrectionDialog(self.view)
+                external_bias_tee = config.get("external_bias_tee.enabled", False)
+                if external_bias_tee:
+                    dialog.set_hint("<b>With</b> external Bias Tee (applying -10V DC)")
                 if dialog.exec() != dialog.DialogCode.Accepted:
                     return
                 self.view.controlTabWidget.setEnabled(False)
@@ -994,6 +997,7 @@ class Controller(QtCore.QObject):
                     open_correction=dialog.is_open_correction(),
                     short_correction=dialog.is_short_correction(),
                     load_correction=dialog.get_load_correction(),
+                    external_bias_tee=external_bias_tee,
                     progress=self.progress_changed.emit,
                     message=self.message_changed.emit,
                 ))
