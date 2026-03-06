@@ -41,7 +41,11 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
         self.load_spin_box.setValue(50)
         self.load_spin_box.setSuffix(" Ω")
 
+        self.hint_label = QtWidgets.QLabel(self)
+        self.hint_label.setVisible(False)
+
         form_layout = QtWidgets.QFormLayout()
+        form_layout.addWidget(self.hint_label)
         form_layout.addRow(self.type_label, self.combo_box)
         form_layout.addRow(self.load_label, self.load_spin_box)
 
@@ -77,6 +81,10 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
         if data == "load":
             return self.load_spin_box.value()
         return None
+
+    def set_hint(self, text: str) -> None:
+        self.hint_label.setText(text)
+        self.hint_label.setVisible(True)
 
 
 class WidgetParameter:
