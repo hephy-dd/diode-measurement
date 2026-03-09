@@ -53,9 +53,9 @@ class LogWidget(QtWidgets.QTextEdit):
         self.setLevel(logging.INFO)
         self.received.connect(self.appendRecord)
 
-        self.updateTimer = QtCore.QTimer()
-        self.updateTimer.timeout.connect(self.applyRecords)
-        self.updateTimer.start(self.updateInterval)
+        self.update_timer = QtCore.QTimer()
+        self.update_timer.timeout.connect(self.applyRecords)
+        self.update_timer.start(self.updateInterval)
 
         self.recordFormats = {}
 
@@ -144,14 +144,14 @@ class LogWindow(QtWidgets.QWidget):
 
         self.logWidget = LogWidget()
 
-        self.buttonBox = QtWidgets.QDialogButtonBox()
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Close)
-        self.buttonBox.rejected.connect(lambda: self.hide())
+        self.dialog_button_box = QtWidgets.QDialogButtonBox()
+        self.dialog_button_box.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Close)
+        self.dialog_button_box.rejected.connect(lambda: self.hide())
 
         layout = QtWidgets.QGridLayout()
         layout.addWidget(self.logHeader)
         layout.addWidget(self.logWidget)
-        layout.addWidget(self.buttonBox)
+        layout.addWidget(self.dialog_button_box)
         self.setLayout(layout)
 
     def setLevel(self, level: int) -> None:

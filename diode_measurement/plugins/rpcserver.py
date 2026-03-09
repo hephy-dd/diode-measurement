@@ -60,7 +60,7 @@ class ChangeVoltageEvent:
     waiting_time: float
 
     def __call__(self, controller: Controller) -> None:
-        controller.requestChangeVoltage(
+        controller.request_change_voltage(
             self.end_voltage,
             self.step_voltage,
             self.waiting_time,
@@ -361,7 +361,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         )  # disable on error
 
     def install(self, context) -> None:
-        self.failed.connect(context.handleException)
+        self.failed.connect(context.handle_exception)
         self._install_tab(context)
         self.event_handler = EventHandler(context)
         self.rpc_handler = RPCHandler(self.event_handler)
@@ -371,7 +371,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
 
     def uninstall(self, context) -> None:
         self._message_timer.stop()
-        self.failed.disconnect(context.handleException)
+        self.failed.disconnect(context.handle_exception)
         self._enabled.clear()
         for handler in self._shutdown_handlers:
             handler()
@@ -410,7 +410,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         self.rpc_widget = RPCWidget()
         self.running.connect(lambda state: self.rpc_widget.set_connected(state))
         self.rpc_widget.restart_signal.connect(lambda: self._request_restart())
-        context.view.controlTabWidget.insertTab(
+        context.view.control_tab_widget.insertTab(
             1000, self.rpc_widget, self.rpc_widget.windowTitle()
         )
         self.message_ready.connect(self._append_protocol)

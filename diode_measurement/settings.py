@@ -1,6 +1,8 @@
+from typing import Any
+
 __all__ = ["DEFAULTS"]
 
-DEFAULTS = [
+DEFAULTS: list[dict[str, Any]] = [
     {
         "id": "iv",
         "type": "iv",

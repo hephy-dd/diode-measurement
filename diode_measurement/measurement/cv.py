@@ -48,9 +48,9 @@ class CVMeasurement(RangeMeasurement):
         reading: ReadingType = self.acquire_reading_data()
         self.extend_cv_reading(reading)
         # TODO
-        if hasattr(self, "cvReadingLock") and hasattr(self, "cvReadingQueue"):
-            with self.cvReadingLock:
-                self.cvReadingQueue.append(reading)
+        if hasattr(self, "cv_reading_lock") and hasattr(self, "cv_reading_queue"):
+            with self.cv_reading_lock:
+                self.cv_reading_queue.append(reading)
         self.update_event({
             "smu_voltage": reading.get("v_smu"),
             "smu_current": reading.get("i_smu"),

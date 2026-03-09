@@ -343,7 +343,7 @@ class RangeMeasurement(Measurement):
         self.initialize_switch()
 
         # Reset (optional)
-        if self.state.is_reset:
+        if self.state.is_reset_instruments:
             for key, instrument in self.instruments.items():
                 logger.info("Reset %s...", key.upper())
                 instrument.reset()
@@ -680,9 +680,9 @@ class RangeMeasurement(Measurement):
             logger.info(reading)
 
             # TODO
-            if hasattr(self, "itReadingLock") and hasattr(self, "itReadingQueue"):
-                with self.itReadingLock:
-                    self.itReadingQueue.append(reading)
+            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
+                with self.it_reading_lock:
+                    self.it_reading_queue.append(reading)
 
             self.it_reading_event(reading)
 

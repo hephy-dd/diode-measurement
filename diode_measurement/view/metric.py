@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
@@ -5,12 +6,11 @@ from PySide6 import QtCore, QtWidgets
 __all__ = ["MetricWidget"]
 
 
+@dataclass
 class MetricUnit:
-
-    def __init__(self, base: float, prefix: str, name: str) -> None:
-        self.base: float = base
-        self.prefix: str = prefix
-        self.name: str = name
+    base: float
+    prefix: str
+    name: str
 
 
 class MetricUnits:
@@ -45,12 +45,11 @@ class MetricUnits:
         return cls.default_unit
 
 
+@dataclass
 class MetricItem:
     """Metric item used for combo box selection."""
-
-    def __init__(self, metric: MetricUnit, unit: str) -> None:
-        self.metric: MetricUnit = metric
-        self.unit: str = unit
+    metric: MetricUnit
+    unit: str
 
     def __str__(self) -> str:
         return f"{self.metric.prefix}{self.unit}"

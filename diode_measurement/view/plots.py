@@ -26,20 +26,20 @@ def limitRange(minimum: float, maximum: float, value: float) -> tuple[float, flo
 class DynamicValueAxis(QtCharts.QValueAxis):
     def __init__(self, axis: QtCharts.QValueAxis, unit: str) -> None:
         super().__init__(axis)
-        self.setProperty("axis", axis)
-        self.setUnit(unit)
+        self._axis = axis
+        self._unit = unit
         self.setRange(axis.min(), axis.max())
         axis.rangeChanged.connect(self.setRange)
         axis.hide()
 
     def axis(self) -> QtCharts.QValueAxis:
-        return self.property("axis")
+        return self._axis
 
     def unit(self) -> str:
-        return self.property("unit")
+        return self._unit
 
     def setUnit(self, unit: str) -> None:
-        self.setProperty("unit", unit)
+        self._unit = unit
 
     def setRange(self, minimum: float, maximum: float) -> None:
         # Get best matching scale/prefix

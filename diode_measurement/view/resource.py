@@ -5,131 +5,122 @@ from PySide6 import QtCore, QtWidgets
 from ..driver import driver_factory
 from ..utils import open_resource
 
-
 __all__ = ["ResourceWidget"]
 
 
 class ResourceWidget(QtWidgets.QGroupBox):
-
-    modelChanged = QtCore.Signal(str)
-    resourceChanged = QtCore.Signal(str)
-    terminationChanged = QtCore.Signal(str)
-    timeoutChanged = QtCore.Signal(float)
+    model_changed = QtCore.Signal(str)
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setTitle("Instrument")
 
-        self.modelLabel = QtWidgets.QLabel("Model")
+        self.model_label = QtWidgets.QLabel("Model", self)
 
-        self.modelComboBox = QtWidgets.QComboBox()
-        self.modelComboBox.setStatusTip("Instrument model.")
-        self.modelComboBox.currentTextChanged.connect(
-            lambda text: self.modelChanged.emit(text)
+        self.model_combo_box = QtWidgets.QComboBox(self)
+        self.model_combo_box.setStatusTip("Instrument model.")
+        self.model_combo_box.currentTextChanged.connect(self.on_model_text_changed)
+
+        self.resource_label = QtWidgets.QLabel("Resource", self)
+
+        self.resource_line_edit = QtWidgets.QLineEdit(self)
+        self.resource_line_edit.setStatusTip(
+            "Instrument resource GPIB number, IP and port or any valid VISA resource name."
         )
 
-        self.resourceLabel = QtWidgets.QLabel("Resource")
+        self.termination_label = QtWidgets.QLabel("Termination", self)
 
-        self.resourceLineEdit = QtWidgets.QLineEdit()
-        self.resourceLineEdit.setStatusTip("Instrument resource GPIB number, IP and port or any valid VISA resource name.")
-        self.resourceLineEdit.editingFinished.connect(
-            lambda: self.resourceChanged.emit(self.resourceName())
+        self.termination_combo_box = QtWidgets.QComboBox(self)
+        self.termination_combo_box.setStatusTip(
+            "Read and write termination characters."
         )
+        self.termination_combo_box.addItem("CR+LF", "\r\n")
+        self.termination_combo_box.addItem("CR", "\r")
+        self.termination_combo_box.addItem("LF", "\n")
 
-        self.terminationLabel = QtWidgets.QLabel("Termination")
+        self.timeout_label = QtWidgets.QLabel("Timeout", self)
 
-        self.terminationComboBox = QtWidgets.QComboBox()
-        self.terminationComboBox.setStatusTip("Read and write termination characters.")
-        self.terminationComboBox.addItem("CR+LF", "\r\n")
-        self.terminationComboBox.addItem("CR", "\r")
-        self.terminationComboBox.addItem("LF", "\n")
-        self.terminationComboBox.currentIndexChanged.connect(
-            lambda index: self.terminationChanged.emit(self.terminationComboBox.itemData(index))
-        )
+        self.timeout_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.timeout_spin_box.setStatusTip("Timeout for communication in seconds.")
+        self.timeout_spin_box.setSuffix(" s")
+        self.timeout_spin_box.setRange(1, 60)
+        self.timeout_spin_box.setValue(4)
+        self.timeout_spin_box.setDecimals(2)
 
-        self.timeoutLabel = QtWidgets.QLabel("Timeout")
-
-        self.timeoutSpinBox = QtWidgets.QDoubleSpinBox()
-        self.timeoutSpinBox.setStatusTip("Timeout for communication in seconds.")
-        self.timeoutSpinBox.setSuffix(" s")
-        self.timeoutSpinBox.setRange(1, 60)
-        self.timeoutSpinBox.setValue(4)
-        self.timeoutSpinBox.setDecimals(2)
-        self.timeoutSpinBox.valueChanged.connect(
-            lambda value: self.timeoutChanged.emit(value)
-        )
-
-        self.testConntectionButton = QtWidgets.QPushButton(self)
-        self.testConntectionButton.setText("&Test")
-        self.testConntectionButton.setStatusTip("Test instrument connection.")
-        self.testConntectionButton.setMaximumWidth(48)
-        self.testConntectionButton.clicked.connect(self.testConntection)
+        self.test_connection_button = QtWidgets.QPushButton(self)
+        self.test_connection_button.setText("&Test")
+        self.test_connection_button.setStatusTip("Test instrument connection.")
+        self.test_connection_button.setMaximumWidth(48)
+        self.test_connection_button.clicked.connect(self.test_conntection)
 
         layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.modelLabel, 0, 0, 1, 3)
-        layout.addWidget(self.modelComboBox, 1, 0, 1, 3)
-        layout.addWidget(self.resourceLabel, 2, 0, 1, 3)
-        layout.addWidget(self.resourceLineEdit, 3, 0, 1, 3)
-        layout.addWidget(self.terminationLabel, 4, 0, 1, 1)
-        layout.addWidget(self.timeoutLabel, 4, 1, 1, 1)
-        layout.addWidget(self.terminationComboBox, 5, 0, 1, 1)
-        layout.addWidget(self.timeoutSpinBox, 5, 1, 1, 1)
-        layout.addWidget(self.testConntectionButton, 5, 2, 1, 1)
+        layout.addWidget(self.model_label, 0, 0, 1, 3)
+        layout.addWidget(self.model_combo_box, 1, 0, 1, 3)
+        layout.addWidget(self.resource_label, 2, 0, 1, 3)
+        layout.addWidget(self.resource_line_edit, 3, 0, 1, 3)
+        layout.addWidget(self.termination_label, 4, 0, 1, 1)
+        layout.addWidget(self.timeout_label, 4, 1, 1, 1)
+        layout.addWidget(self.termination_combo_box, 5, 0, 1, 1)
+        layout.addWidget(self.timeout_spin_box, 5, 1, 1, 1)
+        layout.addWidget(self.test_connection_button, 5, 2, 1, 1)
         layout.setRowStretch(6, 1)
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 1)
         layout.setColumnStretch(2, 0)
 
-    def setLocked(self, state: bool) -> None:
-        self.modelComboBox.setEnabled(not state)
-        self.resourceLineEdit.setEnabled(not state)
-        self.terminationComboBox.setEnabled(not state)
-        self.timeoutSpinBox.setEnabled(not state)
-        self.testConntectionButton.setEnabled(not state)
+    def set_locked(self, state: bool) -> None:
+        self.model_combo_box.setEnabled(not state)
+        self.resource_line_edit.setEnabled(not state)
+        self.termination_combo_box.setEnabled(not state)
+        self.timeout_spin_box.setEnabled(not state)
+        self.test_connection_button.setEnabled(not state)
 
     def model(self) -> str:
-        return self.modelComboBox.currentText()
+        return self.model_combo_box.currentText()
 
-    def setModel(self, model: str) -> None:
-        index = self.modelComboBox.findText(model)
-        self.modelComboBox.setCurrentIndex(max(0, index))
-        self.modelChanged.emit(self.modelComboBox.itemText(max(0, index)))
+    def set_model(self, model: str) -> None:
+        index = self.model_combo_box.findText(model)
+        self.model_combo_box.setCurrentIndex(max(0, index))
+        self.model_changed.emit(self.model_combo_box.itemText(max(0, index)))
 
-    def addModel(self, model: str) -> None:
-        self.modelComboBox.addItem(model)
+    def add_model(self, model: str) -> None:
+        self.model_combo_box.addItem(model)
 
-    def resourceName(self) -> str:
-        return self.resourceLineEdit.text().strip()
+    def resource_name(self) -> str:
+        return self.resource_line_edit.text().strip()
 
-    def setResourceName(self, resource: str) -> None:
-        self.resourceLineEdit.setText(resource)
+    def set_resource_name(self, resource_name: str) -> None:
+        self.resource_line_edit.setText(resource_name)
 
     def termination(self) -> str:
-        return self.terminationComboBox.currentData()
+        return self.termination_combo_box.currentData()
 
-    def setTermination(self, termination: str) -> None:
-        index = self.terminationComboBox.findData(termination)
-        self.terminationComboBox.setCurrentIndex(max(0, index))
-        self.terminationChanged.emit(self.terminationComboBox.itemData(max(0, index)))
+    def set_termination(self, termination: str) -> None:
+        index = self.termination_combo_box.findData(termination)
+        self.termination_combo_box.setCurrentIndex(max(0, index))
 
     def timeout(self) -> float:
-        return self.timeoutSpinBox.value()
+        return self.timeout_spin_box.value()
 
-    def setTimeout(self, timeout: float) -> None:
-        self.timeoutSpinBox.setValue(timeout)
+    def set_timeout(self, timeout: float) -> None:
+        self.timeout_spin_box.setValue(timeout)
 
-    def openResource(self):
-        return open_resource(self.resourceName(), self.termination(), self.timeout())
+    @QtCore.Slot(str)
+    def on_model_text_changed(self, text: str) -> None:
+        self.model_changed.emit(text)
 
-    def readIdentity(self) -> str:
-        with self.openResource() as res:
+    def open_resource(self):
+        return open_resource(self.resource_name(), self.termination(), self.timeout())
+
+    def read_identity(self) -> str:
+        with self.open_resource() as res:
             instr = driver_factory(self.model())(res)
             return instr.identity()
 
     @QtCore.Slot()
-    def testConntection(self) -> None:
+    def test_conntection(self) -> None:
         try:
-            identity = self.readIdentity()
+            identity = self.read_identity()
         except Exception as exc:
             QtWidgets.QMessageBox.critical(self, "Connection Test", format(exc))
         else:

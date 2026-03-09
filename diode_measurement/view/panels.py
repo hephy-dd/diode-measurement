@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Callable, Mapping, Optional, Protocol
 
 from PySide6 import QtCore, QtWidgets
 
@@ -18,8 +18,6 @@ __all__ = [
     "E4980APanel",
     "BrandBoxPanel",
 ]
-
-ConfigType = dict[str, Any]
 
 
 class K4215CorrectionDialog(QtWidgets.QDialog):
@@ -165,13 +163,13 @@ class InstrumentPanel(QtWidgets.QWidget):
             raise KeyError(f"Parameter already exists: {key!r}")
         self._parameters[key] = parameter
 
-    def config(self) -> ConfigType:
-        config: ConfigType = {}
+    def config(self) -> dict[str, Any]:
+        config: dict[str, Any] = {}
         for key, parameter in self._parameters.items():
             config[key] = parameter.value()
         return config
 
-    def apply_config(self, config: ConfigType) -> None:
+    def apply_config(self, config: Mapping[str, Any]) -> None:
         for key, value in config.items():
             parameter = self._parameters.get(key)
             if parameter is None:

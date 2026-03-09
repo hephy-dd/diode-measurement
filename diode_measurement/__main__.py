@@ -8,7 +8,7 @@ from PySide6 import QtWidgets
 
 from . import __version__
 from .application import bootstrap
-from .view.widgets import showException
+from .view.widgets import show_exception
 
 __all__ = ["main"]
 
@@ -42,7 +42,7 @@ def exception_hook(exc_type, exc_value, exc_traceback):
     tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     logging.exception(tb)
 
-    showException(exc_value)
+    show_exception(exc_value)
 
 
 def main():

@@ -46,9 +46,9 @@ class IVBiasMeasurement(RangeMeasurement):
         reading: ReadingType = self.acquire_reading_data()
         logger.info(reading)
         # TODO
-        if hasattr(self, "ivReadingLock") and hasattr(self, "ivReadingQueue"):
-            with self.ivReadingLock:
-                self.ivReadingQueue.append(reading)
+        if hasattr(self, "iv_reading_lock") and hasattr(self, "iv_reading_queue"):
+            with self.iv_reading_lock:
+                self.iv_reading_queue.append(reading)
         self.update_event({
             "smu_voltage": reading.get("v_smu"),
             "smu_current": reading.get("i_smu"),
@@ -82,9 +82,9 @@ class IVBiasMeasurement(RangeMeasurement):
             handle_reading(reading)
 
             # TODO
-            if hasattr(self, "itReadingLock") and hasattr(self, "itReadingQueue"):
-                with self.itReadingLock:
-                    self.itReadingQueue.append(reading)
+            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
+                with self.it_reading_lock:
+                    self.it_reading_queue.append(reading)
 
             # Limit some actions for fast measurements
             if dt > interval:
