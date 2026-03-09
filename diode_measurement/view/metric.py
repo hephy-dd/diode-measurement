@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
@@ -5,27 +6,25 @@ from PySide6 import QtCore, QtWidgets
 __all__ = ["MetricWidget"]
 
 
+@dataclass
 class MetricUnit:
-
-    def __init__(self, base: float, prefix: str, name: str) -> None:
-        self.base: float = base
-        self.prefix: str = prefix
-        self.name: str = name
+    base: float
+    prefix: str
+    name: str
 
 
 class MetricUnits:
-
-    default_unit = MetricUnit(1e+0, "", "")
+    default_unit = MetricUnit(1e0, "", "")
 
     metric_units = (
-        MetricUnit(1e+24, "Y", "yotta"),
-        MetricUnit(1e+21, "Z", "zetta"),
-        MetricUnit(1e+18, "E", "exa"),
-        MetricUnit(1e+15, "P", "peta"),
-        MetricUnit(1e+12, "T", "tera"),
-        MetricUnit(1e+9, "G", "giga"),
-        MetricUnit(1e+6, "M", "mega"),
-        MetricUnit(1e+3, "k", "kilo"),
+        MetricUnit(1e24, "Y", "yotta"),
+        MetricUnit(1e21, "Z", "zetta"),
+        MetricUnit(1e18, "E", "exa"),
+        MetricUnit(1e15, "P", "peta"),
+        MetricUnit(1e12, "T", "tera"),
+        MetricUnit(1e9, "G", "giga"),
+        MetricUnit(1e6, "M", "mega"),
+        MetricUnit(1e3, "k", "kilo"),
         default_unit,
         MetricUnit(1e-3, "m", "milli"),
         MetricUnit(1e-6, "u", "micro"),
@@ -34,7 +33,7 @@ class MetricUnits:
         MetricUnit(1e-15, "f", "femto"),
         MetricUnit(1e-18, "a", "atto"),
         MetricUnit(1e-21, "z", "zepto"),
-        MetricUnit(1e-24, "y", "yocto")
+        MetricUnit(1e-24, "y", "yocto"),
     )
 
     @classmethod
@@ -45,12 +44,12 @@ class MetricUnits:
         return cls.default_unit
 
 
+@dataclass
 class MetricItem:
     """Metric item used for combo box selection."""
 
-    def __init__(self, metric: MetricUnit, unit: str) -> None:
-        self.metric: MetricUnit = metric
-        self.unit: str = unit
+    metric: MetricUnit
+    unit: str
 
     def __str__(self) -> str:
         return f"{self.metric.prefix}{self.unit}"
@@ -65,16 +64,22 @@ class MetricWidget(QtWidgets.QWidget):
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self._valueSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self._valueSpinBox.setStepType(QtWidgets.QAbstractSpinBox.StepType.AdaptiveDecimalStepType)
+        self._valueSpinBox.setStepType(
+            QtWidgets.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
+        )
         self._unitComboBox = QtWidgets.QComboBox(self)
         self.setUnit("")
         self.setDecimals(0)
         self.setRange(float("-inf"), float("+inf"))
         self.setPrefixes("YZEPTGMk1munpfazy")
         self.setValue(0)
-        self._valueSpinBox.valueChanged.connect(lambda _: self.valueChanged.emit(self.value()))
+        self._valueSpinBox.valueChanged.connect(
+            lambda _: self.valueChanged.emit(self.value())
+        )
         self._valueSpinBox.editingFinished.connect(self.editingFinished.emit)
-        self._unitComboBox.currentIndexChanged.connect(lambda _: self.valueChanged.emit(self.value()))
+        self._unitComboBox.currentIndexChanged.connect(
+            lambda _: self.valueChanged.emit(self.value())
+        )
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

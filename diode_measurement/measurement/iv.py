@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class IVMeasurement(RangeMeasurement):
-
     def __init__(self, state: State) -> None:
         super().__init__(state)
         self.iv_reading_event: EventHandler = EventHandler()
@@ -43,17 +42,19 @@ class IVMeasurement(RangeMeasurement):
         logger.info(reading)
 
         # TODO
-        if hasattr(self, "ivReadingLock") and hasattr(self, "ivReadingQueue"):
-            with self.ivReadingLock:
-                self.ivReadingQueue.append(reading)
+        if hasattr(self, "iv_reading_lock") and hasattr(self, "iv_reading_queue"):
+            with self.iv_reading_lock:
+                self.iv_reading_queue.append(reading)
 
-        self.update_event({
-            "smu_voltage": reading.get("v_smu"),
-            "smu_current": reading.get("i_smu"),
-            "elm_current": reading.get("i_elm"),
-            "elm2_current": reading.get("i_elm2"),
-            "dmm_temperature": reading.get("t_dmm"),
-        })
+        self.update_event(
+            {
+                "smu_voltage": reading.get("v_smu"),
+                "smu_current": reading.get("i_smu"),
+                "elm_current": reading.get("i_elm"),
+                "elm2_current": reading.get("i_elm2"),
+                "dmm_temperature": reading.get("t_dmm"),
+            }
+        )
         self.iv_reading_event(reading)
 
     def acquire_continuous_reading(self) -> None:
@@ -78,9 +79,9 @@ class IVMeasurement(RangeMeasurement):
             handle_reading(reading)
 
             # TODO
-            if hasattr(self, "itReadingLock") and hasattr(self, "itReadingQueue"):
-                with self.itReadingLock:
-                    self.itReadingQueue.append(reading)
+            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
+                with self.it_reading_lock:
+                    self.it_reading_queue.append(reading)
 
             # Limit some actions for fast measurements
             if dt > interval:
@@ -91,13 +92,15 @@ class IVMeasurement(RangeMeasurement):
 
                 voltage = self.get_source_voltage()
 
-                self.update_event({
-                    "smu_voltage": reading.get("v_smu"),
-                    "smu_current": reading.get("i_smu"),
-                    "elm_current": reading.get("i_elm"),
-                    "elm2_current": reading.get("i_elm2"),
-                    "dmm_temperature": reading.get("t_dmm")
-                })
+                self.update_event(
+                    {
+                        "smu_voltage": reading.get("v_smu"),
+                        "smu_current": reading.get("i_smu"),
+                        "elm_current": reading.get("i_elm"),
+                        "elm2_current": reading.get("i_elm2"),
+                        "dmm_temperature": reading.get("t_dmm"),
+                    }
+                )
 
                 t = time.time()
 

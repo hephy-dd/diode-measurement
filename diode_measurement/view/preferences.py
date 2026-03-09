@@ -19,7 +19,6 @@ VALUE_FORMATS: list[str] = [
 
 
 class PreferencesDialog(QtWidgets.QDialog):
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
 
@@ -28,65 +27,71 @@ class PreferencesDialog(QtWidgets.QDialog):
 
         # Output Tab
 
-        self.outputWidget = QtWidgets.QWidget(self)
+        self.output_widget = QtWidgets.QWidget(self)
 
-        self.timestampFormatComboBox = QtWidgets.QComboBox(self.outputWidget)
+        self.timestamp_format_combo_box = QtWidgets.QComboBox(self.output_widget)
 
-        for timestampFormat in TIMESTAMP_FORMATS:
-            self.timestampFormatComboBox.addItem(format(1.0, timestampFormat), timestampFormat)
+        for timestamp_format in TIMESTAMP_FORMATS:
+            self.timestamp_format_combo_box.addItem(
+                format(1.0, timestamp_format), timestamp_format
+            )
 
-        self.valueFormatComboBox = QtWidgets.QComboBox(self.outputWidget)
+        self.value_format_combo_box = QtWidgets.QComboBox(self.output_widget)
 
-        for valueFormat in VALUE_FORMATS:
-            self.valueFormatComboBox.addItem(format(1.0, valueFormat), valueFormat)
+        for value_format in VALUE_FORMATS:
+            self.value_format_combo_box.addItem(format(1.0, value_format), value_format)
 
-        outputWidgetLayout = QtWidgets.QFormLayout(self.outputWidget)
-        outputWidgetLayout.addRow("Timestamp Format", self.timestampFormatComboBox)
-        outputWidgetLayout.addRow("Value Format", self.valueFormatComboBox)
+        output_widget_layout = QtWidgets.QFormLayout(self.output_widget)
+        output_widget_layout.addRow("Timestamp Format", self.timestamp_format_combo_box)
+        output_widget_layout.addRow("Value Format", self.value_format_combo_box)
 
-        self.tabWidget = QtWidgets.QTabWidget(self)
-        self.tabWidget.addTab(self.outputWidget, "Output")
+        self.tab_widget = QtWidgets.QTabWidget(self)
+        self.tab_widget.addTab(self.output_widget, "Output")
 
-        self.buttonBox = QtWidgets.QDialogButtonBox(self)
-        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
-        self.buttonBox.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
+        self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.dialog_button_box.addButton(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        self.dialog_button_box.accepted.connect(self.accept)
+        self.dialog_button_box.rejected.connect(self.reject)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.tabWidget)
-        layout.addWidget(self.buttonBox)
+        layout.addWidget(self.tab_widget)
+        layout.addWidget(self.dialog_button_box)
 
-    def timestampFormat(self) -> str:
-        value = self.timestampFormatComboBox.currentData()
+    def timestamp_format(self) -> str:
+        value = self.timestamp_format_combo_box.currentData()
         return value if isinstance(value, str) else TIMESTAMP_FORMATS[1]
 
-    def setTimestampFormat(self, value: str) -> None:
+    def set_timestamp_format(self, timestamp_format: str) -> None:
         """Select the timestamp format, falling back to the default if unknown."""
-        index = self.timestampFormatComboBox.findData(value)
+        index = self.timestamp_format_combo_box.findData(timestamp_format)
         if index < 0:
             index = 1  # default: TIMESTAMP_FORMATS[1]
-        self.timestampFormatComboBox.setCurrentIndex(index)
+        self.timestamp_format_combo_box.setCurrentIndex(index)
 
     def valueFormat(self) -> str:
-        value = self.valueFormatComboBox.currentData()
+        value = self.value_format_combo_box.currentData()
         return value if isinstance(value, str) else VALUE_FORMATS[0]
 
-    def setValueFormat(self, value: str) -> None:
+    def set_value_format(self, value_format: str) -> None:
         """Select the value format, falling back to the default if unknown."""
-        index = self.valueFormatComboBox.findData(value)
+        index = self.value_format_combo_box.findData(value_format)
         if index < 0:
             index = 0  # default: VALUE_FORMATS[0]
-        self.valueFormatComboBox.setCurrentIndex(index)
+        self.value_format_combo_box.setCurrentIndex(index)
 
-    def readSettings(self) -> None:
+    def read_settings(self) -> None:
         settings = QtCore.QSettings()
-        timestamp_format = safe_str(settings.value("writer/timestampFormat"), TIMESTAMP_FORMATS[1])
-        self.setTimestampFormat(timestamp_format)
+        timestamp_format = safe_str(
+            settings.value("writer/timestampFormat"), TIMESTAMP_FORMATS[1]
+        )
+        self.set_timestamp_format(timestamp_format)
         value_format = safe_str(settings.value("writer/valueFormat"), VALUE_FORMATS[0])
-        self.setValueFormat(value_format)
+        self.set_value_format(value_format)
 
-    def writeSettings(self) -> None:
+    def write_settings(self) -> None:
         settings = QtCore.QSettings()
-        settings.setValue("writer/timestampFormat", self.timestampFormat())
+        settings.setValue("writer/timestampFormat", self.timestamp_format())
         settings.setValue("writer/valueFormat", self.valueFormat())

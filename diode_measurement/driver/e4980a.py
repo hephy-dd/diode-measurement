@@ -6,7 +6,6 @@ __all__ = ["E4980A"]
 
 
 class E4980A(LCRMeter):
-
     def identity(self) -> str:
         return self._query("*IDN?").strip()
 
@@ -51,7 +50,7 @@ class E4980A(LCRMeter):
         voltage = options.get("voltage", 1.0)
         self.set_amplitude_voltage(voltage)
 
-        frequency = options.get("frequency", 1000.)
+        frequency = options.get("frequency", 1000.0)
         self.set_amplitude_frequency(frequency)
 
         amplitude_alc = options.get("amplitude.alc", False)
@@ -70,11 +69,9 @@ class E4980A(LCRMeter):
     def set_voltage_level(self, level: float) -> None:
         self._write(f":BIAS:VOLT:LEV {level:.3E}")
 
-    def set_voltage_range(self, level: float) -> None:
-        ...  # TODO
+    def set_voltage_range(self, level: float) -> None: ...  # TODO
 
-    def set_current_compliance_level(self, level: float) -> None:
-        ...  # not supported
+    def set_current_compliance_level(self, level: float) -> None: ...  # not supported
 
     def compliance_tripped(self) -> bool:
         return False
@@ -90,7 +87,9 @@ class E4980A(LCRMeter):
         try:
             return float(result[0]), float(result[1])
         except Exception as exc:
-            raise RuntimeError(f"Failed to parse impedance reading: {result!r}") from exc
+            raise RuntimeError(
+                f"Failed to parse impedance reading: {result!r}"
+            ) from exc
 
     def set_function_impedance_type(self, impedance_type: str) -> None:
         self._write(f":FUNC:IMP:TYPE {impedance_type}")

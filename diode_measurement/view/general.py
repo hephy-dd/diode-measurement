@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PySide6 import QtCore, QtWidgets
 
 from ..utils import ureg
@@ -6,398 +8,418 @@ __all__ = ["GeneralWidget"]
 
 
 class GeneralWidget(QtWidgets.QWidget):
+    instruments_changed = QtCore.Signal()
+    current_compliance_changed = QtCore.Signal(float)
+    continue_in_compliance_changed = QtCore.Signal(bool)
+    waiting_time_continuous_changed = QtCore.Signal(float)
+    change_voltage_clicked = QtCore.Signal()
 
-    instrumentsChanged = QtCore.Signal()
-    currentComplianceChanged = QtCore.Signal(float)
-    continueInComplianceChanged = QtCore.Signal(bool)
-    waitingTimeContinuousChanged = QtCore.Signal(float)
-
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("General")
 
-        self._createWidgets()
-        self._createLayout()
+        self._current_compliance_locked: bool = False
 
-    def _createWidgets(self):
-        self.measurementComboBox = QtWidgets.QComboBox()
+        self._create_widgets()
+        self._create_layout()
 
-        self.smuCheckBox = QtWidgets.QCheckBox("SMU")
-        self.smuCheckBox.checkStateChanged.connect(self.instrumentsChanged)
+    def _create_widgets(self) -> None:
+        self.measurement_combo_box = QtWidgets.QComboBox(self)
 
-        self.smu2CheckBox = QtWidgets.QCheckBox("SMU2")
-        self.smu2CheckBox.checkStateChanged.connect(self.instrumentsChanged)
+        self.smu_check_box = QtWidgets.QCheckBox("SMU", self)
+        self.smu_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.elmCheckBox = QtWidgets.QCheckBox("ELM")
-        self.elmCheckBox.checkStateChanged.connect(self.instrumentsChanged)
+        self.smu2_check_box = QtWidgets.QCheckBox("SMU2", self)
+        self.smu2_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.elm2CheckBox = QtWidgets.QCheckBox("ELM2")
-        self.elm2CheckBox.checkStateChanged.connect(self.instrumentsChanged)
+        self.elm_check_box = QtWidgets.QCheckBox("ELM", self)
+        self.elm_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.lcrCheckBox = QtWidgets.QCheckBox("LCR")
-        self.lcrCheckBox.checkStateChanged.connect(self.instrumentsChanged)
+        self.elm2_check_box = QtWidgets.QCheckBox("ELM2", self)
+        self.elm2_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.dmmCheckBox = QtWidgets.QCheckBox("DMM")
-        self.dmmCheckBox.checkStateChanged.connect(self.instrumentsChanged)
+        self.lcr_check_box = QtWidgets.QCheckBox("LCR", self)
+        self.lcr_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.switchCheckBox = QtWidgets.QCheckBox("Switch")
-        self.switchCheckBox.checkStateChanged.connect(self.instrumentsChanged)
+        self.dmm_check_box = QtWidgets.QCheckBox("DMM", self)
+        self.dmm_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.beginVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.beginVoltageSpinBox.setDecimals(3)
-        self.beginVoltageSpinBox.setRange(-3030.0, +3030.0)
-        self.beginVoltageSpinBox.setSuffix(" V")
+        self.switch_check_box = QtWidgets.QCheckBox("Switch", self)
+        self.switch_check_box.checkStateChanged.connect(self.instruments_changed)
 
-        self.endVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.endVoltageSpinBox.setDecimals(3)
-        self.endVoltageSpinBox.setRange(-3030.0, +3030.0)
-        self.endVoltageSpinBox.setSuffix(" V")
+        self.begin_voltage_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.begin_voltage_spin_box.setDecimals(3)
+        self.begin_voltage_spin_box.setRange(-3030.0, +3030.0)
+        self.begin_voltage_spin_box.setSuffix(" V")
 
-        self.stepVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.stepVoltageSpinBox.setDecimals(3)
-        self.stepVoltageSpinBox.setRange(0, +3030.0)
-        self.stepVoltageSpinBox.setSuffix(" V")
+        self.end_voltage_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.end_voltage_spin_box.setDecimals(3)
+        self.end_voltage_spin_box.setRange(-3030.0, +3030.0)
+        self.end_voltage_spin_box.setSuffix(" V")
 
-        self.waitingTimeSpinBox = QtWidgets.QDoubleSpinBox()
-        self.waitingTimeSpinBox.setSuffix(" s")
+        self.step_voltage_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.step_voltage_spin_box.setDecimals(3)
+        self.step_voltage_spin_box.setRange(0, +3030.0)
+        self.step_voltage_spin_box.setSuffix(" V")
 
-        self.biasVoltageSpinBox = QtWidgets.QDoubleSpinBox()
-        self.biasVoltageSpinBox.setDecimals(3)
-        self.biasVoltageSpinBox.setRange(-3030.0, +3030.0)
-        self.biasVoltageSpinBox.setSuffix(" V")
+        self.waiting_time_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.waiting_time_spin_box.setSuffix(" s")
 
-        self.currentComplianceSpinBox = QtWidgets.QDoubleSpinBox()
-        self.currentComplianceSpinBox.setDecimals(3)
-        self.currentComplianceSpinBox.setRange(0.0, +2000.0)
-        self.currentComplianceSpinBox.setSuffix(" uA")
-        self.currentComplianceSpinBox.editingFinished.connect(
-            lambda: self.currentComplianceChanged.emit(self.currentCompliance())
+        self.bias_voltage_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.bias_voltage_spin_box.setDecimals(3)
+        self.bias_voltage_spin_box.setRange(-3030.0, +3030.0)
+        self.bias_voltage_spin_box.setSuffix(" V")
+
+        self.current_compliance_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.current_compliance_spin_box.setDecimals(3)
+        self.current_compliance_spin_box.setRange(0.0, +2000.0)
+        self.current_compliance_spin_box.setSuffix(" uA")
+        self.current_compliance_spin_box.editingFinished.connect(
+            lambda: self.current_compliance_changed.emit(self.current_compliance())
         )
 
-        self.continueInComplianceCheckBox = QtWidgets.QCheckBox()
-        self.continueInComplianceCheckBox.setText("Continue in Compliance")
-        self.continueInComplianceCheckBox.setStatusTip("Continue measurement when source in compliance.""")
-        self.continueInComplianceCheckBox.setChecked(False)
-        self.continueInComplianceCheckBox.toggled.connect(
-            lambda checked: self.continueInComplianceChanged.emit(checked)
+        self.continue_in_compliance_check_box = QtWidgets.QCheckBox(self)
+        self.continue_in_compliance_check_box.setText("Continue in Compliance")
+        self.continue_in_compliance_check_box.setStatusTip(
+            "Continue measurement when source in compliance."
+        )
+        self.continue_in_compliance_check_box.setChecked(False)
+        self.continue_in_compliance_check_box.toggled.connect(
+            lambda checked: self.continue_in_compliance_changed.emit(checked)
         )
 
-        self.sampleLineEdit = QtWidgets.QLineEdit()
+        self.sample_line_edit = QtWidgets.QLineEdit(self)
 
         completer = QtWidgets.QCompleter()
-        completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
+        completer.setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
 
         model = QtWidgets.QFileSystemModel(completer)
         model.setFilter(
-            QtCore.QDir.Dirs
-            | QtCore.QDir.Drives
-            | QtCore.QDir.NoDotAndDotDot
-            | QtCore.QDir.AllDirs
+            QtCore.QDir.Filter.Dirs
+            | QtCore.QDir.Filter.Drives
+            | QtCore.QDir.Filter.NoDotAndDotDot
+            | QtCore.QDir.Filter.AllDirs
         )
         model.setRootPath(QtCore.QDir.rootPath())
         completer.setModel(model)
 
-        self.outputLineEdit = QtWidgets.QLineEdit()
-        self.outputLineEdit.setCompleter(completer)
+        self.output_line_edit = QtWidgets.QLineEdit(self)
+        self.output_line_edit.setCompleter(completer)
 
-        self.outputToolButton = QtWidgets.QToolButton()
-        self.outputToolButton.setText("...")
-        self.outputToolButton.setStatusTip("Select output directory")
-        self.outputToolButton.clicked.connect(self.selectOutput)
+        self.output_tool_button = QtWidgets.QToolButton(self)
+        self.output_tool_button.setText("...")
+        self.output_tool_button.setStatusTip("Select output directory")
+        self.output_tool_button.clicked.connect(self.on_select_output)
 
-        self.waitingTimeContinuousSpinBox = QtWidgets.QDoubleSpinBox()
-        self.waitingTimeContinuousSpinBox.setSuffix(" s")
-        self.waitingTimeContinuousSpinBox.setDecimals(2)
-        self.waitingTimeContinuousSpinBox.setStatusTip("Waiting time for continuous measurement")
-        self.waitingTimeContinuousSpinBox.editingFinished.connect(
-            lambda: self.waitingTimeContinuousChanged.emit(self.waitingTimeContinuous())
+        self.waiting_time_continuous_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self.waiting_time_continuous_spin_box.setSuffix(" s")
+        self.waiting_time_continuous_spin_box.setDecimals(2)
+        self.waiting_time_continuous_spin_box.setStatusTip(
+            "Waiting time for continuous measurement"
+        )
+        self.waiting_time_continuous_spin_box.editingFinished.connect(
+            lambda: self.waiting_time_continuous_changed.emit(
+                self.waiting_time_continuous()
+            )
         )
 
-        self.changeVoltageButton = QtWidgets.QToolButton()
-        self.changeVoltageButton.setText("&Change Voltage...")
-        self.changeVoltageButton.setStatusTip("Change voltage in continuous measurement")
-        self.changeVoltageButton.setEnabled(False)
+        self.change_voltage_button = QtWidgets.QToolButton(self)
+        self.change_voltage_button.setText("&Change Voltage...")
+        self.change_voltage_button.setStatusTip(
+            "Change voltage in continuous measurement"
+        )
+        self.change_voltage_button.setEnabled(False)
+        self.change_voltage_button.clicked.connect(self.change_voltage_clicked)
 
-        self.measurementGroupBox = QtWidgets.QGroupBox()
-        self.measurementGroupBox.setTitle("Measurement")
+        self.measurement_group_box = QtWidgets.QGroupBox(self)
+        self.measurement_group_box.setTitle("Measurement")
 
-        self.outputGroupBox = QtWidgets.QGroupBox()
-        self.outputGroupBox.setTitle("Output")
-        self.outputGroupBox.setCheckable(True)
-        self.outputGroupBox.setChecked(False)
+        self.output_group_box = QtWidgets.QGroupBox(self)
+        self.output_group_box.setTitle("Output")
+        self.output_group_box.setCheckable(True)
+        self.output_group_box.setChecked(False)
 
-        self.rampGroupBox = QtWidgets.QGroupBox()
-        self.rampGroupBox.setTitle("Ramp")
+        self.ramp_group_box = QtWidgets.QGroupBox(self)
+        self.ramp_group_box.setTitle("Ramp")
 
-        self.biasGroupBox = QtWidgets.QGroupBox()
-        self.biasGroupBox.setTitle("Bias Voltage (SMU2)")
+        self.bias_group_box = QtWidgets.QGroupBox(self)
+        self.bias_group_box.setTitle("Bias Voltage (SMU2)")
 
-        self.complianceGroupBox = QtWidgets.QGroupBox()
-        self.complianceGroupBox.setTitle("Compliance")
+        self.compliance_group_box = QtWidgets.QGroupBox(self)
+        self.compliance_group_box.setTitle("Compliance")
 
-        self.continuousGroupBox = QtWidgets.QGroupBox()
-        self.continuousGroupBox.setTitle("Continuous Meas.")
+        self.continuous_group_box = QtWidgets.QGroupBox(self)
+        self.continuous_group_box.setTitle("Continuous Meas.")
 
-    def _createLayout(self):
-        layout = QtWidgets.QVBoxLayout(self.measurementGroupBox)
-        layout.addWidget(QtWidgets.QLabel("Type"))
-        layout.addWidget(self.measurementComboBox)
-        layout.addWidget(QtWidgets.QLabel("Instruments"))
-        self.instrumentWidget = QtWidgets.QWidget()
-        layout.addWidget(self.instrumentWidget)
-        self.instrumentLayout = QtWidgets.QHBoxLayout(self.instrumentWidget)
-        self.instrumentLayout.addWidget(self.smuCheckBox)
-        self.instrumentLayout.addWidget(self.smu2CheckBox)
-        self.instrumentLayout.addWidget(self.elmCheckBox)
-        self.instrumentLayout.addWidget(self.elm2CheckBox)
-        self.instrumentLayout.addWidget(self.lcrCheckBox)
-        self.instrumentLayout.addWidget(self.dmmCheckBox)
-        self.instrumentLayout.addWidget(self.switchCheckBox)
-        self.instrumentLayout.addStretch()
-        self.instrumentLayout.setContentsMargins(0, 0, 0, 0)
+    def _create_layout(self) -> None:
+        vbox_layout = QtWidgets.QVBoxLayout(self.measurement_group_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Type"))
+        vbox_layout.addWidget(self.measurement_combo_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Instruments"))
+        self.instrument_widget = QtWidgets.QWidget()
+        vbox_layout.addWidget(self.instrument_widget)
+        self.instrument_layout = QtWidgets.QHBoxLayout(self.instrument_widget)
+        self.instrument_layout.addWidget(self.smu_check_box)
+        self.instrument_layout.addWidget(self.smu2_check_box)
+        self.instrument_layout.addWidget(self.elm_check_box)
+        self.instrument_layout.addWidget(self.elm2_check_box)
+        self.instrument_layout.addWidget(self.lcr_check_box)
+        self.instrument_layout.addWidget(self.dmm_check_box)
+        self.instrument_layout.addWidget(self.switch_check_box)
+        self.instrument_layout.addStretch()
+        self.instrument_layout.setContentsMargins(0, 0, 0, 0)
 
-        layout = QtWidgets.QVBoxLayout(self.outputGroupBox)
-        layout.addWidget(QtWidgets.QLabel("Sample Name"))
-        layout.addWidget(self.sampleLineEdit)
-        layout.addWidget(QtWidgets.QLabel("Output Path"))
-        outputLayout = QtWidgets.QHBoxLayout()
-        outputLayout.addWidget(self.outputLineEdit)
-        outputLayout.addWidget(self.outputToolButton)
-        layout.addLayout(outputLayout)
-        layout.addStretch()
+        vbox_layout = QtWidgets.QVBoxLayout(self.output_group_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Sample Name"))
+        vbox_layout.addWidget(self.sample_line_edit)
+        vbox_layout.addWidget(QtWidgets.QLabel("Output Path"))
+        output_layout = QtWidgets.QHBoxLayout()
+        output_layout.addWidget(self.output_line_edit)
+        output_layout.addWidget(self.output_tool_button)
+        vbox_layout.addLayout(output_layout)
+        vbox_layout.addStretch()
 
-        layout = QtWidgets.QVBoxLayout(self.rampGroupBox)
-        layout.addWidget(QtWidgets.QLabel("Begin"))
-        layout.addWidget(self.beginVoltageSpinBox)
-        layout.addWidget(QtWidgets.QLabel("End"))
-        layout.addWidget(self.endVoltageSpinBox)
-        layout.addWidget(QtWidgets.QLabel("Step"))
-        layout.addWidget(self.stepVoltageSpinBox)
-        layout.addWidget(QtWidgets.QLabel("Waiting Time"))
-        layout.addWidget(self.waitingTimeSpinBox)
+        vbox_layout = QtWidgets.QVBoxLayout(self.ramp_group_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Begin"))
+        vbox_layout.addWidget(self.begin_voltage_spin_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("End"))
+        vbox_layout.addWidget(self.end_voltage_spin_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Step"))
+        vbox_layout.addWidget(self.step_voltage_spin_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Waiting Time"))
+        vbox_layout.addWidget(self.waiting_time_spin_box)
 
-        layout = QtWidgets.QVBoxLayout(self.biasGroupBox)
-        layout.addWidget(self.biasVoltageSpinBox)
-        layout.addStretch()
+        vbox_layout = QtWidgets.QVBoxLayout(self.bias_group_box)
+        vbox_layout.addWidget(self.bias_voltage_spin_box)
+        vbox_layout.addStretch()
 
-        layout = QtWidgets.QVBoxLayout(self.complianceGroupBox)
-        layout.addWidget(QtWidgets.QLabel("Current"))
-        layout.addWidget(self.currentComplianceSpinBox)
-        layout.addWidget(self.continueInComplianceCheckBox)
+        vbox_layout = QtWidgets.QVBoxLayout(self.compliance_group_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Current"))
+        vbox_layout.addWidget(self.current_compliance_spin_box)
+        vbox_layout.addWidget(self.continue_in_compliance_check_box)
+        vbox_layout.addStretch()
 
-        layout.addStretch()
+        waiting_time_layout = QtWidgets.QHBoxLayout()
+        waiting_time_layout.addWidget(self.waiting_time_continuous_spin_box)
 
-        waitingTimeLayout = QtWidgets.QHBoxLayout()
-        waitingTimeLayout.addWidget(self.waitingTimeContinuousSpinBox)
-
-        layout = QtWidgets.QVBoxLayout(self.continuousGroupBox)
-        layout.addWidget(QtWidgets.QLabel("Waiting Time"))
-        layout.addLayout(waitingTimeLayout)
-        layout.addWidget(self.changeVoltageButton)
-        layout.addStretch()
+        vbox_layout = QtWidgets.QVBoxLayout(self.continuous_group_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Waiting Time"))
+        vbox_layout.addLayout(waiting_time_layout)
+        vbox_layout.addWidget(self.change_voltage_button)
+        vbox_layout.addStretch()
 
         layout = QtWidgets.QHBoxLayout(self)
-        vbox = QtWidgets.QVBoxLayout()
-        vbox.addWidget(self.measurementGroupBox)
-        vbox.addWidget(self.outputGroupBox)
-        layout.addLayout(vbox)
-        vbox = QtWidgets.QVBoxLayout()
-        vbox.addWidget(self.rampGroupBox)
-        vbox.addWidget(self.biasGroupBox)
-        layout.addLayout(vbox)
-        vbox = QtWidgets.QVBoxLayout()
-        vbox.addWidget(self.complianceGroupBox)
-        vbox.addWidget(self.continuousGroupBox)
-        layout.addLayout(vbox)
+
+        vbox_layout = QtWidgets.QVBoxLayout()
+        vbox_layout.addWidget(self.measurement_group_box)
+        vbox_layout.addWidget(self.output_group_box)
+        layout.addLayout(vbox_layout)
+
+        vbox_layout = QtWidgets.QVBoxLayout()
+        vbox_layout.addWidget(self.ramp_group_box)
+        vbox_layout.addWidget(self.bias_group_box)
+        layout.addLayout(vbox_layout)
+
+        vbox_layout = QtWidgets.QVBoxLayout()
+        vbox_layout.addWidget(self.compliance_group_box)
+        vbox_layout.addWidget(self.continuous_group_box)
+        layout.addLayout(vbox_layout)
+
         layout.addStretch()
         layout.setStretch(0, 1)
         layout.setStretch(1, 1)
         layout.setStretch(2, 1)
 
-        self._currentComplianceLocked = False
+    def set_idle_state(self) -> None:
+        self.measurement_combo_box.setEnabled(True)
+        self.instrument_widget.setEnabled(True)
+        self.output_group_box.setEnabled(True)
+        self.begin_voltage_spin_box.setEnabled(True)
+        self.end_voltage_spin_box.setEnabled(True)
+        self.step_voltage_spin_box.setEnabled(True)
+        self.waiting_time_spin_box.setEnabled(True)
+        self.bias_voltage_spin_box.setEnabled(True)
+        self.change_voltage_button.setEnabled(False)
+        self.current_compliance_spin_box.setEnabled(not self._current_compliance_locked)
+        self.continue_in_compliance_check_box.setEnabled(True)
 
-    def setIdleState(self) -> None:
-        self.measurementComboBox.setEnabled(True)
-        self.instrumentWidget.setEnabled(True)
-        self.outputGroupBox.setEnabled(True)
-        self.beginVoltageSpinBox.setEnabled(True)
-        self.endVoltageSpinBox.setEnabled(True)
-        self.stepVoltageSpinBox.setEnabled(True)
-        self.waitingTimeSpinBox.setEnabled(True)
-        self.biasVoltageSpinBox.setEnabled(True)
-        self.changeVoltageButton.setEnabled(False)
-        self.currentComplianceSpinBox.setEnabled(not self._currentComplianceLocked)
-        self.continueInComplianceCheckBox.setEnabled(True)
+    def set_running_state(self) -> None:
+        self.measurement_combo_box.setEnabled(False)
+        self.instrument_widget.setEnabled(False)
+        self.output_group_box.setEnabled(False)
+        self.begin_voltage_spin_box.setEnabled(False)
+        self.end_voltage_spin_box.setEnabled(False)
+        self.step_voltage_spin_box.setEnabled(False)
+        self.waiting_time_spin_box.setEnabled(False)
+        self.bias_voltage_spin_box.setEnabled(False)
 
-    def setRunningState(self) -> None:
-        self.measurementComboBox.setEnabled(False)
-        self.instrumentWidget.setEnabled(False)
-        self.outputGroupBox.setEnabled(False)
-        self.beginVoltageSpinBox.setEnabled(False)
-        self.endVoltageSpinBox.setEnabled(False)
-        self.stepVoltageSpinBox.setEnabled(False)
-        self.waitingTimeSpinBox.setEnabled(False)
-        self.biasVoltageSpinBox.setEnabled(False)
+    def set_stopping_state(self):
+        self.change_voltage_button.setEnabled(False)
+        self.current_compliance_spin_box.setEnabled(False)
+        self.continue_in_compliance_check_box.setEnabled(False)
 
-    def setStoppingState(self):
-        self.changeVoltageButton.setEnabled(False)
-        self.currentComplianceSpinBox.setEnabled(False)
-        self.continueInComplianceCheckBox.setEnabled(False)
+    def add_measurement(self, spec: dict) -> None:
+        self.measurement_combo_box.addItem(spec.get("title", ""), spec)
 
-    def addMeasurement(self, spec):
-        self.measurementComboBox.addItem(spec.get("title"), spec)
+    def current_measurement(self) -> Optional[dict]:
+        return self.measurement_combo_box.currentData()
 
-    def currentMeasurement(self):
-        return self.measurementComboBox.currentData()
-
-    def setCurrentMeasurement(self, measurement_id: str) -> None:
-        for index in range(self.measurementComboBox.count()):
-            data = self.measurementComboBox.itemData(index)
+    def set_current_measurement(self, measurement_id: str) -> None:
+        for index in range(self.measurement_combo_box.count()):
+            data = self.measurement_combo_box.itemData(index)
             if isinstance(data, dict):
                 if data.get("id") == measurement_id:
-                    self.measurementComboBox.setCurrentIndex(index)
+                    self.measurement_combo_box.setCurrentIndex(index)
                     return
 
-    def setMeasurementRoles(self, roles: list[str]) -> None:
-        self.setSMUEnabled("smu" in roles)
-        self.setSMU2Enabled("smu2" in roles)
-        self.setELMEnabled("elm" in roles)
-        self.setELM2Enabled("elm2" in roles)
-        self.setLCREnabled("lcr" in roles)
-        self.setDMMEnabled("dmm" in roles)
-        self.setSwitchEnabled("switch" in roles)
+    def set_measurement_roles(self, roles: list[str]) -> None:
+        self.set_smu_enabled("smu" in roles)
+        self.set_smu2_enabled("smu2" in roles)
+        self.set_elm_enabled("elm" in roles)
+        self.set_elm2_enabled("elm2" in roles)
+        self.set_lcr_enabled("lcr" in roles)
+        self.set_dmm_enabled("dmm" in roles)
+        self.set_switch_enabled("switch" in roles)
 
-    def isSMUEnabled(self):
-        return self.smuCheckBox.isChecked()
+    def is_smu_enabled(self):
+        return self.smu_check_box.isChecked()
 
-    def setSMUEnabled(self, enabled):
-        return self.smuCheckBox.setChecked(enabled)
+    def set_smu_enabled(self, enabled):
+        return self.smu_check_box.setChecked(enabled)
 
-    def isSMU2Enabled(self):
-        return self.smu2CheckBox.isChecked()
+    def is_smu2_enabled(self):
+        return self.smu2_check_box.isChecked()
 
-    def setSMU2Enabled(self, enabled):
-        return self.smu2CheckBox.setChecked(enabled)
+    def set_smu2_enabled(self, enabled):
+        return self.smu2_check_box.setChecked(enabled)
 
-    def isELMEnabled(self):
-        return self.elmCheckBox.isChecked()
+    def is_elm_enabled(self):
+        return self.elm_check_box.isChecked()
 
-    def setELMEnabled(self, enabled):
-        return self.elmCheckBox.setChecked(enabled)
+    def set_elm_enabled(self, enabled):
+        return self.elm_check_box.setChecked(enabled)
 
-    def isELM2Enabled(self):
-        return self.elm2CheckBox.isChecked()
+    def is_elm2_enabled(self):
+        return self.elm2_check_box.isChecked()
 
-    def setELM2Enabled(self, enabled):
-        return self.elm2CheckBox.setChecked(enabled)
+    def set_elm2_enabled(self, enabled):
+        return self.elm2_check_box.setChecked(enabled)
 
-    def isLCREnabled(self):
-        return self.lcrCheckBox.isChecked()
+    def is_lcr_enabled(self):
+        return self.lcr_check_box.isChecked()
 
-    def setLCREnabled(self, enabled):
-        return self.lcrCheckBox.setChecked(enabled)
+    def set_lcr_enabled(self, enabled):
+        return self.lcr_check_box.setChecked(enabled)
 
-    def isDMMEnabled(self):
-        return self.dmmCheckBox.isChecked()
+    def is_dmm_enabled(self):
+        return self.dmm_check_box.isChecked()
 
-    def setDMMEnabled(self, enabled):
-        return self.dmmCheckBox.setChecked(enabled)
+    def set_dmm_enabled(self, enabled):
+        return self.dmm_check_box.setChecked(enabled)
 
-    def isSwitchEnabled(self):
-        return self.switchCheckBox.isChecked()
+    def is_switch_enabled(self):
+        return self.switch_check_box.isChecked()
 
-    def setSwitchEnabled(self, enabled):
-        return self.switchCheckBox.setChecked(enabled)
+    def set_switch_enabled(self, enabled):
+        return self.switch_check_box.setChecked(enabled)
 
-    def isOutputEnabled(self):
-        return self.outputGroupBox.isChecked()
+    def is_output_enabled(self):
+        return self.output_group_box.isChecked()
 
-    def setOutputEnabled(self, enabled):
-        self.outputGroupBox.setChecked(enabled)
+    def set_output_enabled(self, enabled: bool) -> None:
+        self.output_group_box.setChecked(enabled)
 
-    def sampleName(self):
-        return self.sampleLineEdit.text().strip()
+    def sample_name(self) -> str:
+        return self.sample_line_edit.text().strip()
 
-    def setSampleName(self, text):
-        self.sampleLineEdit.setText(text)
+    def set_sample_name(self, text: str) -> None:
+        self.sample_line_edit.setText(text)
 
-    def outputDir(self):
-        return self.outputLineEdit.text().strip()
+    def output_dir(self) -> str:
+        return self.output_line_edit.text().strip()
 
-    def setOutputDir(self, text):
-        self.outputLineEdit.setText(text)
+    def set_output_dir(self, text: str) -> None:
+        self.output_line_edit.setText(text)
 
-    def selectOutput(self):
-        path = QtWidgets.QFileDialog.getExistingDirectory(self, "Select ouput path", self.outputDir())
+    @QtCore.Slot()
+    def on_select_output(self) -> None:
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select ouput path", self.output_dir()
+        )
         if path:
-            self.setOutputDir(path)
+            self.set_output_dir(path)
 
-    def setVoltageUnit(self, unit):
-        self.beginVoltageSpinBox.setSuffix(f" {unit}")
-        self.endVoltageSpinBox.setSuffix(f" {unit}")
-        self.stepVoltageSpinBox.setSuffix(f" {unit}")
+    def set_voltage_unit(self, unit: str) -> None:
+        self.begin_voltage_spin_box.setSuffix(f" {unit}")
+        self.end_voltage_spin_box.setSuffix(f" {unit}")
+        self.step_voltage_spin_box.setSuffix(f" {unit}")
 
-    def beginVoltage(self):
-        unit = self.beginVoltageSpinBox.suffix().strip()
-        return (self.beginVoltageSpinBox.value() * ureg(unit)).to("V").m
+    def begin_voltage(self) -> float:
+        unit = self.begin_voltage_spin_box.suffix().strip()
+        return (self.begin_voltage_spin_box.value() * ureg(unit)).to("V").m
 
-    def setBeginVoltage(self, value):
-        unit = self.beginVoltageSpinBox.suffix().strip()
-        self.beginVoltageSpinBox.setValue((value * ureg("V")).to(unit).m)
+    def set_begin_voltage(self, begin_voltage: float) -> None:
+        unit = self.begin_voltage_spin_box.suffix().strip()
+        self.begin_voltage_spin_box.setValue((begin_voltage * ureg("V")).to(unit).m)
 
-    def endVoltage(self):
-        unit = self.endVoltageSpinBox.suffix().strip()
-        return (self.endVoltageSpinBox.value() * ureg(unit)).to("V").m
+    def end_voltage(self) -> float:
+        unit = self.end_voltage_spin_box.suffix().strip()
+        return (self.end_voltage_spin_box.value() * ureg(unit)).to("V").m
 
-    def setEndVoltage(self, value):
-        unit = self.endVoltageSpinBox.suffix().strip()
-        self.endVoltageSpinBox.setValue((value * ureg("V")).to(unit).m)
+    def set_end_voltage(self, end_voltage: float) -> None:
+        unit = self.end_voltage_spin_box.suffix().strip()
+        self.end_voltage_spin_box.setValue((end_voltage * ureg("V")).to(unit).m)
 
-    def stepVoltage(self):
-        unit = self.stepVoltageSpinBox.suffix().strip()
-        return (self.stepVoltageSpinBox.value() * ureg(unit)).to("V").m
+    def step_voltage(self) -> float:
+        unit = self.step_voltage_spin_box.suffix().strip()
+        return (self.step_voltage_spin_box.value() * ureg(unit)).to("V").m
 
-    def setStepVoltage(self, value):
-        unit = self.stepVoltageSpinBox.suffix().strip()
-        self.stepVoltageSpinBox.setValue((value * ureg("V")).to(unit).m)
+    def set_step_voltage(self, step_voltage: float):
+        unit = self.step_voltage_spin_box.suffix().strip()
+        self.step_voltage_spin_box.setValue((step_voltage * ureg("V")).to(unit).m)
 
-    def waitingTime(self):
-        return self.waitingTimeSpinBox.value()
+    def waiting_time(self) -> float:
+        return self.waiting_time_spin_box.value()
 
-    def setWaitingTime(self, value):
-        self.waitingTimeSpinBox.setValue(value)
+    def set_waiting_time(self, waiting_time: float) -> None:
+        self.waiting_time_spin_box.setValue(waiting_time)
 
-    def biasVoltage(self):
-        unit = self.biasVoltageSpinBox.suffix().strip()
-        return (self.biasVoltageSpinBox.value() * ureg(unit)).to("V").m
+    def bias_voltage(self) -> float:
+        unit = self.bias_voltage_spin_box.suffix().strip()
+        return (self.bias_voltage_spin_box.value() * ureg(unit)).to("V").m
 
-    def setBiasVoltage(self, value):
-        unit = self.biasVoltageSpinBox.suffix().strip()
-        self.biasVoltageSpinBox.setValue((value * ureg("V")).to(unit).m)
+    def set_bias_voltage(self, bias_voltage: float) -> None:
+        unit = self.bias_voltage_spin_box.suffix().strip()
+        self.bias_voltage_spin_box.setValue((bias_voltage * ureg("V")).to(unit).m)
 
-    def setCurrentComplianceUnit(self, unit):
-        self.currentComplianceSpinBox.setSuffix(f" {unit}")
+    def set_current_compliance_unit(self, unit: str) -> None:
+        self.current_compliance_spin_box.setSuffix(f" {unit}")
 
-    def currentCompliance(self):
-        unit = self.currentComplianceSpinBox.suffix().strip()
-        return (self.currentComplianceSpinBox.value() * ureg(unit)).to("A").m
+    def current_compliance(self) -> float:
+        unit = self.current_compliance_spin_box.suffix().strip()
+        return (self.current_compliance_spin_box.value() * ureg(unit)).to("A").m
 
-    def setCurrentCompliance(self, value):
-        unit = self.currentComplianceSpinBox.suffix().strip()
-        return self.currentComplianceSpinBox.setValue((value * ureg("A")).to(unit).m)
+    def set_current_compliance(self, compliance: float) -> None:
+        unit = self.current_compliance_spin_box.suffix().strip()
+        return self.current_compliance_spin_box.setValue(
+            (compliance * ureg("A")).to(unit).m
+        )
 
-    def setCurrentComplianceLocked(self, state):
-        self._currentComplianceLocked = state
-        self.currentComplianceSpinBox.setEnabled(not state)
+    def set_current_compliance_locked(self, state: bool) -> None:
+        self._current_compliance_locked = state
+        self.current_compliance_spin_box.setEnabled(not state)
 
-    def isContinueInCompliance(self):
-        return self.continueInComplianceCheckBox.isChecked()
+    def is_continue_in_compliance(self) -> bool:
+        return self.continue_in_compliance_check_box.isChecked()
 
-    def setContinueInCompliance(self, enabled):
-        self.continueInComplianceCheckBox.setChecked(enabled)
+    def set_continue_in_compliance(self, enabled: bool) -> None:
+        self.continue_in_compliance_check_box.setChecked(enabled)
 
-    def waitingTimeContinuous(self):
-        return self.waitingTimeContinuousSpinBox.value()
+    def waiting_time_continuous(self) -> float:
+        return self.waiting_time_continuous_spin_box.value()
 
-    def setWaitingTimeContinuous(self, value):
-        self.waitingTimeContinuousSpinBox.setValue(value)
+    def set_waiting_time_continuous(self, waiting_time: float) -> None:
+        self.waiting_time_continuous_spin_box.setValue(waiting_time)
+
+    def set_change_voltage_enabled(self, enabled: bool) -> None:
+        self.change_voltage_button.setEnabled(enabled)

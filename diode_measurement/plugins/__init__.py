@@ -9,11 +9,9 @@ logger = logging.getLogger(__name__)
 class Plugin:
     """Base class for plugins."""
 
-    def install(self, context: Any) -> None:
-        ...
+    def install(self, context: Any) -> None: ...
 
-    def uninstall(self, context: Any) -> None:
-        ...
+    def uninstall(self, context: Any) -> None: ...
 
 
 class PluginRegistry:

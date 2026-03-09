@@ -49,14 +49,13 @@ def bootstrap(app: QtWidgets.QApplication) -> None:
     startup = QtCore.QTimer(app)
     startup.setSingleShot(True)
     startup.timeout.connect(controller.start)
-    startup.timeout.connect(controller.loadSettings)
+    startup.timeout.connect(controller.read_settings)
     startup.timeout.connect(lambda: plugins.install(RPCServerPlugin()))
     startup.timeout.connect(lambda: plugins.install(ScreenshotPlugin()))
     startup.start(10)
 
-    app.aboutToQuit.connect(controller.storeSettings)
+    app.aboutToQuit.connect(controller.write_settings)
     app.aboutToQuit.connect(controller.shutdown)
     app.aboutToQuit.connect(plugins.uninstall)
 
     app.exec()
-

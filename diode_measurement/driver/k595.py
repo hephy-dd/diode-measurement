@@ -12,12 +12,11 @@ ERROR_MESSAGES = {
     3: "Conflict",
     4: "Trigger Overrun",
     5: "Number",
-    6: "Self Test"
+    6: "Self Test",
 }
 
 
 class K595(LCRMeter):
-
     WRITE_DELAY = 0.250
 
     def identity(self) -> str:
@@ -43,8 +42,7 @@ class K595(LCRMeter):
     def get_output_enabled(self) -> bool:
         return self.get_voltage_level() != 0
 
-    def set_output_enabled(self, enabled: bool) -> None:
-        ...  # not available
+    def set_output_enabled(self, enabled: bool) -> None: ...  # not available
 
     def get_voltage_level(self) -> float:
         self._write("F1X")
@@ -54,11 +52,9 @@ class K595(LCRMeter):
     def set_voltage_level(self, level: float) -> None:
         self._write(f"V{level:.2f}X")
 
-    def set_voltage_range(self, level: float) -> None:
-        ...  # TODO
+    def set_voltage_range(self, level: float) -> None: ...  # TODO
 
-    def set_current_compliance_level(self, level: float) -> None:
-        ...  # not supported
+    def set_current_compliance_level(self, level: float) -> None: ...  # not supported
 
     def compliance_tripped(self) -> bool:
         self._write("F1X")
@@ -83,7 +79,7 @@ class K595(LCRMeter):
         if not hasattr(self, "_write_timestamp"):
             self._write_timestamp = 0
         offset = self._write_timestamp + abs(type(self).WRITE_DELAY)
-        interval = max(0.025, abs(type(self).WRITE_DELAY / 100.))
+        interval = max(0.025, abs(type(self).WRITE_DELAY / 100.0))
         while time.time() < offset:
             time.sleep(interval)
         self.resource.write(message)

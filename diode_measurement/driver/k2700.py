@@ -4,12 +4,10 @@ __all__ = ["K2700"]
 
 
 class K2700(DMM):
-
     def identity(self) -> str:
         return self._query("*IDN?")
 
-    def reset(self) -> None:
-        ...  # prevent reset
+    def reset(self) -> None: ...  # prevent reset
 
     def clear(self) -> None:
         self._write("*CLS")
@@ -20,8 +18,7 @@ class K2700(DMM):
         message = message.strip().strip('"')
         return code, message
 
-    def configure(self, options: dict) -> None:
-        ...
+    def configure(self, options: dict) -> None: ...
 
     def measure_temperature(self) -> float:
         self._write(":FORM:ELEM READ")  # select reading as return value

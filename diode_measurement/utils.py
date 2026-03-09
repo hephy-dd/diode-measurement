@@ -12,7 +12,7 @@ __all__ = [
     "format_metric",
     "format_switch",
     "limits",
-    "inverse_square"
+    "inverse_square",
 ]
 
 ureg = pint.UnitRegistry()
@@ -45,7 +45,12 @@ def open_resource(resource_name: str, termination: str, timeout: float):
     resource_name, visa_library = get_resource(resource_name)
     timeout_millisecs = timeout * 1e3
     rm = pyvisa.ResourceManager(visa_library)
-    return rm.open_resource(resource_name=resource_name, read_termination=termination, write_termination=termination, timeout=timeout_millisecs)
+    return rm.open_resource(
+        resource_name=resource_name,
+        read_termination=termination,
+        write_termination=termination,
+        timeout=timeout_millisecs,
+    )
 
 
 def safe_filename(filename: str) -> str:
@@ -54,15 +59,15 @@ def safe_filename(filename: str) -> str:
 
 def auto_scale(value: float) -> tuple[float, str, str]:
     scales = (
-        (1e+24, "Y", "yotta"),
-        (1e+21, "Z", "zetta"),
-        (1e+18, "E", "exa"),
-        (1e+15, "P", "peta"),
-        (1e+12, "T", "tera"),
-        (1e+9, "G", "giga"),
-        (1e+6, "M", "mega"),
-        (1e+3, "k", "kilo"),
-        (1e+0, "", ""),
+        (1e24, "Y", "yotta"),
+        (1e21, "Z", "zetta"),
+        (1e18, "E", "exa"),
+        (1e15, "P", "peta"),
+        (1e12, "T", "tera"),
+        (1e9, "G", "giga"),
+        (1e6, "M", "mega"),
+        (1e3, "k", "kilo"),
+        (1e0, "", ""),
         (1e-3, "m", "milli"),
         (1e-6, "u", "micro"),
         (1e-9, "n", "nano"),
@@ -70,7 +75,7 @@ def auto_scale(value: float) -> tuple[float, str, str]:
         (1e-15, "f", "femto"),
         (1e-18, "a", "atto"),
         (1e-21, "z", "zepto"),
-        (1e-24, "y", "yocto")
+        (1e-24, "y", "yocto"),
     )
     for scale, prefix, name in scales:
         if abs(value) >= scale:
@@ -108,14 +113,14 @@ def limits(iterable: Iterable) -> tuple:
                 min(x, limits[0]),
                 max(x, limits[1]),
                 min(y, limits[2]),
-                max(y, limits[3])
+                max(y, limits[3]),
             )
     return limits
 
 
 def inverse_square(value: float) -> float:
     """Return 1/x^2 for value."""
-    return 1. / value ** 2
+    return 1.0 / value**2
 
 
 def safe_bool(value: Any, default: bool = False) -> bool:

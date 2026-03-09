@@ -21,7 +21,6 @@ def read_block(fp):
 
 
 class Reader:
-
     def __init__(self, fp):
         self.fp = fp
 

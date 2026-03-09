@@ -31,14 +31,13 @@ ERROR_MESSAGES = {
     22: "Cal Compliance Error",
     23: "Cal Value Error",
     24: "Cal Constants Error",
-    25: "Cal Invalid Error"
+    25: "Cal Invalid Error",
 }
 
 logger = logging.getLogger(__name__)
 
 
 class K237(SourceMeter):
-
     WRITE_DELAY = 0.250
 
     def identity(self) -> str:
@@ -117,10 +116,10 @@ class K237(SourceMeter):
         level = abs(level)
         if level <= 1.1:
             return 1
-        elif level <= 11.:
+        elif level <= 11.0:
             return 2
-        elif level <= 110.:
+        elif level <= 110.0:
             return 3
-        elif level <= 1100.:
+        elif level <= 1100.0:
             return 4
         return 0  # Auto

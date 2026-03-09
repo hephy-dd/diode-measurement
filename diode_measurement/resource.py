@@ -19,7 +19,7 @@ class Resource:
         self.options = {
             "read_termination": "\r\n",
             "write_termination": "\r\n",
-            "timeout": 8000
+            "timeout": 8000,
         }
         self.options.update(options)
         self._rm: Optional[pyvisa.ResourceManager] = None
@@ -28,7 +28,9 @@ class Resource:
     def __enter__(self):
         try:
             self._rm = pyvisa.ResourceManager(self.visa_library)
-            self._resource = self._rm.open_resource(resource_name=self.resource_name, **self.options)
+            self._resource = self._rm.open_resource(
+                resource_name=self.resource_name, **self.options
+            )
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         return self
@@ -93,7 +95,12 @@ class AutoReconnectResource(Resource):
         for attempt in range(self.retry_attempts + 1):
             try:
                 if attempt:
-                    logger.info("auto reconnect to resource (%d/%d): %s", attempt, self.retry_attempts, repr(self.resource_name))
+                    logger.info(
+                        "auto reconnect to resource (%d/%d): %s",
+                        attempt,
+                        self.retry_attempts,
+                        repr(self.resource_name),
+                    )
                     try:
                         self.__exit__()
                     except Exception:

@@ -22,11 +22,7 @@ class LinearRange:
     [0.0, 1.0, 2.0, 3.0, 4.0]
     """
 
-    __slots__ = (
-        "begin",
-        "end",
-        "step"
-    )
+    __slots__ = ("begin", "end", "step")
 
     def __init__(self, begin: float, end: float, step: float):
         self.begin: float = begin

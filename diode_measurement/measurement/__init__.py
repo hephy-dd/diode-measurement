@@ -18,7 +18,6 @@ ReadingType = dict[str, Any]
 
 
 class EventHandler:
-
     def __init__(self) -> None:
         self.handlers: list[Callable] = []
 
@@ -31,7 +30,6 @@ class EventHandler:
 
 
 class Measurement:
-
     def __init__(self, state: State) -> None:
         super().__init__()
         self.state: State = state
@@ -50,7 +48,9 @@ class Measurement:
         model = role.get("model", "")
         resource_name = role.get("resource_name", "")
         if not resource_name.strip():
-            raise ValueError(f"Empty resource name not allowed for {name.upper()} ({model}).")
+            raise ValueError(
+                f"Empty resource name not allowed for {name.upper()} ({model})."
+            )
         visa_library = role.get("visa_library", "@py")
         termination = role.get("termination", "\n")
         timeout = role.get("timeout", 0) * 1000  # in millisecs
@@ -66,7 +66,7 @@ class Measurement:
             visa_library=visa_library,
             read_termination=termination,
             write_termination=termination,
-            timeout=timeout
+            timeout=timeout,
         )
         self._instruments[name] = cls, resource
 
@@ -78,14 +78,11 @@ class Measurement:
     def set_fsm_state(self, state: FSMState) -> None:
         self.update_event({"rpc_state": state})
 
-    def initialize(self) -> None:
-        ...
+    def initialize(self) -> None: ...
 
-    def measure(self) -> None:
-        ...
+    def measure(self) -> None: ...
 
-    def finalize(self) -> None:
-        ...
+    def finalize(self) -> None: ...
 
     def run(self) -> None:
         try:
@@ -99,7 +96,9 @@ class Measurement:
                 logger.debug("creating instrument contexts...")
                 for key, value in self._instruments.items():
                     cls, resource = value
-                    logger.debug("creating instrument context %s: %s...", key, cls.__name__)
+                    logger.debug(
+                        "creating instrument context %s: %s...", key, cls.__name__
+                    )
                     context = cls(stack.enter_context(resource))
                     self.instruments[key] = context
                 logger.debug("creating instrument contexts... done.")
@@ -131,7 +130,6 @@ class Measurement:
 
 
 class RangeMeasurement(Measurement):
-
     def __init__(self, state: State) -> None:
         super().__init__(state)
         self.it_reading_event: EventHandler = EventHandler()
@@ -254,7 +252,9 @@ class RangeMeasurement(Measurement):
                 if self.state.change_voltage_continuous:
                     break
                 remaining: float = round(threshold - now)
-                self.update_estimate_message_continuous(f"Next reading in {remaining:d} sec...", estimate)
+                self.update_estimate_message_continuous(
+                    f"Next reading in {remaining:d} sec...", estimate
+                )
                 time.sleep(interval)
                 now = time.time()
 
@@ -263,7 +263,11 @@ class RangeMeasurement(Measurement):
         if params is not None:
             self.state.pop_change_voltage_continuous()  # TODO
             self.set_fsm_state(FSMState.RAMPING)
-            self.ramp_to_continuous(params.get("end_voltage"), params.get("step_voltage"), params.get("waiting_time"))
+            self.ramp_to_continuous(
+                params.get("end_voltage"),
+                params.get("step_voltage"),
+                params.get("waiting_time"),
+            )
             if not self.state.stop_requested:  # hack
                 self.set_fsm_state(FSMState.CONTINUOUS)
         self.it_change_voltage_ready_event()
@@ -281,13 +285,19 @@ class RangeMeasurement(Measurement):
         elapsed_time = format(estimate.elapsed).split(".")[0]
         remaining_time = format(estimate.remaining).split(".")[0]
         average_time = format(estimate.average.total_seconds(), ".2f")
-        self.update_message(f"{message} | Elapsed {elapsed_time} | Remaining {remaining_time} | Average {average_time} s")
+        self.update_message(
+            f"{message} | Elapsed {elapsed_time} | Remaining {remaining_time} | Average {average_time} s"
+        )
 
-    def update_estimate_message_continuous(self, message: str, estimate: Estimate) -> None:
+    def update_estimate_message_continuous(
+        self, message: str, estimate: Estimate
+    ) -> None:
         """Emit update message event for continuous iterations."""
         elapsed_time = format(estimate.elapsed).split(".")[0]
         average_time = format(estimate.average.total_seconds(), ".3f")
-        self.update_message(f"{message} | Elapsed {elapsed_time} | Average {average_time} s")
+        self.update_message(
+            f"{message} | Elapsed {elapsed_time} | Average {average_time} s"
+        )
 
     def update_estimate_progress(self, estimate: Estimate) -> None:
         """Emit update progress event for ramp iterations."""
@@ -343,7 +353,7 @@ class RangeMeasurement(Measurement):
         self.initialize_switch()
 
         # Reset (optional)
-        if self.state.is_reset:
+        if self.state.is_reset_instruments:
             for key, instrument in self.instruments.items():
                 logger.info("Reset %s...", key.upper())
                 instrument.reset()
@@ -360,7 +370,7 @@ class RangeMeasurement(Measurement):
             logger.info("Configure %s...", key.upper())
             options = self.state.find_role(key).get("options", {})
             for name, value in options.items():
-                logger.info("%s: %r" , name, value)
+                logger.info("%s: %r", name, value)
             instrument.configure(options)
             self.check_error_state(instrument)
             logger.info("Configure %s... done.", key.upper())
@@ -483,18 +493,20 @@ class RangeMeasurement(Measurement):
             self.finalize_switch()
 
         finally:
-            self.update_event({
-                "source_voltage": None,
-                "bias_source_voltage": None,
-                "smu_voltage": None,
-                "smu_current": None,
-                "smu2_voltage": None,
-                "smu2_current": None,
-                "elm_current": None,
-                "elm2_current": None,
-                "lcr_capacity": None,
-                "dmm_temperature": None
-            })
+            self.update_event(
+                {
+                    "source_voltage": None,
+                    "bias_source_voltage": None,
+                    "smu_voltage": None,
+                    "smu_current": None,
+                    "smu2_voltage": None,
+                    "smu2_current": None,
+                    "elm_current": None,
+                    "elm2_current": None,
+                    "lcr_capacity": None,
+                    "dmm_temperature": None,
+                }
+            )
 
     def finalize_elms(self) -> None:
         elm = self.instruments.get("elm")
@@ -524,7 +536,7 @@ class RangeMeasurement(Measurement):
             if hasattr(self.source_instrument, "measure_v"):
                 return self.source_instrument.measure_v()
             logger.warning("Source instrument does not provide voltage readings.")
-            return 0.
+            return 0.0
 
         threshold: float = 0.5  # Volt
 
@@ -538,18 +550,18 @@ class RangeMeasurement(Measurement):
 
             dt = time.time() - t
             if dt > 60.0:
-                raise RuntimeError(f"Timeout while waiting for voltage to settle < {threshold} V, source output still enabled.")
+                raise RuntimeError(
+                    f"Timeout while waiting for voltage to settle < {threshold} V, source output still enabled."
+                )
 
         self.update_message("")
 
-    def acquire_reading(self) -> None:
-        ...
+    def acquire_reading(self) -> None: ...
 
     def acquire_reading_data(self) -> ReadingType:
         return {}
 
-    def acquire_continuous_reading(self) -> None:
-        ...
+    def acquire_continuous_reading(self) -> None: ...
 
     def ramp_to_begin(self) -> None:
         source_voltage: float = self.state.source_voltage  # type: ignore
@@ -577,22 +589,26 @@ class RangeMeasurement(Measurement):
 
     def ramp_to_zero(self) -> None:
         source_voltage = self.get_source_voltage()
-        self.update_event({
-            "smu_voltage": None,
-            "smu_current": None,
-            "smu2_voltage": None,
-            "smu2_current": None,
-            "elm_current": None,
-            "elm2_current": None,
-            "lcr_capacity": None,
-            "dmm_temperature": None
-        })
+        self.update_event(
+            {
+                "smu_voltage": None,
+                "smu_current": None,
+                "smu2_voltage": None,
+                "smu2_current": None,
+                "elm_current": None,
+                "elm2_current": None,
+                "lcr_capacity": None,
+                "dmm_temperature": None,
+            }
+        )
 
         source_voltage_end: float = 0.0
         source_voltage_step: float = 5.0
         waiting_time: float = 0.250
 
-        ramp: LinearRange = LinearRange(source_voltage, source_voltage_end, source_voltage_step)
+        ramp: LinearRange = LinearRange(
+            source_voltage, source_voltage_end, source_voltage_step
+        )
         estimate: Estimate = Estimate(len(ramp))
         logging.info("Ramp source to zero...")
         for step, voltage in enumerate(ramp):
@@ -612,7 +628,9 @@ class RangeMeasurement(Measurement):
         bias_voltage_step: float = 5.0
         waiting_time: float = 0.250
 
-        ramp: LinearRange = LinearRange(bias_voltage_begin, bias_voltage_end, bias_voltage_step)
+        ramp: LinearRange = LinearRange(
+            bias_voltage_begin, bias_voltage_end, bias_voltage_step
+        )
         estimate: Estimate = Estimate(len(ramp))
 
         logging.info("Ramp bias source to %g V...", ramp.end)
@@ -632,16 +650,18 @@ class RangeMeasurement(Measurement):
         end_voltage: float = 0.0
         step_voltage: float = 5.0
         waiting_time: float = 0.250
-        self.update_event({
-            "smu_voltage": None,
-            "smu_current": None,
-            "smu2_voltage": None,
-            "smu2_current": None,
-            "elm_current": None,
-            "elm2_current": None,
-            "lcr_capacity": None,
-            "dmm_temperature": None
-        })
+        self.update_event(
+            {
+                "smu_voltage": None,
+                "smu_current": None,
+                "smu2_voltage": None,
+                "smu2_current": None,
+                "elm_current": None,
+                "elm2_current": None,
+                "lcr_capacity": None,
+                "dmm_temperature": None,
+            }
+        )
         ramp: LinearRange = LinearRange(bias_source_voltage, end_voltage, step_voltage)
         estimate: Estimate = Estimate(len(ramp))
         logging.info("Ramp bias source to zero...")
@@ -654,7 +674,9 @@ class RangeMeasurement(Measurement):
             estimate.advance()
         logging.info("Ramp bias source to zero... done.")
 
-    def ramp_to_continuous(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
+    def ramp_to_continuous(
+        self, end_voltage: float, step_voltage: float, waiting_time: float
+    ) -> None:
         source_voltage: float = self.state.source_voltage  # type: ignore
 
         ramp: LinearRange = LinearRange(source_voltage, end_voltage, step_voltage)
@@ -680,20 +702,22 @@ class RangeMeasurement(Measurement):
             logger.info(reading)
 
             # TODO
-            if hasattr(self, "itReadingLock") and hasattr(self, "itReadingQueue"):
-                with self.itReadingLock:
-                    self.itReadingQueue.append(reading)
+            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
+                with self.it_reading_lock:
+                    self.it_reading_queue.append(reading)
 
             self.it_reading_event(reading)
 
-            self.update_event({
-                "smu_voltage": reading.get("v_smu"),
-                "smu_current": reading.get("i_smu"),
-                "smu2_voltage": reading.get("v_smu2"),
-                "smu2_current": reading.get("i_smu2"),
-                "elm_current": reading.get("i_elm"),
-                "elm2_current": reading.get("i_elm2"),
-            })
+            self.update_event(
+                {
+                    "smu_voltage": reading.get("v_smu"),
+                    "smu_current": reading.get("i_smu"),
+                    "smu2_voltage": reading.get("v_smu2"),
+                    "smu2_current": reading.get("i_smu2"),
+                    "elm_current": reading.get("i_elm"),
+                    "elm2_current": reading.get("i_elm2"),
+                }
+            )
 
             self.check_current_compliance()
             self.update_current_compliance()
