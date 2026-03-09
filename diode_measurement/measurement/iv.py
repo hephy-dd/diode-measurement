@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class IVMeasurement(RangeMeasurement):
-
     def __init__(self, state: State) -> None:
         super().__init__(state)
         self.iv_reading_event: EventHandler = EventHandler()
@@ -47,13 +46,15 @@ class IVMeasurement(RangeMeasurement):
             with self.iv_reading_lock:
                 self.iv_reading_queue.append(reading)
 
-        self.update_event({
-            "smu_voltage": reading.get("v_smu"),
-            "smu_current": reading.get("i_smu"),
-            "elm_current": reading.get("i_elm"),
-            "elm2_current": reading.get("i_elm2"),
-            "dmm_temperature": reading.get("t_dmm"),
-        })
+        self.update_event(
+            {
+                "smu_voltage": reading.get("v_smu"),
+                "smu_current": reading.get("i_smu"),
+                "elm_current": reading.get("i_elm"),
+                "elm2_current": reading.get("i_elm2"),
+                "dmm_temperature": reading.get("t_dmm"),
+            }
+        )
         self.iv_reading_event(reading)
 
     def acquire_continuous_reading(self) -> None:
@@ -91,13 +92,15 @@ class IVMeasurement(RangeMeasurement):
 
                 voltage = self.get_source_voltage()
 
-                self.update_event({
-                    "smu_voltage": reading.get("v_smu"),
-                    "smu_current": reading.get("i_smu"),
-                    "elm_current": reading.get("i_elm"),
-                    "elm2_current": reading.get("i_elm2"),
-                    "dmm_temperature": reading.get("t_dmm")
-                })
+                self.update_event(
+                    {
+                        "smu_voltage": reading.get("v_smu"),
+                        "smu_current": reading.get("i_smu"),
+                        "elm_current": reading.get("i_elm"),
+                        "elm2_current": reading.get("i_elm2"),
+                        "dmm_temperature": reading.get("t_dmm"),
+                    }
+                )
 
                 t = time.time()
 

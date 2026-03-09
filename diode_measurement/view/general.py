@@ -8,7 +8,6 @@ __all__ = ["GeneralWidget"]
 
 
 class GeneralWidget(QtWidgets.QWidget):
-
     instruments_changed = QtCore.Signal()
     current_compliance_changed = QtCore.Signal(float)
     continue_in_compliance_changed = QtCore.Signal(bool)
@@ -81,7 +80,9 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self.continue_in_compliance_check_box = QtWidgets.QCheckBox(self)
         self.continue_in_compliance_check_box.setText("Continue in Compliance")
-        self.continue_in_compliance_check_box.setStatusTip("Continue measurement when source in compliance.""")
+        self.continue_in_compliance_check_box.setStatusTip(
+            "Continue measurement when source in compliance."
+        )
         self.continue_in_compliance_check_box.setChecked(False)
         self.continue_in_compliance_check_box.toggled.connect(
             lambda checked: self.continue_in_compliance_changed.emit(checked)
@@ -113,14 +114,20 @@ class GeneralWidget(QtWidgets.QWidget):
         self.waiting_time_continuous_spin_box = QtWidgets.QDoubleSpinBox(self)
         self.waiting_time_continuous_spin_box.setSuffix(" s")
         self.waiting_time_continuous_spin_box.setDecimals(2)
-        self.waiting_time_continuous_spin_box.setStatusTip("Waiting time for continuous measurement")
+        self.waiting_time_continuous_spin_box.setStatusTip(
+            "Waiting time for continuous measurement"
+        )
         self.waiting_time_continuous_spin_box.editingFinished.connect(
-            lambda: self.waiting_time_continuous_changed.emit(self.waiting_time_continuous())
+            lambda: self.waiting_time_continuous_changed.emit(
+                self.waiting_time_continuous()
+            )
         )
 
         self.change_voltage_button = QtWidgets.QToolButton(self)
         self.change_voltage_button.setText("&Change Voltage...")
-        self.change_voltage_button.setStatusTip("Change voltage in continuous measurement")
+        self.change_voltage_button.setStatusTip(
+            "Change voltage in continuous measurement"
+        )
         self.change_voltage_button.setEnabled(False)
         self.change_voltage_button.clicked.connect(self.change_voltage_clicked)
 
@@ -336,7 +343,9 @@ class GeneralWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_select_output(self) -> None:
-        path = QtWidgets.QFileDialog.getExistingDirectory(self, "Select ouput path", self.output_dir())
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select ouput path", self.output_dir()
+        )
         if path:
             self.set_output_dir(path)
 
@@ -392,7 +401,9 @@ class GeneralWidget(QtWidgets.QWidget):
 
     def set_current_compliance(self, compliance: float) -> None:
         unit = self.current_compliance_spin_box.suffix().strip()
-        return self.current_compliance_spin_box.setValue((compliance * ureg("A")).to(unit).m)
+        return self.current_compliance_spin_box.setValue(
+            (compliance * ureg("A")).to(unit).m
+        )
 
     def set_current_compliance_locked(self, state: bool) -> None:
         self._current_compliance_locked = state

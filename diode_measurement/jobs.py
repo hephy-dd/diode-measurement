@@ -60,15 +60,27 @@ class MeasurementJob:
                 writer = self.create_writer(fp)
                 # TODO
                 # Note: using signals executes slots in main thread, should be worker thread
-                measurement.started_event.subscribe(lambda state=dict(measurement.state): writer.write_meta(state))
+                measurement.started_event.subscribe(
+                    lambda state=dict(measurement.state): writer.write_meta(state)
+                )
                 if isinstance(measurement, IVMeasurement):
-                    measurement.iv_reading_event.subscribe(lambda reading: writer.write_iv_row(reading))
-                    measurement.it_reading_event.subscribe(lambda reading: writer.write_it_row(reading))
+                    measurement.iv_reading_event.subscribe(
+                        lambda reading: writer.write_iv_row(reading)
+                    )
+                    measurement.it_reading_event.subscribe(
+                        lambda reading: writer.write_it_row(reading)
+                    )
                 if isinstance(measurement, IVBiasMeasurement):
-                    measurement.iv_reading_event.subscribe(lambda reading: writer.write_iv_bias_row(reading))
-                    measurement.it_reading_event.subscribe(lambda reading: writer.write_it_bias_row(reading))
+                    measurement.iv_reading_event.subscribe(
+                        lambda reading: writer.write_iv_bias_row(reading)
+                    )
+                    measurement.it_reading_event.subscribe(
+                        lambda reading: writer.write_it_bias_row(reading)
+                    )
                 if isinstance(measurement, CVMeasurement):
-                    measurement.cv_reading_event.subscribe(lambda reading: writer.write_cv_row(reading))
+                    measurement.cv_reading_event.subscribe(
+                        lambda reading: writer.write_cv_row(reading)
+                    )
                 measurement.finished_event.subscribe(lambda: writer.flush())
             measurement.run()
 
@@ -94,7 +106,7 @@ class K4215PerformCorrectionJob:
         logger.info("Performing cable correction...")
         self.progress(0, 0, 0)
 
-        def wait_until_done(instr, timeout = 120.0, interval = 1.0):
+        def wait_until_done(instr, timeout=120.0, interval=1.0):
             timeout_at = time.monotonic() + timeout
             while time.monotonic() < timeout_at:
                 if instr.has_correction_finished():

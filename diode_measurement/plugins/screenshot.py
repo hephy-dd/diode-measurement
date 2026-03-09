@@ -26,7 +26,9 @@ class ScreenshotPlugin(Plugin):
     def create_widgets(self, context) -> None:
         self.save_screenshot_check_box = QtWidgets.QCheckBox()
         self.save_screenshot_check_box.setText("Save Screenshot")
-        self.save_screenshot_check_box.setStatusTip("Save screenshot of plots at end of measurement")
+        self.save_screenshot_check_box.setStatusTip(
+            "Save screenshot of plots at end of measurement"
+        )
 
         layout = context.view.general_widget.output_group_box.layout()
         layout.insertWidget(layout.count() - 1, self.save_screenshot_check_box)

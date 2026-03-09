@@ -6,7 +6,6 @@ __all__ = ["K2400"]
 
 
 class K2400(SourceMeter):
-
     def __init__(self, resource) -> None:
         super().__init__(resource)
         self._format_element: Optional[str] = None

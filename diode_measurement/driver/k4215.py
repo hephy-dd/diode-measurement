@@ -135,7 +135,9 @@ class K4215(LCRMeter):
 
     def _validate_correction_length(self, length: float) -> None:
         if length not in [0, 1.5, 3.0, 4.0, 5.0, 6.0, 7.0]:
-            raise ValueError("Correction length must be one of: 0, 1.5, 3.0, 4.0, 5.0, 6.0 or 7.0")
+            raise ValueError(
+                "Correction length must be one of: 0, 1.5, 3.0, 4.0, 5.0, 6.0 or 7.0"
+            )
 
     def _is_custom_correction_length(self, length: float) -> bool:
         return length == 4.0

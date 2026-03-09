@@ -4,28 +4,25 @@ from .driver import SwitchingMatrix, handle_exception
 
 __all__ = ["BrandBox"]
 
-ERROR_MESSAGES: dict[int, str] = {
-    99: "Invalid command"
-}
+ERROR_MESSAGES: dict[int, str] = {99: "Invalid command"}
 
 
 def split_channels(channels: str) -> list[str]:
-    return [channel.strip() for channel in channels.split(',') if channel.strip()]
+    return [channel.strip() for channel in channels.split(",") if channel.strip()]
 
 
 def join_channels(channels: list[str]) -> str:
-    return ','.join([format(channel).strip() for channel in channels])
+    return ",".join([format(channel).strip() for channel in channels])
 
 
 def parse_error(response: str) -> int:
-    m = re.match(r'^err(\d+)', response.lower())
+    m = re.match(r"^err(\d+)", response.lower())
     if m:
         return int(m.group(1))
     return 0
 
 
 class BrandBox(SwitchingMatrix):
-
     CHANNELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
     def __init__(self, resource):
@@ -56,18 +53,18 @@ class BrandBox(SwitchingMatrix):
 
     def close_channels(self, channels: list) -> None:
         channel_list = join_channels(sorted(channels))
-        self._write(f':CLOS {channel_list}')
+        self._write(f":CLOS {channel_list}")
 
     def open_channels(self, channels: list) -> None:
         channel_list = join_channels(sorted(channels))
-        self._write(f':OPEN {channel_list}')
+        self._write(f":OPEN {channel_list}")
 
     def open_all_channels(self) -> None:
         channel_list = join_channels(type(self).CHANNELS)
-        self._write(f':OPEN {channel_list}')
+        self._write(f":OPEN {channel_list}")
 
     def closed_channels(self) -> list:
-        channels = self._query(':CLOS:STAT?')
+        channels = self._query(":CLOS:STAT?")
         return split_channels(channels)
 
     @handle_exception

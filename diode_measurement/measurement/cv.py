@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class CVMeasurement(RangeMeasurement):
-
     def __init__(self, state: State) -> None:
         super().__init__(state)
         self.cv_reading_event: EventHandler = EventHandler()
@@ -41,7 +40,7 @@ class CVMeasurement(RangeMeasurement):
             "i_smu": i_smu,
             "c_lcr": c_lcr,
             "r_lcr": r_lcr,
-            "t_dmm": t_dmm
+            "t_dmm": t_dmm,
         }
 
     def acquire_reading(self) -> None:
@@ -51,11 +50,13 @@ class CVMeasurement(RangeMeasurement):
         if hasattr(self, "cv_reading_lock") and hasattr(self, "cv_reading_queue"):
             with self.cv_reading_lock:
                 self.cv_reading_queue.append(reading)
-        self.update_event({
-            "smu_voltage": reading.get("v_smu"),
-            "smu_current": reading.get("i_smu"),
-            "elm_current": reading.get("i_elm"),
-            "lcr_capacity": reading.get("c_lcr"),
-            "dmm_temperature": reading.get("t_dmm")
-        })
+        self.update_event(
+            {
+                "smu_voltage": reading.get("v_smu"),
+                "smu_current": reading.get("i_smu"),
+                "elm_current": reading.get("i_elm"),
+                "lcr_capacity": reading.get("c_lcr"),
+                "dmm_temperature": reading.get("t_dmm"),
+            }
+        )
         self.cv_reading_event(reading)

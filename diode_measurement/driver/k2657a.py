@@ -4,7 +4,6 @@ __all__ = ["K2657A"]
 
 
 class K2657A(SourceMeter):
-
     def identity(self) -> str:
         return self._query("*IDN?")
 

@@ -94,8 +94,12 @@ class Controller(QtCore.QObject):
         self.iv_plots_controller = IVPlotsController(self)
         self.cv_plots_controller = CVPlotsController(self)
 
-        self.change_voltage_controller = ChangeVoltageController(self.view, self.state, self)
-        self.change_voltage_ready.connect(self.change_voltage_controller.on_change_voltage_ready)
+        self.change_voltage_controller = ChangeVoltageController(
+            self.view, self.state, self
+        )
+        self.change_voltage_ready.connect(
+            self.change_voltage_controller.on_change_voltage_ready
+        )
         self.failed.connect(self.handle_exception)
 
         # Source meter unit
@@ -150,22 +154,36 @@ class Controller(QtCore.QObject):
         self.view.stop_button.clicked.connect(self.view.stop_action.trigger)
 
         self.view.continuous_action.toggled.connect(self.on_continuous_toggled)
-        self.view.continuous_check_box.checkStateChanged.connect(self.on_continuous_changed)
+        self.view.continuous_check_box.checkStateChanged.connect(
+            self.on_continuous_changed
+        )
 
         for spec in DEFAULTS:
             self.view.general_widget.add_measurement(spec)
-        self.view.general_widget.measurement_combo_box.currentIndexChanged.connect(self.on_measurement_changed)
+        self.view.general_widget.measurement_combo_box.currentIndexChanged.connect(
+            self.on_measurement_changed
+        )
 
-        self.view.general_widget.output_line_edit.editingFinished.connect(self.on_output_editing_finished)
-        self.view.general_widget.current_compliance_changed.connect(self.on_current_compliance_changed)
-        self.view.general_widget.continue_in_compliance_changed.connect(self.on_continue_in_compliance_changed)
-        self.view.general_widget.waiting_time_continuous_changed.connect(self.on_waiting_time_continuous_changed)
+        self.view.general_widget.output_line_edit.editingFinished.connect(
+            self.on_output_editing_finished
+        )
+        self.view.general_widget.current_compliance_changed.connect(
+            self.on_current_compliance_changed
+        )
+        self.view.general_widget.continue_in_compliance_changed.connect(
+            self.on_continue_in_compliance_changed
+        )
+        self.view.general_widget.waiting_time_continuous_changed.connect(
+            self.on_waiting_time_continuous_changed
+        )
 
         self.on_measurement_changed(0)
 
         self.update.connect(self.on_update)
 
-        self.view.general_widget.instruments_changed.connect(self.on_instruments_changed)
+        self.view.general_widget.instruments_changed.connect(
+            self.on_instruments_changed
+        )
 
         self.on_instruments_changed()
 
@@ -276,8 +294,12 @@ class Controller(QtCore.QObject):
         state["waiting_time"] = self.view.general_widget.waiting_time()
         state["bias_voltage"] = self.view.general_widget.bias_voltage()
         state["current_compliance"] = self.view.general_widget.current_compliance()
-        state["continue_in_compliance"] = self.view.general_widget.is_continue_in_compliance()
-        state["waiting_time_continuous"] = self.view.general_widget.waiting_time_continuous()
+        state["continue_in_compliance"] = (
+            self.view.general_widget.is_continue_in_compliance()
+        )
+        state["waiting_time_continuous"] = (
+            self.view.general_widget.waiting_time_continuous()
+        )
 
         roles: dict[str, Any] = state.setdefault("roles", {})
 
@@ -286,13 +308,15 @@ class Controller(QtCore.QObject):
             resource = role.resource_widget.resource_name()
             resource_name, visa_library = get_resource(resource)
             config = roles.setdefault(key, {})
-            config.update({
-                "resource_name": resource_name,
-                "visa_library": visa_library,
-                "model": role.resource_widget.model(),
-                "termination": role.resource_widget.termination(),
-                "timeout": role.resource_widget.timeout()
-            })
+            config.update(
+                {
+                    "resource_name": resource_name,
+                    "visa_library": visa_library,
+                    "model": role.resource_widget.model(),
+                    "termination": role.resource_widget.termination(),
+                    "timeout": role.resource_widget.timeout(),
+                }
+            )
             config.update({"options": role.current_config()})
 
         if self.view.general_widget.is_smu_enabled():
@@ -305,13 +329,27 @@ class Controller(QtCore.QObject):
         if self.view.general_widget.is_smu2_enabled():
             state["bias_source_role"] = "smu2"
 
-        roles.setdefault("smu", {}).update({"enabled": self.view.general_widget.is_smu_enabled()})
-        roles.setdefault("smu2", {}).update({"enabled": self.view.general_widget.is_smu2_enabled()})
-        roles.setdefault("elm", {}).update({"enabled": self.view.general_widget.is_elm_enabled()})
-        roles.setdefault("elm2", {}).update({"enabled": self.view.general_widget.is_elm2_enabled()})
-        roles.setdefault("lcr", {}).update({"enabled": self.view.general_widget.is_lcr_enabled()})
-        roles.setdefault("dmm", {}).update({"enabled": self.view.general_widget.is_dmm_enabled()})
-        roles.setdefault("switch", {}).update({"enabled": self.view.general_widget.is_switch_enabled()})
+        roles.setdefault("smu", {}).update(
+            {"enabled": self.view.general_widget.is_smu_enabled()}
+        )
+        roles.setdefault("smu2", {}).update(
+            {"enabled": self.view.general_widget.is_smu2_enabled()}
+        )
+        roles.setdefault("elm", {}).update(
+            {"enabled": self.view.general_widget.is_elm_enabled()}
+        )
+        roles.setdefault("elm2", {}).update(
+            {"enabled": self.view.general_widget.is_elm2_enabled()}
+        )
+        roles.setdefault("lcr", {}).update(
+            {"enabled": self.view.general_widget.is_lcr_enabled()}
+        )
+        roles.setdefault("dmm", {}).update(
+            {"enabled": self.view.general_widget.is_dmm_enabled()}
+        )
+        roles.setdefault("switch", {}).update(
+            {"enabled": self.view.general_widget.is_switch_enabled()}
+        )
 
         for key, value in state.items():
             logger.info("> %s: %s", key, value)
@@ -334,13 +372,17 @@ class Controller(QtCore.QObject):
     def read_settings(self) -> None:
         settings = QtCore.QSettings()
 
-        geometry = settings.value("mainwindow/geometry", QtCore.QByteArray(), QtCore.QByteArray)
+        geometry = settings.value(
+            "mainwindow/geometry", QtCore.QByteArray(), QtCore.QByteArray
+        )
         if geometry.isEmpty():  # type: ignore
             self.view.resize(800, 600)
         else:
             self.view.restoreGeometry(geometry)
 
-        state = settings.value("mainwindow/state", QtCore.QByteArray(), QtCore.QByteArray)
+        state = settings.value(
+            "mainwindow/state", QtCore.QByteArray(), QtCore.QByteArray
+        )
         self.view.restoreState(state)
 
         continuous = settings.value("continuous", False, bool)
@@ -447,7 +489,9 @@ class Controller(QtCore.QObject):
 
         settings.beginGroup("generalTab")
 
-        measurement_index = self.view.general_widget.measurement_combo_box.currentIndex()
+        measurement_index = (
+            self.view.general_widget.measurement_combo_box.currentIndex()
+        )
         settings.setValue("measurement/index", measurement_index)
 
         enabled = self.view.general_widget.is_smu_enabled()
@@ -527,7 +571,7 @@ class Controller(QtCore.QObject):
             self.view,
             "Select measurement file",
             self.view.general_widget.output_dir(),
-            "Text (*.txt);;All (*);;"
+            "Text (*.txt);;All (*);;",
         )
         if filename:
             logger.info("Importing measurement file: %s", filename)
@@ -546,15 +590,23 @@ class Controller(QtCore.QObject):
                 # Meta
                 self.view.general_widget.measurement_combo_box.setCurrentIndex(-1)
                 if meta.get("measurement_type"):
-                    for index in range(self.view.general_widget.measurement_combo_box.count()):
-                        spec = self.view.general_widget.measurement_combo_box.itemData(index)
+                    for index in range(
+                        self.view.general_widget.measurement_combo_box.count()
+                    ):
+                        spec = self.view.general_widget.measurement_combo_box.itemData(
+                            index
+                        )
                         if spec["type"] == meta.get("measurement_type"):
-                            self.view.general_widget.measurement_combo_box.setCurrentIndex(index)
+                            self.view.general_widget.measurement_combo_box.setCurrentIndex(
+                                index
+                            )
                             break
                 if meta.get("sample"):
                     self.view.general_widget.set_sample_name(meta.get("sample"))
                 if meta.get("voltage_begin"):
-                    self.view.general_widget.set_begin_voltage(meta.get("voltage_begin"))
+                    self.view.general_widget.set_begin_voltage(
+                        meta.get("voltage_begin")
+                    )
                 if meta.get("voltage_end"):
                     self.view.general_widget.set_end_voltage(meta.get("voltage_end"))
                 if meta.get("voltage_step"):
@@ -562,9 +614,13 @@ class Controller(QtCore.QObject):
                 if meta.get("waiting_time"):
                     self.view.general_widget.set_waiting_time(meta.get("waiting_time"))
                 if meta.get("waiting_time_continuous"):
-                    self.view.general_widget.set_waiting_time_continuous(meta.get("waiting_time_continuous"))
+                    self.view.general_widget.set_waiting_time_continuous(
+                        meta.get("waiting_time_continuous")
+                    )
                 if meta.get("current_compliance"):
-                    self.view.general_widget.set_current_compliance(meta.get("current_compliance"))
+                    self.view.general_widget.set_current_compliance(
+                        meta.get("current_compliance")
+                    )
 
                 # Data
                 if meta.get("measurement_type") in ["iv", "iv_bias"]:
@@ -671,12 +727,16 @@ class Controller(QtCore.QObject):
             self.view.set_data_widget(self.iv_plots_controller.data_widget)
             self.view.continuous_action.setEnabled(True)
             self.view.general_widget.bias_group_box.setEnabled(False)
-            self.view.general_widget.continuous_group_box.setEnabled(self.view.is_continuous())
+            self.view.general_widget.continuous_group_box.setEnabled(
+                self.view.is_continuous()
+            )
         elif spec.get("type") == "iv_bias":
             self.view.set_data_widget(self.iv_plots_controller.data_widget)
             self.view.continuous_action.setEnabled(True)
             self.view.general_widget.bias_group_box.setEnabled(True)
-            self.view.general_widget.continuous_group_box.setEnabled(self.view.is_continuous())
+            self.view.general_widget.continuous_group_box.setEnabled(
+                self.view.is_continuous()
+            )
         elif spec.get("type") == "cv":
             self.view.set_data_widget(self.cv_plots_controller.data_widget)
             self.view.continuous_action.setEnabled(False)
@@ -770,12 +830,16 @@ class Controller(QtCore.QObject):
             role = self.view.find_role("ELM")
             if role.resource_widget.model() in ["K6517B"]:
                 self.view.general_widget.set_current_compliance_locked(True)
-                self.view.general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
+                self.view.general_widget.set_current_compliance(
+                    1.0e-3
+                )  # fixed for K6517B
         elif self.view.general_widget.is_elm2_enabled():
             role = self.view.find_role("ELM2")
             if role.resource_widget.model() in ["K6517B"]:
                 self.view.general_widget.set_current_compliance_locked(True)
-                self.view.general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
+                self.view.general_widget.set_current_compliance(
+                    1.0e-3
+                )  # fixed for K6517B
         elif self.view.general_widget.is_lcr_enabled():
             role = self.view.find_role("LCR")
             if role.resource_widget.model() in ["K595", "E4980A", "A4284A", "K4215"]:
@@ -822,8 +886,7 @@ class Controller(QtCore.QObject):
         self.view.dmm_group_box.setVisible(state)
 
     @QtCore.Slot(bool)
-    def on_toggle_switch(self, state: bool) -> None:
-        ...
+    def on_toggle_switch(self, state: bool) -> None: ...
 
     @QtCore.Slot()
     def on_output_editing_finished(self) -> None:
@@ -858,7 +921,9 @@ class Controller(QtCore.QObject):
     def create_filename(self) -> str:
         path = self.view.general_widget.output_dir()
         sample = self.state.sample
-        timestamp = datetime.fromtimestamp(self.state.timestamp).strftime("%Y-%m-%dT%H-%M-%S")
+        timestamp = datetime.fromtimestamp(self.state.timestamp).strftime(
+            "%Y-%m-%dT%H-%M-%S"
+        )
         filename = safe_filename(f"{sample}-{timestamp}.txt")
         return os.path.join(path, filename)
 
@@ -867,7 +932,9 @@ class Controller(QtCore.QObject):
         measurement.iv_reading_lock = self.iv_plots_controller.iv_reading_lock
         measurement.it_reading_queue = self.iv_plots_controller.it_reading_queue
         measurement.it_reading_lock = self.iv_plots_controller.it_reading_lock
-        measurement.it_change_voltage_ready_event.subscribe(self.change_voltage_ready.emit)
+        measurement.it_change_voltage_ready_event.subscribe(
+            self.change_voltage_ready.emit
+        )
 
     def connect_cv_plots(self, measurement) -> None:
         measurement.cv_reading_queue = self.cv_plots_controller.cv_reading_queue
@@ -941,10 +1008,12 @@ class Controller(QtCore.QObject):
             self.state.update({"stop_requested": False})
 
             with self.cache:
-                self.cache.update({
-                    "measurement_type": state.get("measurement_type"),
-                    "sample": state.get("sample")
-                })
+                self.cache.update(
+                    {
+                        "measurement_type": state.get("measurement_type"),
+                        "sample": state.get("sample"),
+                    }
+                )
 
             # Filename
             output_enabled = self.view.general_widget.is_output_enabled()
@@ -960,10 +1029,12 @@ class Controller(QtCore.QObject):
             timestamp_format = settings.value("writer/timestampFormat", ".6f", str)
             valueFormat = settings.value("writer/valueFormat", "+.3E", str)
 
-            options.update({
-                "timestamp_format": timestamp_format,
-                "value_format": valueFormat,
-            })
+            options.update(
+                {
+                    "timestamp_format": timestamp_format,
+                    "value_format": valueFormat,
+                }
+            )
 
             self.view.clear()
             self.iv_plots_controller.clear()
@@ -971,7 +1042,9 @@ class Controller(QtCore.QObject):
             self.iv_plots_controller.update_timer.start(500)
             self.cv_plots_controller.update_timer.start(500)
 
-            job = MeasurementJob(measurement, options, has_finished=self.measurement_finished.emit)
+            job = MeasurementJob(
+                measurement, options, has_finished=self.measurement_finished.emit
+            )
             self.submit_background_job(job)
 
         except Exception as exc:
@@ -979,13 +1052,17 @@ class Controller(QtCore.QObject):
             self.failed.emit(exc)
             self.aborted.emit()
 
-    def request_change_voltage(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
+    def request_change_voltage(
+        self, end_voltage: float, step_voltage: float, waiting_time: float
+    ) -> None:
         state = self.snapshot().get("state")
         if state != FSMState.CONTINUOUS:
             raise RuntimeError(
                 f"Cannot change voltage in state '{state.value}'. Expected 'continuous'."
             )
-        self.change_voltage_controller.request_change_voltage(end_voltage, step_voltage, waiting_time)
+        self.change_voltage_controller.request_change_voltage(
+            end_voltage, step_voltage, waiting_time
+        )
 
     def on_lcr_perform_correction(self) -> None:
         role = self.view.find_role("LCR")
@@ -1000,19 +1077,21 @@ class Controller(QtCore.QObject):
                 if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
                     return
                 self.view.control_tab_widget.setEnabled(False)
-                self.submit_background_job(K4215PerformCorrectionJob(
-                    model=model,
-                    resource_name=role.resource_name(),
-                    termination=role.termination(),
-                    timeout=role.timeout(),
-                    cable_length=config.get("correction.length"),
-                    open_correction=dialog.is_open_correction(),
-                    short_correction=dialog.is_short_correction(),
-                    load_correction=dialog.get_load_correction(),
-                    external_bias_tee=external_bias_tee,
-                    progress=self.progress_changed.emit,
-                    message=self.message_changed.emit,
-                ))
+                self.submit_background_job(
+                    K4215PerformCorrectionJob(
+                        model=model,
+                        resource_name=role.resource_name(),
+                        termination=role.termination(),
+                        timeout=role.timeout(),
+                        cable_length=config.get("correction.length"),
+                        open_correction=dialog.is_open_correction(),
+                        short_correction=dialog.is_short_correction(),
+                        load_correction=dialog.get_load_correction(),
+                        external_bias_tee=external_bias_tee,
+                        progress=self.progress_changed.emit,
+                        message=self.message_changed.emit,
+                    )
+                )
 
 
 class IVPlotsController(QtCore.QObject):
@@ -1048,23 +1127,22 @@ class IVPlotsController(QtCore.QObject):
         self.it_plot_widget.reset()
 
     def toggle_smu_series(self, state):
-        self.iv_plot_widget.smuSeries.setVisible(state)
-        self.it_plot_widget.smuSeries.setVisible(state)
+        self.iv_plot_widget.smu_series.setVisible(state)
+        self.it_plot_widget.smu_series.setVisible(state)
 
     def toggle_smu2_series(self, state):
-        self.iv_plot_widget.smu2Series.setVisible(state)
-        self.it_plot_widget.smu2Series.setVisible(state)
+        self.iv_plot_widget.smu2_series.setVisible(state)
+        self.it_plot_widget.smu2_series.setVisible(state)
 
     def toggle_elm_series(self, state):
-        self.iv_plot_widget.elmSeries.setVisible(state)
-        self.it_plot_widget.elmSeries.setVisible(state)
+        self.iv_plot_widget.elm_series.setVisible(state)
+        self.it_plot_widget.elm_series.setVisible(state)
 
     def toggle_elm2_series(self, state):
-        self.iv_plot_widget.elm2Series.setVisible(state)
-        self.it_plot_widget.elm2Series.setVisible(state)
+        self.iv_plot_widget.elm2_series.setVisible(state)
+        self.it_plot_widget.elm2_series.setVisible(state)
 
-    def toggle_lcr_series(self, state):
-        ...
+    def toggle_lcr_series(self, state): ...
 
     def set_continuous(self, enabled):
         self.it_plot_widget.setVisible(enabled)
@@ -1110,20 +1188,20 @@ class IVPlotsController(QtCore.QObject):
             i_elm2: float = reading.get("i_elm2", math.nan)
             if math.isfinite(voltage) and math.isfinite(i_smu):
                 smu_points.append(QtCore.QPointF(voltage, i_smu))
-                widget.iLimits.append(i_smu)
-                widget.vLimits.append(voltage)
+                widget.i_limits.append(i_smu)
+                widget.v_limits.append(voltage)
             if math.isfinite(voltage) and math.isfinite(i_smu2):
                 smu2_points.append(QtCore.QPointF(voltage, i_smu2))
-                widget.iLimits.append(i_smu2)
-                widget.vLimits.append(voltage)
+                widget.i_limits.append(i_smu2)
+                widget.v_limits.append(voltage)
             if math.isfinite(voltage) and math.isfinite(i_elm):
                 elm_points.append(QtCore.QPointF(voltage, i_elm))
-                widget.iLimits.append(i_elm)
-                widget.vLimits.append(voltage)
+                widget.i_limits.append(i_elm)
+                widget.v_limits.append(voltage)
             if math.isfinite(voltage) and math.isfinite(i_elm2):
                 elm2_points.append(QtCore.QPointF(voltage, i_elm2))
-                widget.iLimits.append(i_elm2)
-                widget.vLimits.append(voltage)
+                widget.i_limits.append(i_elm2)
+                widget.v_limits.append(voltage)
         widget.replace_series("smu", smu_points)
         widget.replace_series("smu2", smu2_points)
         widget.replace_series("elm", elm_points)
@@ -1177,20 +1255,20 @@ class IVPlotsController(QtCore.QObject):
             i_elm2: float = reading.get("i_elm2", math.nan)
             if math.isfinite(timestamp) and math.isfinite(i_smu):
                 smu_points.append(QtCore.QPointF(timestamp * 1e3, i_smu))
-                widget.iLimits.append(i_smu)
-                widget.tLimits.append(timestamp)
+                widget.i_limits.append(i_smu)
+                widget.t_limits.append(timestamp)
             if math.isfinite(timestamp) and math.isfinite(i_smu2):
                 smu2_points.append(QtCore.QPointF(timestamp * 1e3, i_smu2))
-                widget.iLimits.append(i_smu2)
-                widget.tLimits.append(timestamp)
+                widget.i_limits.append(i_smu2)
+                widget.t_limits.append(timestamp)
             if math.isfinite(timestamp) and math.isfinite(i_elm):
                 elm_points.append(QtCore.QPointF(timestamp * 1e3, i_elm))
-                widget.iLimits.append(i_elm)
-                widget.tLimits.append(timestamp)
+                widget.i_limits.append(i_elm)
+                widget.t_limits.append(timestamp)
             if math.isfinite(timestamp) and math.isfinite(i_elm2):
                 elm2_points.append(QtCore.QPointF(timestamp * 1e3, i_elm2))
-                widget.iLimits.append(i_elm2)
-                widget.tLimits.append(timestamp)
+                widget.i_limits.append(i_elm2)
+                widget.t_limits.append(timestamp)
         widget.replace_series("smu", smu_points)
         widget.replace_series("smu2", smu2_points)
         widget.replace_series("elm", elm_points)
@@ -1225,23 +1303,17 @@ class CVPlotsController(QtCore.QObject):
         self.cv2_plot_widget.clear()
         self.cv2_plot_widget.reset()
 
-    def toggle_smu_series(self, state):
-        ...
+    def toggle_smu_series(self, state): ...
 
-    def toggle_smu2_series(self, state):
-        ...
+    def toggle_smu2_series(self, state): ...
 
-    def toggle_elm_series(self, state):
-        ...
+    def toggle_elm_series(self, state): ...
 
-    def toggle_elm2_series(self, state):
-        ...
+    def toggle_elm2_series(self, state): ...
 
-    def toggle_lcr_series(self, state):
-        ...
+    def toggle_lcr_series(self, state): ...
 
-    def set_continuous(self, enabled):
-        ...
+    def set_continuous(self, enabled): ...
 
     def flush_cv_readings(self) -> None:
         with self.cv_reading_lock:
@@ -1270,8 +1342,8 @@ class CVPlotsController(QtCore.QObject):
             c_lcr: float = reading.get("c_lcr", math.nan)
             if math.isfinite(voltage) and math.isfinite(c_lcr):
                 lcr_points.append(QtCore.QPointF(voltage, c_lcr))
-                widget.cLimits.append(c_lcr)
-                widget.vLimits.append(voltage)
+                widget.c_limits.append(c_lcr)
+                widget.v_limits.append(voltage)
         widget.replace_series("lcr", lcr_points)
         widget.fit()
 
@@ -1284,14 +1356,16 @@ class CVPlotsController(QtCore.QObject):
             c2_lcr: float = reading.get("c2_lcr", math.nan)
             if math.isfinite(voltage) and math.isfinite(c2_lcr):
                 lcr2_points.append(QtCore.QPointF(voltage, c2_lcr))
-                widget.cLimits.append(c2_lcr)
-                widget.vLimits.append(voltage)
+                widget.c_limits.append(c2_lcr)
+                widget.v_limits.append(voltage)
         widget.replace_series("lcr", lcr2_points)
         widget.fit()
 
 
 class ChangeVoltageController(QtCore.QObject):
-    def __init__(self, view, state: State, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(
+        self, view, state: State, parent: Optional[QtCore.QObject] = None
+    ) -> None:
         super().__init__(parent)
         self.view = view
         self.state: State = state
@@ -1312,24 +1386,28 @@ class ChangeVoltageController(QtCore.QObject):
         dialog.set_waiting_time(self.view.general_widget.waiting_time())
         if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             self.request_change_voltage(
-                dialog.end_voltage(),
-                dialog.step_voltage(),
-                dialog.waiting_time()
+                dialog.end_voltage(), dialog.step_voltage(), dialog.waiting_time()
             )
 
-    def request_change_voltage(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
+    def request_change_voltage(
+        self, end_voltage: float, step_voltage: float, waiting_time: float
+    ) -> None:
         if self.view.is_change_voltage_enabled():
             logger.info(
                 "updated change_voltage_continuous: end_voltage=%s, step_voltage=%s, waiting_time=%s",
                 format_metric(end_voltage, "V"),
                 format_metric(step_voltage, "V"),
-                format_metric(waiting_time, "s")
+                format_metric(waiting_time, "s"),
             )
-            self.state.update({"change_voltage_continuous": {
-                "end_voltage": end_voltage,
-                "step_voltage": step_voltage,
-                "waiting_time": waiting_time,
-            }})
+            self.state.update(
+                {
+                    "change_voltage_continuous": {
+                        "end_voltage": end_voltage,
+                        "step_voltage": step_voltage,
+                        "waiting_time": waiting_time,
+                    }
+                }
+            )
             self.view.set_change_voltage_enabled(False)
 
     @QtCore.Slot()

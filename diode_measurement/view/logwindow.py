@@ -140,12 +140,16 @@ class LogWindow(QtWidgets.QWidget):
 
         self.logHeader = QtWidgets.QLabel()
         self.logHeader.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self.logHeader.setText("<span style=\"white-space:pre\">Time\t\tLevel\tMessage</span>")
+        self.logHeader.setText(
+            '<span style="white-space:pre">Time\t\tLevel\tMessage</span>'
+        )
 
         self.logWidget = LogWidget()
 
         self.dialog_button_box = QtWidgets.QDialogButtonBox()
-        self.dialog_button_box.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Close)
+        self.dialog_button_box.setStandardButtons(
+            QtWidgets.QDialogButtonBox.StandardButton.Close
+        )
         self.dialog_button_box.rejected.connect(lambda: self.hide())
 
         layout = QtWidgets.QGridLayout()

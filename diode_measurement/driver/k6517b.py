@@ -6,7 +6,6 @@ __all__ = ["K6517B"]
 
 
 class K6517B(Electrometer):
-
     def identity(self) -> str:
         return self._query("*IDN?").strip()
 
@@ -29,10 +28,14 @@ class K6517B(Electrometer):
         sense_range = options.get("sense.range", 20e-3)
         self.set_sense_current_range(sense_range)
 
-        sense_auto_range_lower_limit = options.get("sense.auto_range.lower_limit", 2e-12)
+        sense_auto_range_lower_limit = options.get(
+            "sense.auto_range.lower_limit", 2e-12
+        )
         self.set_sense_current_range_auto_lower_limit(sense_auto_range_lower_limit)
 
-        sense_auto_range_upper_limit = options.get("sense.auto_range.upper_limit", 20e-3)
+        sense_auto_range_upper_limit = options.get(
+            "sense.auto_range.upper_limit", 20e-3
+        )
         self.set_sense_current_range_auto_upper_limit(sense_auto_range_upper_limit)
 
         sense_auto_range = options.get("sense.auto_range", True)
@@ -68,8 +71,7 @@ class K6517B(Electrometer):
     def set_voltage_range(self, level: float) -> None:
         self._write(f":SOUR:VOLT:RANG {level:E}")
 
-    def set_current_compliance_level(self, level: float) -> None:
-        ...  # fixed to 1 mA
+    def set_current_compliance_level(self, level: float) -> None: ...  # fixed to 1 mA
 
     def compliance_tripped(self) -> bool:
         return bool(int(self._query(":SOUR:CURR:LIM?")))

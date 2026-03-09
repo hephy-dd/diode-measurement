@@ -6,7 +6,6 @@ __all__ = ["K6514"]
 
 
 class K6514(Electrometer):
-
     def identity(self) -> str:
         return self._query("*IDN?").strip()
 
@@ -29,10 +28,14 @@ class K6514(Electrometer):
         sense_range = options.get("sense.range", 200e-6)
         self.set_sense_current_range(sense_range)
 
-        sense_auto_range_lower_limit = options.get("sense.auto_range.lower_limit", 2e-12)
+        sense_auto_range_lower_limit = options.get(
+            "sense.auto_range.lower_limit", 2e-12
+        )
         self.set_sense_current_range_auto_lower_limit(sense_auto_range_lower_limit)
 
-        sense_auto_range_upper_limit = options.get("sense.auto_range.upper_limit", 20e-3)
+        sense_auto_range_upper_limit = options.get(
+            "sense.auto_range.upper_limit", 20e-3
+        )
         self.set_sense_current_range_auto_upper_limit(sense_auto_range_upper_limit)
 
         sense_auto_range = options.get("sense.auto_range", True)
@@ -53,20 +56,16 @@ class K6514(Electrometer):
     def get_output_enabled(self) -> bool:
         return False
 
-    def set_output_enabled(self, enabled: bool) -> None:
-        ...
+    def set_output_enabled(self, enabled: bool) -> None: ...
 
     def get_voltage_level(self) -> float:
         return 0
 
-    def set_voltage_level(self, level: float) -> None:
-        ...
+    def set_voltage_level(self, level: float) -> None: ...
 
-    def set_voltage_range(self, level: float) -> None:
-        ...
+    def set_voltage_range(self, level: float) -> None: ...
 
-    def set_current_compliance_level(self, level: float) -> None:
-        ...  # not supported
+    def set_current_compliance_level(self, level: float) -> None: ...  # not supported
 
     def compliance_tripped(self) -> bool:
         return False

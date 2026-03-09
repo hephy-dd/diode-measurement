@@ -28,7 +28,9 @@ ABOUT_TEXT: str = f"""
 def stylesheet_switch(state):
     if state is None:
         return ""
-    return "QLineEdit:enabled{ background-color: #339933; color: white; }" if state else ""
+    return (
+        "QLineEdit:enabled{ background-color: #339933; color: white; }" if state else ""
+    )
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -67,7 +69,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.continuous_action.setStatusTip("Enable continuous measurement")
 
         self.changeVoltageAction = QtGui.QAction("&Change Voltage...")
-        self.changeVoltageAction.setStatusTip("Change voltage in continuous measurement")
+        self.changeVoltageAction.setStatusTip(
+            "Change voltage in continuous measurement"
+        )
         self.changeVoltageAction.triggered.connect(self.prepare_change_voltage.emit)
 
         self.contentsAction = QtGui.QAction("&Contents")
@@ -117,7 +121,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.stop_button = QtWidgets.QPushButton("Sto&p")
         self.stop_button.setStatusTip("Stop an active measurement")
-        self.stop_button.setStyleSheet("QPushButton:enabled{ background-color: #ff0000; color: white; } QPushButton:hover{ background-color: #ff3333; }")
+        self.stop_button.setStyleSheet(
+            "QPushButton:enabled{ background-color: #ff0000; color: white; } QPushButton:hover{ background-color: #ff3333; }"
+        )
         self.stop_button.setCheckable(True)
         self.stop_button.setMinimumHeight(72)
 
@@ -128,15 +134,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reset_check_box.setStatusTip("Reset instruments on start")
 
         self.auto_reconnect_check_box = QtWidgets.QCheckBox("&Auto Reconnect")
-        self.auto_reconnect_check_box.setStatusTip("Auto reconnect and retry on connection erros")
+        self.auto_reconnect_check_box.setStatusTip(
+            "Auto reconnect and retry on connection erros"
+        )
 
         self.general_widget = GeneralWidget()
-        self.general_widget.change_voltage_clicked.connect(self.changeVoltageAction.trigger)
+        self.general_widget.change_voltage_clicked.connect(
+            self.changeVoltageAction.trigger
+        )
 
         self.roleWidgets: dict[str, RoleWidget] = {}
 
         self.control_tab_widget = QtWidgets.QTabWidget()
-        self.control_tab_widget.addTab(self.general_widget, self.general_widget.windowTitle())
+        self.control_tab_widget.addTab(
+            self.general_widget, self.general_widget.windowTitle()
+        )
 
         self.smu_group_box = QtWidgets.QGroupBox()
         self.smu_group_box.setTitle("SMU Status")
@@ -231,11 +243,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.loggingDockWidget = QtWidgets.QDockWidget("Logging")
         self.loggingDockWidget.setObjectName("loggingDockWidget")
-        self.loggingDockWidget.setAllowedAreas(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
+        self.loggingDockWidget.setAllowedAreas(
+            QtCore.Qt.DockWidgetArea.BottomDockWidgetArea
+        )
         self.loggingDockWidget.setWidget(self.loggingWidget)
-        self.loggingDockWidget.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.loggingDockWidget.setFeatures(
+            QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable
+        )
         self.loggingDockWidget.hide()
-        self.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, self.loggingDockWidget)
+        self.addDockWidget(
+            QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, self.loggingDockWidget
+        )
 
         self.loggingAction = self.loggingDockWidget.toggleViewAction()
         self.loggingAction.setStatusTip("Toggle logging dock window")

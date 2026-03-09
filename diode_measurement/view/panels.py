@@ -599,7 +599,9 @@ class K4215Panel(InstrumentPanel):
             "Use external bias tee for DC bias voltage. When enabled, internal bias voltage control is disabled."
         )
 
-        external_bias_tee_layout = QtWidgets.QVBoxLayout(self.external_bias_tee_group_box)
+        external_bias_tee_layout = QtWidgets.QVBoxLayout(
+            self.external_bias_tee_group_box
+        )
         external_bias_tee_layout.addWidget(self.external_bias_tee_check_box)
         external_bias_tee_layout.addStretch()
 
@@ -759,8 +761,12 @@ class K4215Panel(InstrumentPanel):
         )
 
         # Connect signals to switch to Custom when manual changes are made
-        self.averaging_rate_spin_box.valueChanged.connect(self.on_manual_parameter_change)
-        self.filter_factor_spin_box.valueChanged.connect(self.on_manual_parameter_change)
+        self.averaging_rate_spin_box.valueChanged.connect(
+            self.on_manual_parameter_change
+        )
+        self.filter_factor_spin_box.valueChanged.connect(
+            self.on_manual_parameter_change
+        )
         self.delay_factor_spin_box.valueChanged.connect(self.on_manual_parameter_change)
 
         self.restore_defaults()
@@ -974,10 +980,12 @@ class K6514Panel(InstrumentPanel):
             "sense.auto_range", WidgetParameter(self.auto_range_check_box)
         )
         self.bind_parameter(
-            "sense.auto_range.lower_limit", WidgetParameter(self.auto_range_llimit_metric)
+            "sense.auto_range.lower_limit",
+            WidgetParameter(self.auto_range_llimit_metric),
         )
         self.bind_parameter(
-            "sense.auto_range.upper_limit", WidgetParameter(self.auto_range_ulimit_metric)
+            "sense.auto_range.upper_limit",
+            WidgetParameter(self.auto_range_ulimit_metric),
         )
         self.bind_parameter(
             "filter.enable", WidgetParameter(self.filter_enable_check_box)
@@ -1146,10 +1154,12 @@ class K6517BPanel(InstrumentPanel):
             "sense.auto_range", WidgetParameter(self.auto_range_check_box)
         )
         self.bind_parameter(
-            "sense.auto_range.lower_limit", WidgetParameter(self.auto_range_llimit_metric)
+            "sense.auto_range.lower_limit",
+            WidgetParameter(self.auto_range_llimit_metric),
         )
         self.bind_parameter(
-            "sense.auto_range.upper_limit", WidgetParameter(self.auto_range_ulimit_metric)
+            "sense.auto_range.upper_limit",
+            WidgetParameter(self.auto_range_ulimit_metric),
         )
         self.bind_parameter(
             "source.meter_connect", WidgetParameter(self.meter_connect_check_box)
