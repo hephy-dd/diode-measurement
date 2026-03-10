@@ -7,7 +7,7 @@ def test_driver_k2657a(res):
     d = K2657A(res)
 
     res.buffer = ["Keithley Model 2657A\r"]
-    assert d.identity() == "Keithley Model 2657A"
+    assert d.identify() == "Keithley Model 2657A"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -19,7 +19,7 @@ def test_driver_k2657a(res):
     assert res.buffer == ["status.reset()", "*OPC?"]
 
     res.buffer = ["0\tno error\t123\t0"]
-    assert d.next_error() == (0, "no error")
+    assert d.next_error() is None
     assert res.buffer == ["print(errorqueue.next())"]
 
     res.buffer = ["1"]

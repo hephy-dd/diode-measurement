@@ -115,7 +115,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
     def read_identity(self) -> str:
         with self.open_resource() as res:
             instr = driver_factory(self.model())(res)
-            return instr.identity()
+            return instr.identify()
 
     @QtCore.Slot()
     def test_conntection(self) -> None:

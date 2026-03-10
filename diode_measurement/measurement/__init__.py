@@ -72,9 +72,9 @@ class Measurement:
         self._instruments[name] = cls, resource
 
     def check_error_state(self, context) -> None:
-        code, message = context.next_error()
-        if code:
-            raise RuntimeError(f"Instrument Error: {code}: {message}")
+        error = context.next_error()
+        if error is not None:
+            raise RuntimeError(f"Instrument Error: {error.code}: {error.message}")
 
     def set_fsm_state(self, state: FSMState) -> None:
         self.update_event({"rpc_state": state})
@@ -95,8 +95,7 @@ class Measurement:
             self.instruments.clear()
             with contextlib.ExitStack() as stack:
                 logger.debug("creating instrument contexts...")
-                for key, value in self._instruments.items():
-                    cls, resource = value
+                for key, (cls, resource) in self._instruments.items():
                     logger.debug(
                         "creating instrument context %s: %s...", key, cls.__name__
                     )
@@ -324,7 +323,7 @@ class RangeMeasurement(Measurement):
         logger.debug("querying context identities...")
         for key, context in self.instruments.items():
             logger.debug("reading %s identity...", key.upper())
-            identity: str = context.identity()
+            identity: str = context.identify()
             logger.debug("reading %s identity... done.", key.upper())
             logger.info("%s IDN: %s", key.upper(), identity)
         logger.debug("querying context identities... done.")

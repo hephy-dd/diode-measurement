@@ -19,7 +19,6 @@ dependencies = [
     "PySide6~=6.10.2",
     "PyVISA~=1.14",
     "PyVISA-py~=0.7",
-    "pint~=0.24",
     "json-rpc~=1.15",
 ]
 dynamic = ["version"]

@@ -9,7 +9,7 @@ def test_driver_a4284a(res):
     d = A4284A(res)
 
     res.buffer = ["Agilent Model A4284A\r"]
-    assert d.identity() == "Agilent Model A4284A"
+    assert d.identify() == "Agilent Model A4284A"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -21,7 +21,7 @@ def test_driver_a4284a(res):
     assert res.buffer == ["*CLS", "*OPC?"]
 
     res.buffer = ["0,\"No error\""]
-    assert d.next_error() == (0, "No error")
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]

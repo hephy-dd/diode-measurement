@@ -8,7 +8,7 @@ def test_driver_k237(res):
     d.WRITE_DELAY = 0  # disable for tests
 
     res.buffer = ["K237A1\r"]
-    assert d.identity() == "K237A1"
+    assert d.identify() == "K237A1"
     assert res.buffer == ["U0X"]
 
     res.buffer = []
@@ -20,15 +20,17 @@ def test_driver_k237(res):
     assert res.buffer == []
 
     res.buffer = ["23700000000000000000000000000"]
-    assert d.next_error() == (0, "No Error")
+    assert d.next_error() is None
     assert res.buffer == ["U1X"]
 
     res.buffer = ["23701000000000000000000000000"]
-    assert d.next_error() == (101, "IDDC")
+    error = d.next_error()
+    assert (error.code, error.message) == (101, "IDDC")
     assert res.buffer == ["U1X"]
 
     res.buffer = ["23700000000001000000000000000"]
-    assert d.next_error() == (110, "In Standby")
+    error = d.next_error()
+    assert (error.code, error.message) == (110, "In Standby")
     assert res.buffer == ["U1X"]
 
     res.buffer = []

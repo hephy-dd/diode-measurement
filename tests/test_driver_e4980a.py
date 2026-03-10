@@ -7,7 +7,7 @@ def test_driver_e4980a(res):
     d = E4980A(res)
 
     res.buffer = ["Agilent Model 4980A\r"]
-    assert d.identity() == "Agilent Model 4980A"
+    assert d.identify() == "Agilent Model 4980A"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -19,7 +19,7 @@ def test_driver_e4980a(res):
     assert res.buffer == ["*CLS", "*OPC?"]
 
     res.buffer = ["0,\"No error\""]
-    assert d.next_error() == (0, "No error")
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]

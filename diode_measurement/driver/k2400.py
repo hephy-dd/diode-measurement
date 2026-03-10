@@ -1,6 +1,6 @@
 from typing import Optional
 
-from .driver import SourceMeter, handle_exception
+from .driver import SourceMeter, InstrumentError, handle_exception
 
 __all__ = ["K2400"]
 
@@ -10,7 +10,7 @@ class K2400(SourceMeter):
         super().__init__(resource)
         self._format_element: Optional[str] = None
 
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("*IDN?")
 
     def reset(self) -> None:
@@ -19,13 +19,15 @@ class K2400(SourceMeter):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         result = self._query(":SYST:ERR?")
         try:
             code, message = result.split(",")
             code = int(code)
+            if code == 0:
+                return None
             message = message.strip().strip('"')
-            return code, message
+            return InstrumentError(code, message)
         except Exception as exc:
             raise RuntimeError(f"Failed to parse error message: {result!r}") from exc
 

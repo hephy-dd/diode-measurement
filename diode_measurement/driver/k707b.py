@@ -1,11 +1,11 @@
 from typing import Any
 
-from comet.driver.hephy.brandbox import BrandBox
+from comet.driver.keithley.k707b import K707B as _K707B
 
-__all__ = ["BrandBoxDriver"]
+__all__ = ["K707B"]
 
 
-class BrandBoxDriver(BrandBox):
+class K707B(_K707B):
     def configure(self, options: dict[str, Any]) -> None:
         self.open_all_channels()
         channels = options.get("channels", [])

@@ -1,8 +1,9 @@
 import time
+from typing import Optional
 
 import pyvisa.errors
 
-from .driver import Resource, LCRMeter, handle_exception
+from .driver import Resource, LCRMeter, InstrumentError, handle_exception
 
 __all__ = ["K4215"]
 
@@ -14,7 +15,7 @@ class K4215(LCRMeter):
         super().__init__(resource)
         self._external_bias_tee_enabled: bool = False
 
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("*IDN?").strip()
 
     def reset(self) -> None:
@@ -25,15 +26,15 @@ class K4215(LCRMeter):
     def clear(self) -> None:
         self._write("BC")
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         """Get the next error from the instrument's error queue."""
         # KXCI uses :ERROR:LAST:GET to retrieve the last error
         response = self._query(":ERROR:LAST:GET")
         self._write(":ERROR:LAST:CLEAR")
 
         # if response is empty, return no error
-        if len(response.strip()) == 0:
-            return 0, "No error"
+        if not response.strip():
+            return None
 
         # Try to parse response in standard SCPI format: code,"message"
         if "," in response and '"' in response:
@@ -41,7 +42,9 @@ class K4215(LCRMeter):
                 parts = response.split(",", 1)
                 code = int(parts[0])
                 message = parts[1].strip().strip('"')
-                return code, message
+                if code == 0:
+                    return None
+                return InstrumentError(code, message)
             except Exception:
                 pass
 
@@ -51,12 +54,14 @@ class K4215(LCRMeter):
                 code_str = response.split("(")[-1].split(")")[0]
                 code = int(code_str)
                 message = response.split("(")[0].strip().rstrip(".")
-                return code, message
+                if code == 0:
+                    return None
+                return InstrumentError(code, message)
             except Exception:
                 pass
 
         # Fallback: return the raw response with error code -1
-        return -1, response.strip()
+        return InstrumentError(-1, response.strip())
 
     def configure(self, options: dict) -> None:
         """Configure the CVU for measurements options."""

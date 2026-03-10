@@ -7,7 +7,7 @@ def test_driver_k2700(res):
     d = K2700(res)
 
     res.buffer = ["Keithley Model 2700\r"]
-    assert d.identity() == "Keithley Model 2700"
+    assert d.identify() == "Keithley Model 2700"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = []  # Reset disabled!

@@ -1,5 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
+from typing import Optional
+
+from comet.driver.generic import InstrumentError
 
 from ..resource import Resource
 
@@ -26,7 +29,7 @@ class Driver(ABC):
         self.resource = resource
 
     @abstractmethod
-    def identity(self) -> str: ...
+    def identify(self) -> str: ...
 
     @abstractmethod
     def reset(self) -> None: ...
@@ -35,7 +38,7 @@ class Driver(ABC):
     def clear(self) -> None: ...
 
     @abstractmethod
-    def next_error(self) -> tuple[int, str]: ...
+    def next_error(self) -> Optional[InstrumentError]: ...
 
     @abstractmethod
     def configure(self, options: dict) -> None: ...

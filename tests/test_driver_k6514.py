@@ -7,7 +7,7 @@ def test_driver_k6514(res):
     d = K6514(res)
 
     res.buffer = ["Keithley Model 6514\r"]
-    assert d.identity() == "Keithley Model 6514"
+    assert d.identify() == "Keithley Model 6514"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -18,8 +18,8 @@ def test_driver_k6514(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"No error\""]
-    assert d.next_error() == (0, "No error")
+    res.buffer = ["0,\"no error\""]
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]

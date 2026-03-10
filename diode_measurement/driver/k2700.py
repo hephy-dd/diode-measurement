@@ -1,10 +1,12 @@
-from .driver import DMM, handle_exception
+from typing import Optional
+
+from .driver import DMM, InstrumentError, handle_exception
 
 __all__ = ["K2700"]
 
 
 class K2700(DMM):
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("*IDN?")
 
     def reset(self) -> None: ...  # prevent reset
@@ -12,11 +14,13 @@ class K2700(DMM):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
+        if code == 0:
+            return None
         message = message.strip().strip('"')
-        return code, message
+        return InstrumentError(code, message)
 
     def configure(self, options: dict) -> None: ...
 
