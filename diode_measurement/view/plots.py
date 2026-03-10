@@ -4,7 +4,7 @@ from typing import Optional
 
 from PySide6 import QtCharts, QtCore, QtWidgets
 
-from ..utils import auto_scale
+from comet.utils import auto_scale
 
 __all__ = ["IVPlotWidget", "ItPlotWidget", "CVPlotWidget", "CV2PlotWidget"]
 

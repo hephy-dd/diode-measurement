@@ -2,7 +2,7 @@ import logging
 import math
 import time
 
-from ..estimate import Estimate
+from comet.estimate import Estimate
 
 from . import ReadingType, State, EventHandler, RangeMeasurement
 

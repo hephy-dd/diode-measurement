@@ -1,21 +1,22 @@
 import re
-import pint
 
 from typing import Any, Iterable
 
 import pyvisa
 
+from comet.utils import ureg, auto_scale
+
 __all__ = [
-    "ureg",
-    "safe_filename",
-    "auto_scale",
+    "get_resource",
+    "open_resource",
     "format_metric",
     "format_switch",
     "limits",
-    "inverse_square",
+    "convert",
+    "safe_bool",
+    "safe_int",
+    "safe_str",
 ]
-
-ureg = pint.UnitRegistry()
 
 
 def get_resource(resource_name: str) -> tuple[str, str]:
@@ -53,36 +54,6 @@ def open_resource(resource_name: str, termination: str, timeout: float):
     )
 
 
-def safe_filename(filename: str) -> str:
-    return re.sub(r"[^a-zA-Z0-9\_\/\.\-]+", "_", filename)
-
-
-def auto_scale(value: float) -> tuple[float, str, str]:
-    scales = (
-        (1e24, "Y", "yotta"),
-        (1e21, "Z", "zetta"),
-        (1e18, "E", "exa"),
-        (1e15, "P", "peta"),
-        (1e12, "T", "tera"),
-        (1e9, "G", "giga"),
-        (1e6, "M", "mega"),
-        (1e3, "k", "kilo"),
-        (1e0, "", ""),
-        (1e-3, "m", "milli"),
-        (1e-6, "u", "micro"),
-        (1e-9, "n", "nano"),
-        (1e-12, "p", "pico"),
-        (1e-15, "f", "femto"),
-        (1e-18, "a", "atto"),
-        (1e-21, "z", "zepto"),
-        (1e-24, "y", "yocto"),
-    )
-    for scale, prefix, name in scales:
-        if abs(value) >= scale:
-            return scale, prefix, name
-    return 1e0, "", ""
-
-
 def format_metric(value: float, unit: str, decimals: int = 3) -> str:
     """Pretty format metric units.
     >>> format_metric(.0042, "A")
@@ -118,9 +89,9 @@ def limits(iterable: Iterable) -> tuple:
     return limits
 
 
-def inverse_square(value: float) -> float:
-    """Return 1/x^2 for value."""
-    return 1.0 / value**2
+def convert(value: float, from_unit: str, to_unit: str) -> float:
+    """Convert a numeric value from one unit to another."""
+    return (value * ureg(from_unit)).to(to_unit).m
 
 
 def safe_bool(value: Any, default: bool = False) -> bool:
