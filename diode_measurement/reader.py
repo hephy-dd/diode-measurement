@@ -2,7 +2,7 @@ import csv
 import logging
 import re
 
-from .utils import ureg
+from comet.utils import ureg
 
 logger = logging.getLogger(__name__)
 

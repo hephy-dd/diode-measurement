@@ -9,6 +9,8 @@ from typing import Any, Mapping, Optional
 
 from PySide6 import QtCore, QtWidgets, QtStateMachine
 
+from comet.utils import safe_filename
+
 # Source meter units
 from .view.panels import K237Panel
 from .view.panels import K2410Panel
@@ -44,7 +46,6 @@ from .measurement.cv import CVMeasurement
 from .reader import Reader
 
 from .utils import get_resource
-from .utils import safe_filename
 from .utils import format_metric
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob

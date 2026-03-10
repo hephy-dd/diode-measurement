@@ -2,7 +2,7 @@ import logging
 import math
 import time
 
-from ..utils import inverse_square
+from comet.utils import inverse_square
 
 from . import ReadingType, State, EventHandler, RangeMeasurement
 

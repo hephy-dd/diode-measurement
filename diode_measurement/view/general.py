@@ -2,7 +2,7 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import ureg
+from ..utils import convert
 
 __all__ = ["GeneralWidget"]
 
@@ -355,28 +355,31 @@ class GeneralWidget(QtWidgets.QWidget):
         self.step_voltage_spin_box.setSuffix(f" {unit}")
 
     def begin_voltage(self) -> float:
+        value = self.begin_voltage_spin_box.value()
         unit = self.begin_voltage_spin_box.suffix().strip()
-        return (self.begin_voltage_spin_box.value() * ureg(unit)).to("V").m
+        return convert(value, unit, "V")
 
     def set_begin_voltage(self, begin_voltage: float) -> None:
         unit = self.begin_voltage_spin_box.suffix().strip()
-        self.begin_voltage_spin_box.setValue((begin_voltage * ureg("V")).to(unit).m)
+        self.begin_voltage_spin_box.setValue(convert(begin_voltage, "V", unit))
 
     def end_voltage(self) -> float:
+        value = self.end_voltage_spin_box.value()
         unit = self.end_voltage_spin_box.suffix().strip()
-        return (self.end_voltage_spin_box.value() * ureg(unit)).to("V").m
+        return convert(value, unit, "V")
 
     def set_end_voltage(self, end_voltage: float) -> None:
         unit = self.end_voltage_spin_box.suffix().strip()
-        self.end_voltage_spin_box.setValue((end_voltage * ureg("V")).to(unit).m)
+        self.end_voltage_spin_box.setValue(convert(end_voltage, "V", unit))
 
     def step_voltage(self) -> float:
+        value = self.step_voltage_spin_box.value()
         unit = self.step_voltage_spin_box.suffix().strip()
-        return (self.step_voltage_spin_box.value() * ureg(unit)).to("V").m
+        return convert(value, unit, "V")
 
     def set_step_voltage(self, step_voltage: float):
         unit = self.step_voltage_spin_box.suffix().strip()
-        self.step_voltage_spin_box.setValue((step_voltage * ureg("V")).to(unit).m)
+        self.step_voltage_spin_box.setValue(convert(step_voltage, "V", unit))
 
     def waiting_time(self) -> float:
         return self.waiting_time_spin_box.value()
@@ -385,25 +388,25 @@ class GeneralWidget(QtWidgets.QWidget):
         self.waiting_time_spin_box.setValue(waiting_time)
 
     def bias_voltage(self) -> float:
+        value = self.bias_voltage_spin_box.value()
         unit = self.bias_voltage_spin_box.suffix().strip()
-        return (self.bias_voltage_spin_box.value() * ureg(unit)).to("V").m
+        return convert(value, unit, "V")
 
     def set_bias_voltage(self, bias_voltage: float) -> None:
         unit = self.bias_voltage_spin_box.suffix().strip()
-        self.bias_voltage_spin_box.setValue((bias_voltage * ureg("V")).to(unit).m)
+        self.bias_voltage_spin_box.setValue(convert(bias_voltage, "V", unit))
 
     def set_current_compliance_unit(self, unit: str) -> None:
         self.current_compliance_spin_box.setSuffix(f" {unit}")
 
     def current_compliance(self) -> float:
+        value = self.current_compliance_spin_box.value()
         unit = self.current_compliance_spin_box.suffix().strip()
-        return (self.current_compliance_spin_box.value() * ureg(unit)).to("A").m
+        return convert(value, unit, "A")
 
     def set_current_compliance(self, compliance: float) -> None:
         unit = self.current_compliance_spin_box.suffix().strip()
-        return self.current_compliance_spin_box.setValue(
-            (compliance * ureg("A")).to(unit).m
-        )
+        return self.current_compliance_spin_box.setValue(convert(compliance, "A", unit))
 
     def set_current_compliance_locked(self, state: bool) -> None:
         self._current_compliance_locked = state

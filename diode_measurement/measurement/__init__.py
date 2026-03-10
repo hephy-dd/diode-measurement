@@ -3,11 +3,12 @@ import logging
 import time
 from typing import Any, Callable
 
+from comet.estimate import Estimate
+from comet.functions import LinearRange
+
 from ..resource import Resource, AutoReconnectResource
 from ..driver import driver_factory
 
-from ..functions import LinearRange
-from ..estimate import Estimate
 from ..state import State, FSMState
 
 __all__ = ["Measurement", "RangeMeasurement"]
@@ -301,7 +302,7 @@ class RangeMeasurement(Measurement):
 
     def update_estimate_progress(self, estimate: Estimate) -> None:
         """Emit update progress event for ramp iterations."""
-        self.update_progress(0, estimate.count, estimate.passed)
+        self.update_progress(0, estimate.total, estimate.passed)
 
     def initialize(self) -> None:
         source = self.state.source_role
