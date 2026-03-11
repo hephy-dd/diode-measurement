@@ -11,7 +11,7 @@ def test_driver_k4215_basic_operations(res):
 
     # Test identity
     res.buffer = ["KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"]
-    assert d.identity() == "KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"
+    assert d.identify() == "KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"
     assert res.buffer == ["*IDN?"]
 
     # Test reset
@@ -52,20 +52,19 @@ def test_driver_k4215_error_handling(res):
 
     # Test no error
     res.buffer = [""]
-    assert d.next_error() == (0, "No error")
+    assert d.next_error() is None
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
     # Test error code and text parsing
     res.buffer = ["KXCI command error. (-992)"]
-    assert d.next_error() == (-992, "KXCI command error")
+    error = d.next_error()
+    assert (error.code, error.message) == (-992, "KXCI command error")
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
     # Test unparseable error format
     res.buffer = ["Unknown error format with some text"]
-    result = d.next_error()
-    assert isinstance(result, tuple)
-    assert len(result) == 2
-    assert result == (-1, "Unknown error format with some text")
+    error = d.next_error()
+    assert (error.code, error.message) == (-1, "Unknown error format with some text")
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
 

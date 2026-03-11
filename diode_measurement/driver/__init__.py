@@ -11,6 +11,8 @@ from .k6517b import K6517B
 from .e4980a import E4980A
 from .a4284a import A4284A
 from .brandbox import BrandBox
+from .k707b import K707B
+from .k708b import K708B
 
 __all__ = ["driver_factory"]
 
@@ -27,6 +29,8 @@ DRIVERS: dict[str, type] = {
     "E4980A": E4980A,
     "A4284A": A4284A,
     "BrandBox": BrandBox,
+    "K707B": K707B,
+    "K708B": K708B,
 }
 
 

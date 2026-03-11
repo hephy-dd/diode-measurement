@@ -1,12 +1,13 @@
 import time
+from typing import Optional
 
-from .driver import Electrometer, handle_exception
+from .driver import Electrometer, InstrumentError, handle_exception
 
 __all__ = ["K6517B"]
 
 
 class K6517B(Electrometer):
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("*IDN?").strip()
 
     def reset(self) -> None:
@@ -15,11 +16,13 @@ class K6517B(Electrometer):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
+        if code == 0:
+            return None
         message = message.strip().strip('"')
-        return code, message
+        return InstrumentError(code, message)
 
     def configure(self, options: dict) -> None:
         self.set_format_elements(["READ"])

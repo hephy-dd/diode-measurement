@@ -1,7 +1,8 @@
 import math
 import time
+from typing import Optional
 
-from .driver import LCRMeter, handle_exception
+from .driver import LCRMeter, InstrumentError, handle_exception
 
 __all__ = ["K595"]
 
@@ -19,7 +20,7 @@ ERROR_MESSAGES = {
 class K595(LCRMeter):
     WRITE_DELAY = 0.250
 
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("U0X")[:3]
 
     def reset(self) -> None:
@@ -28,12 +29,14 @@ class K595(LCRMeter):
     def clear(self) -> None:
         self.resource.clear()
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         result = self._query("U1X")[3:]
         for index, value in enumerate(result):
             if value == "1":
-                return index + 100, ERROR_MESSAGES.get(index, "Unknown Error")
-        return 0, "No Error"
+                code = index + 100
+                message = ERROR_MESSAGES.get(index, "Unknown Error")
+                return InstrumentError(code, message)
+        return None
 
     def configure(self, options: dict) -> None:
         self._write("T0X")

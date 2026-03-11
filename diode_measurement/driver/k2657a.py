@@ -1,10 +1,12 @@
-from .driver import SourceMeter, handle_exception
+from typing import Optional
+
+from .driver import SourceMeter, InstrumentError, handle_exception
 
 __all__ = ["K2657A"]
 
 
 class K2657A(SourceMeter):
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("*IDN?")
 
     def reset(self) -> None:
@@ -13,11 +15,13 @@ class K2657A(SourceMeter):
     def clear(self) -> None:
         self._write("status.reset()")
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         code, message, *_ = self._print("errorqueue.next()").split("\t")
         code = int(float(code))
+        if code == 0:
+            return None
         message = message.strip().strip('"')
-        return code, message
+        return InstrumentError(code, message)
 
     def configure(self, options: dict) -> None:
         beeper_enable = options.get("beeper.enable", False)

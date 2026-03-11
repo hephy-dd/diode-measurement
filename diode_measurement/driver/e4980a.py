@@ -1,12 +1,13 @@
 import time
+from typing import Optional
 
-from .driver import LCRMeter, handle_exception
+from .driver import LCRMeter, InstrumentError, handle_exception
 
 __all__ = ["E4980A"]
 
 
 class E4980A(LCRMeter):
-    def identity(self) -> str:
+    def identify(self) -> str:
         return self._query("*IDN?").strip()
 
     def reset(self) -> None:
@@ -15,11 +16,13 @@ class E4980A(LCRMeter):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> tuple[int, str]:
+    def next_error(self) -> Optional[InstrumentError]:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
+        if code == 0:
+            return None
         message = message.strip().strip('"')
-        return code, message
+        return InstrumentError(code, message)
 
     def configure(self, options: dict) -> None:
         self._write(":SYST:BEEP:STAT 0")

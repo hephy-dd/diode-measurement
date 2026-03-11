@@ -7,7 +7,7 @@ def test_driver_k2470(res):
     d = K2470(res)
 
     res.buffer = ["Keithley Model 2470\r"]
-    assert d.identity() == "Keithley Model 2470"
+    assert d.identify() == "Keithley Model 2470"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -19,7 +19,7 @@ def test_driver_k2470(res):
     assert res.buffer == ["*CLS", "*OPC?"]
 
     res.buffer = ["0,\"no error;;\""]
-    assert d.next_error() == (0, "no error;;")
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]

@@ -32,6 +32,8 @@ from .view.panels import K2700Panel
 
 # Switches
 from .view.panels import BrandBoxPanel
+from .view.panels import K707BPanel
+from .view.panels import K708BPanel
 
 from .view.widgets import show_exception
 from .view.dialogs import ChangeVoltageDialog
@@ -145,6 +147,9 @@ class Controller(QtCore.QObject):
         # Switch
         role = self.view.add_role("Switch")
         role.add_instrument_panel(BrandBoxPanel())
+        role.add_instrument_panel(K707BPanel())
+        role.add_instrument_panel(K708BPanel())
+
 
         self.view.import_action.triggered.connect(lambda: self.on_import_file())
 
