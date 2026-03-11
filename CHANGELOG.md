@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for Keithley 707b/708b switching matrix (#146).
+
 ### Changed
 
 - Migrated code base from PyQt5 to PySide6 (#118).
