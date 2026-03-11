@@ -62,6 +62,8 @@ DMM (Temperature)
 Switching Matrix
 
 - HEPHY BrandBox (HV Switch)
+- Keithley 707B
+- Keithley 708B
 
 ## Setup
 
