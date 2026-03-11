@@ -29,6 +29,8 @@ class K2470(SourceMeter):
 
         self.set_source_function("VOLT")
 
+        self.set_sense_function("CURR")
+
         filter_mode = options.get("filter.mode", "MOV")
         self.set_sense_current_average_tcontrol(filter_mode)
 
@@ -67,21 +69,32 @@ class K2470(SourceMeter):
         return self._query(":SOUR:VOLT:ILIM:LEV:TRIP?") == "1"
 
     def measure_i(self) -> float:
-        return float(self._query(":MEAS:CURR?"))
+        i, _ = self.measure_iv()
+        return i
 
     def measure_v(self) -> float:
-        return float(self._query(":MEAS:VOLT?"))
+        _, v = self.measure_iv()
+        return v
 
     def measure_iv(self) -> tuple[float, float]:
-        i = self.measure_i()  # no concurrent measurements possible?
-        v = self.measure_v()
-        return i, v
+        self._write(":TRAC:TRIG \"defbuffer1\"")
+        result = self._query(":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ")
+        try:
+            source, reading = result.split(",", 1)
+            return float(reading), float(source)
+        except Exception as exc:
+            raise ValueError(f"Unexpected instrument response: {result!r}") from exc
 
     def set_route_terminals(self, terminal: str) -> None:
         self._write(f":ROUT:TERM {terminal}")
 
     def set_source_function(self, function: str) -> None:
         self._write(f":SOUR:FUNC {function}")
+
+    def set_sense_function(self, function: str) -> None:
+        if function not in {"CURR", "RES", "VOLT"}:
+            raise ValueError(f"Invalid sense function: {function}")
+        self._write(f":SENS:FUNC \"{function}\"")
 
     def set_sense_current_average_tcontrol(self, tcontrol: str) -> None:
         self._write(f":SENS:CURR:AVER:TCON {tcontrol}")

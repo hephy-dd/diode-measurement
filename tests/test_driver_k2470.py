@@ -50,17 +50,29 @@ def test_driver_k2470(res):
     assert d.compliance_tripped() is True
     assert res.buffer == [":SOUR:VOLT:ILIM:LEV:TRIP?"]
 
-    res.buffer = ["+4.210000E-03"]
+    res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
     assert d.measure_i() == 0.00421
-    assert res.buffer == [":MEAS:CURR?"]
+    assert res.buffer == [
+        ":TRAC:TRIG \"defbuffer1\"",
+        "*OPC?",
+        ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
+    ]
 
-    res.buffer = ["+4.210000E+01"]
+    res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
     assert d.measure_v() == 42.1
-    assert res.buffer == [":MEAS:VOLT?"]
+    assert res.buffer == [
+        ":TRAC:TRIG \"defbuffer1\"",
+        "*OPC?",
+        ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
+    ]
 
-    res.buffer = ["+4.210000E-03", "+4.210000E+01"]
+    res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
     assert d.measure_iv() == (0.00421, 42.1)
-    assert res.buffer == [":MEAS:CURR?", ":MEAS:VOLT?"]
+    assert res.buffer == [
+        ":TRAC:TRIG \"defbuffer1\"",
+        "*OPC?",
+        ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
+    ]
 
     res.buffer = ["1"]
     assert d.set_route_terminals("REAR") is None
@@ -69,6 +81,10 @@ def test_driver_k2470(res):
     res.buffer = ["1"]
     assert d.set_source_function("VOLT") is None
     assert res.buffer == [":SOUR:FUNC VOLT", "*OPC?"]
+
+    res.buffer = ["1"]
+    assert d.set_sense_function("CURR") is None
+    assert res.buffer == [":SENS:FUNC \"CURR\"", "*OPC?"]
 
     res.buffer = ["1"]
     assert d.set_sense_current_average_tcontrol("MOV") is None
