@@ -32,9 +32,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-entry_point.py
 version_info.txt
-!pyinstaller.spec
+pyinstaller.spec
 
 
 # Installer logs
