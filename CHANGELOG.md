@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move PyInstaller configuration to `.pyinstaller/` layout and updated build workflows (#143).
 - Migrated to comet utilities, removed duplicates (#145).
 
+### Fixed
+
+- Source break-ins while measuring with Keithley 2470 (#147).
+
 ## [0.23.2] - 2026-03-06
 
 ### Added
