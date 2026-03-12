@@ -42,14 +42,11 @@ from .view.dialogs import ChangeVoltageDialog
 
 from .view.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
 
-from .measurements.iv import IVMeasurement
-from .measurements.iv_bias import IVBiasMeasurement
-from .measurements.cv import CVMeasurement
+from .measurements import IVMeasurement, IVBiasMeasurement, CVMeasurement
 
 from .reader import Reader
 
-from .utils import get_resource
-from .utils import format_metric
+from .utils import get_resource, format_metric
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
 from .cache import Cache

@@ -4,11 +4,11 @@ import os
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import __version__
+from .core.plugin import PluginRegistry
 from .controller import Controller
 from .view.mainwindow import MainWindow
-from .plugins import PluginRegistry
-from .plugins.rpcserver import RPCServerPlugin
-from .plugins.screenshot import ScreenshotPlugin
+
+from .plugins import RPCServerPlugin, ScreenshotPlugin
 
 __all__ = ["bootstrap"]
 

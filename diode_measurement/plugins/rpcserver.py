@@ -16,10 +16,9 @@ from typing import Any, Callable, Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from diode_measurement.utils import safe_bool, safe_int, safe_str
+from diode_measurement.core.plugin import Plugin
 from diode_measurement.controller import Controller
-
-from . import Plugin
+from diode_measurement.utils import safe_bool, safe_int, safe_str
 
 __all__ = ["RPCServerPlugin"]
 
