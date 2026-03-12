@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-03-12
+
 ### Added
 
 - Add support for Keithley 707b/708b switching matrix (#146).
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated code base from PyQt5 to PySide6 (#118).
 - Move PyInstaller configuration to `.pyinstaller/` layout and updated build workflows (#143).
 - Migrated to comet utilities, removed duplicates (#145).
+- Refactored the code architecture to improve maintainability and performance.
 
 ### Fixed
 
@@ -491,7 +494,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.23.2...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.24.0...HEAD
+[0.24.0]: https://github.com/hephy-dd/diode-measurement/compare/0.23.2...0.24.0
 [0.23.2]: https://github.com/hephy-dd/diode-measurement/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/hephy-dd/diode-measurement/compare/0.23.0...0.23.1
 [0.23.0]: https://github.com/hephy-dd/diode-measurement/compare/0.22.3...0.23.0
