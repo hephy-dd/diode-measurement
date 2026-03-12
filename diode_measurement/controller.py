@@ -27,7 +27,8 @@ from .gui.panels import K6517BPanel
 from .gui.panels import K595Panel
 from .gui.panels import E4980APanel
 from .gui.panels import A4284APanel
-from .gui.panels import K4215Panel, K4215CorrectionDialog
+from .gui.panels import K4215Panel
+from .gui.panels.k4215 import K4215CorrectionDialog
 
 # DMM
 from .gui.panels import K2700Panel

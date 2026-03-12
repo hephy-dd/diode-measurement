@@ -3,7 +3,7 @@ from typing import Any, Mapping, Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from .panels import InstrumentPanel
+from .panel import InstrumentPanel
 from .resource import ResourceWidget
 
 __all__ = ["RoleWidget"]
