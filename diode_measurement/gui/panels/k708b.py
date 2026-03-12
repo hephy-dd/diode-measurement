@@ -8,59 +8,54 @@ __all__ = ["K708BPanel"]
 
 
 class K708BPanel(InstrumentPanel):
-    CHANNELS: list[str] = [
-        "1A00", "1A01", "1A02", "1A03", "1A04", "1A05", "1A06", "1A07", "1A08",
-        "1B00", "1B01", "1B02", "1B03", "1B04", "1B05", "1B06", "1B07", "1B08",
-        "1C00", "1C01", "1C02", "1C03", "1C04", "1C05", "1C06", "1C07", "1C08",
-        "1D00", "1D01", "1D02", "1D03", "1D04", "1D05", "1D06", "1D07", "1D08",
-        "1E00", "1E01", "1E02", "1E03", "1E04", "1E05", "1E06", "1E07", "1E08",
-        "1F00", "1F01", "1F02", "1F03", "1F04", "1F05", "1F06", "1F07", "1F08",
-        "1G00", "1G01", "1G02", "1G03", "1G04", "1G05", "1G06", "1G07", "1G08",
-    ]
-
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("K708B", parent)
 
         # Channels
 
+        self.slots_tab_widgets = QtWidgets.QTabWidget(self)
+
+        # Generate channels, 1 slot, 8 rows, 12 columns
+        slots = [1]
+        rows = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        columns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         self.channel_check_boxes: dict[str, QtWidgets.QCheckBox] = {}
-
-        self.scroll_container = QtWidgets.QWidget()
-        channels_layout = QtWidgets.QGridLayout(self.scroll_container)
-
-        # Create and place checkboxes in the grid
-        for i, channel in enumerate(self.CHANNELS):
-            check_box = QtWidgets.QCheckBox()
-            check_box.setText(channel)
-            check_box.setStatusTip(channel)
-            self.channel_check_boxes[channel] = check_box
-
-            row = i // 9  # 9 per row
-            col = i % 9
-            channels_layout.addWidget(check_box, row, col)
-
-        self.scroll_area = QtWidgets.QScrollArea()
-        # self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setWidget(self.scroll_container)
+        for slot in slots:
+            slot_widget = QtWidgets.QWidget()
+            channels_layout = QtWidgets.QGridLayout(slot_widget)
+            # Vertical row header
+            for y, row in enumerate(rows):
+                channels_layout.addWidget(QtWidgets.QLabel(f"{slot}{row}"), y + 1, 0)
+            # Horizontal column header
+            for x, column in enumerate(columns):
+                channels_layout.addWidget(QtWidgets.QLabel(f"{column:02d}"), 0, x + 1)
+            # Channel check boxes
+            for y, row in enumerate(rows):
+                for x, column in enumerate(columns):
+                    channel = f"{slot}{row}{column:02d}"
+                    check_box = QtWidgets.QCheckBox(slot_widget)
+                    check_box.setToolTip(channel)
+                    check_box.setStatusTip(f"Channel {channel}")
+                    self.channel_check_boxes[channel] = check_box
+                    channels_layout.addWidget(check_box, y + 1, x + 1)
+            channels_layout.setRowStretch(len(rows) + 1, 1)
+            channels_layout.setColumnStretch(len(columns) + 1, 1)
+            self.slots_tab_widgets.addTab(slot_widget, f"Slot {slot}")
 
         self.channels_group_box = QtWidgets.QGroupBox("Channels")
 
         channels_group_box_layout = QtWidgets.QVBoxLayout(self.channels_group_box)
-        channels_group_box_layout.addWidget(self.scroll_area)
+        channels_group_box_layout.addWidget(self.slots_tab_widgets)
 
         # Layout
 
         left_layout = QtWidgets.QVBoxLayout()
         left_layout.addWidget(self.channels_group_box)
         left_layout.addStretch()
-        left_layout.setStretch(0, 2)
-        left_layout.setStretch(1, 1)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(left_layout)
-        layout.addStretch()
-        layout.setStretch(0, 1)
 
         # Parameters
 
@@ -86,4 +81,4 @@ class K708BPanel(InstrumentPanel):
         self.set_closed_channels([])
 
     def set_locked(self, state: bool) -> None:
-        self.scroll_container.setEnabled(not state)
+        self.slots_tab_widgets.setEnabled(not state)

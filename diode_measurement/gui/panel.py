@@ -1,4 +1,5 @@
-from typing import Any, Callable, Mapping, Optional, Protocol
+from collections.abc import Callable, Mapping
+from typing import Any,  Optional, Protocol
 
 from PySide6 import QtWidgets
 

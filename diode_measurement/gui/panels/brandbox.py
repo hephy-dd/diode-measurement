@@ -8,32 +8,26 @@ __all__ = ["BrandBoxPanel"]
 
 
 class BrandBoxPanel(InstrumentPanel):
-    CHANNELS: list[str] = [
-        "A1", "B1", "C1",
-        "A2", "B2", "C2",
-    ]
+    CHANNELS: list[str] = ["A1", "B1", "C1", "A2", "B2", "C2"]
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__("BrandBox", parent)
 
         # Channels
 
-        self.channel_check_boxes: dict[str, QtWidgets.QCheckBox] = {}
-
         self.channels_group_box = QtWidgets.QGroupBox("Channels")
 
         channels_layout = QtWidgets.QGridLayout(self.channels_group_box)
 
         # Create and place checkboxes in the grid
+        self.channel_check_boxes: dict[str, QtWidgets.QCheckBox] = {}
         for i, channel in enumerate(self.CHANNELS):
             check_box = QtWidgets.QCheckBox()
             check_box.setText(channel)
             check_box.setStatusTip(channel)
             self.channel_check_boxes[channel] = check_box
-
-            row = i // 3   # 3 per row
-            col = i % 3
-            channels_layout.addWidget(check_box, row, col)
+            channels_layout.addWidget(check_box, i // 3, i % 3)
+        channels_layout.setColumnStretch(3, 1)
 
         # Layout
 
