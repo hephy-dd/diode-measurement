@@ -77,8 +77,8 @@ class K2470(BaseDriver):
         return v
 
     def measure_iv(self) -> tuple[float, float]:
-        self._write(":TRAC:TRIG \"defbuffer1\"")
-        result = self._query(":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ")
+        self._write(':TRAC:TRIG "defbuffer1"')
+        result = self._query(':TRAC:DATA? 1, 1, "defbuffer1", SOUR, READ')
         try:
             source, reading = result.split(",", 1)
             return float(reading), float(source)
@@ -94,7 +94,7 @@ class K2470(BaseDriver):
     def set_sense_function(self, function: str) -> None:
         if function not in {"CURR", "RES", "VOLT"}:
             raise ValueError(f"Invalid sense function: {function}")
-        self._write(f":SENS:FUNC \"{function}\"")
+        self._write(f':SENS:FUNC "{function}"')
 
     def set_sense_current_average_tcontrol(self, tcontrol: str) -> None:
         self._write(f":SENS:CURR:AVER:TCON {tcontrol}")

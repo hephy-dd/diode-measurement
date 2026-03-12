@@ -1,6 +1,6 @@
 import re
-
-from typing import Any, Iterable, Mapping, Optional
+from collections.abc import Iterable, Mapping
+from typing import Any, Optional
 
 import pyvisa
 

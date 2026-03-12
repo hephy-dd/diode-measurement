@@ -12,7 +12,8 @@ import time
 from dataclasses import dataclass
 from concurrent.futures import Future
 from queue import Queue, Empty
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets
 

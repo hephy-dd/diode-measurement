@@ -3,7 +3,8 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Optional, Protocol
+from collections.abc import Callable, Mapping
+from typing import Any, Optional, Protocol
 
 from .measurements import Measurement
 from .measurements.iv import IVMeasurement
@@ -105,7 +106,9 @@ class K4215PerformCorrectionJob:
         logger.info("Performing cable correction...")
         self.progress(0, 0, 0)
 
-        def wait_until_done(instr: K4215, timeout: float = 120.0, interval: float = 1.0) -> None:
+        def wait_until_done(
+            instr: K4215, timeout: float = 120.0, interval: float = 1.0
+        ) -> None:
             timeout_at = time.monotonic() + timeout
             while time.monotonic() < timeout_at:
                 if instr.has_correction_finished():

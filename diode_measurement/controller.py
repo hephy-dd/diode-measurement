@@ -5,7 +5,8 @@ import threading
 import time
 import queue
 from datetime import datetime
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets, QtStateMachine
 
@@ -79,7 +80,9 @@ class Controller(QtCore.QObject):
     message_changed = QtCore.Signal(str)
     progress_changed = QtCore.Signal(int, int, int)
 
-    def __init__(self, main_window: MainWindow, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(
+        self, main_window: MainWindow, parent: Optional[QtCore.QObject] = None
+    ) -> None:
         super().__init__(parent)
 
         self._shutdown_event = threading.Event()
@@ -150,7 +153,6 @@ class Controller(QtCore.QObject):
         role.add_instrument_panel(K707BPanel())
         role.add_instrument_panel(K708BPanel())
 
-
         main_window.import_action.triggered.connect(lambda: self.on_import_file())
 
         main_window.start_action.triggered.connect(self.on_start_measurement)
@@ -189,9 +191,7 @@ class Controller(QtCore.QObject):
 
         self.update.connect(self.on_update)
 
-        general_widget.instruments_changed.connect(
-            self.on_instruments_changed
-        )
+        general_widget.instruments_changed.connect(self.on_instruments_changed)
 
         self.on_instruments_changed()
 
@@ -303,12 +303,8 @@ class Controller(QtCore.QObject):
         state["waiting_time"] = general_widget.waiting_time()
         state["bias_voltage"] = general_widget.bias_voltage()
         state["current_compliance"] = general_widget.current_compliance()
-        state["continue_in_compliance"] = (
-            general_widget.is_continue_in_compliance()
-        )
-        state["waiting_time_continuous"] = (
-            general_widget.waiting_time_continuous()
-        )
+        state["continue_in_compliance"] = general_widget.is_continue_in_compliance()
+        state["waiting_time_continuous"] = general_widget.waiting_time_continuous()
 
         roles: dict[str, Any] = state.setdefault("roles", {})
 
@@ -338,24 +334,16 @@ class Controller(QtCore.QObject):
         if general_widget.is_smu2_enabled():
             state["bias_source_role"] = "smu2"
 
-        roles.setdefault("smu", {}).update(
-            {"enabled": general_widget.is_smu_enabled()}
-        )
+        roles.setdefault("smu", {}).update({"enabled": general_widget.is_smu_enabled()})
         roles.setdefault("smu2", {}).update(
             {"enabled": general_widget.is_smu2_enabled()}
         )
-        roles.setdefault("elm", {}).update(
-            {"enabled": general_widget.is_elm_enabled()}
-        )
+        roles.setdefault("elm", {}).update({"enabled": general_widget.is_elm_enabled()})
         roles.setdefault("elm2", {}).update(
             {"enabled": general_widget.is_elm2_enabled()}
         )
-        roles.setdefault("lcr", {}).update(
-            {"enabled": general_widget.is_lcr_enabled()}
-        )
-        roles.setdefault("dmm", {}).update(
-            {"enabled": general_widget.is_dmm_enabled()}
-        )
+        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_lcr_enabled()})
+        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_dmm_enabled()})
         roles.setdefault("switch", {}).update(
             {"enabled": general_widget.is_switch_enabled()}
         )
@@ -394,7 +382,10 @@ class Controller(QtCore.QObject):
         continuous = get_bool(settings.value("continuous"), False)
         self.main_window.set_continuous(continuous)
 
-        reset = get_bool(settings.value("reset"), False,)
+        reset = get_bool(
+            settings.value("reset"),
+            False,
+        )
         self.main_window.set_reset_instruments(reset)
 
         auto_reconnect = get_bool(settings.value("autoReconnect"), False)
@@ -499,9 +490,7 @@ class Controller(QtCore.QObject):
 
         general_widget = self.main_window.general_widget
 
-        measurement_index = (
-            general_widget.measurement_combo_box.currentIndex()
-        )
+        measurement_index = general_widget.measurement_combo_box.currentIndex()
         settings.setValue("measurement/index", measurement_index)
 
         enabled = general_widget.is_smu_enabled()
@@ -601,23 +590,15 @@ class Controller(QtCore.QObject):
                 # Meta
                 general_widget.measurement_combo_box.setCurrentIndex(-1)
                 if meta.get("measurement_type"):
-                    for index in range(
-                        general_widget.measurement_combo_box.count()
-                    ):
-                        spec = general_widget.measurement_combo_box.itemData(
-                            index
-                        )
+                    for index in range(general_widget.measurement_combo_box.count()):
+                        spec = general_widget.measurement_combo_box.itemData(index)
                         if spec["type"] == meta.get("measurement_type"):
-                            general_widget.measurement_combo_box.setCurrentIndex(
-                                index
-                            )
+                            general_widget.measurement_combo_box.setCurrentIndex(index)
                             break
                 if meta.get("sample"):
                     general_widget.set_sample_name(meta.get("sample"))
                 if meta.get("voltage_begin"):
-                    general_widget.set_begin_voltage(
-                        meta.get("voltage_begin")
-                    )
+                    general_widget.set_begin_voltage(meta.get("voltage_begin"))
                 if meta.get("voltage_end"):
                     general_widget.set_end_voltage(meta.get("voltage_end"))
                 if meta.get("voltage_step"):
@@ -711,7 +692,9 @@ class Controller(QtCore.QObject):
         if "source_output_state" in data:
             self.main_window.updateSourceOutputState(data["source_output_state"])
         if "bias_source_output_state" in data:
-            self.main_window.updateBiasSourceOutputState(data["bias_source_output_state"])
+            self.main_window.updateBiasSourceOutputState(
+                data["bias_source_output_state"]
+            )
         if "message" in data:
             self.main_window.set_message(data["message"])
         if "progress" in data:
@@ -845,19 +828,20 @@ class Controller(QtCore.QObject):
             role = self.main_window.find_role("ELM")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
-                general_widget.set_current_compliance(
-                    1.0e-3
-                )  # fixed for K6517B
+                general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
         elif general_widget.is_elm2_enabled():
             role = self.main_window.find_role("ELM2")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
-                general_widget.set_current_compliance(
-                    1.0e-3
-                )  # fixed for K6517B
+                general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
         elif general_widget.is_lcr_enabled():
             role = self.main_window.find_role("LCR")
-            if role and role.resource_widget.model() in ["K595", "E4980A", "A4284A", "K4215"]:
+            if role and role.resource_widget.model() in [
+                "K595",
+                "E4980A",
+                "A4284A",
+                "K4215",
+            ]:
                 general_widget.set_current_compliance_locked(True)
 
     @QtCore.Slot(bool)

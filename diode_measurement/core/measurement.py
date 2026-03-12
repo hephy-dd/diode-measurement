@@ -1,7 +1,8 @@
 import contextlib
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange

@@ -1,3 +1,5 @@
+from types import MappingProxyType
+
 import pytest
 
 from diode_measurement import utils
@@ -140,8 +142,6 @@ def test_get_dict_returns_dict():
 
 
 def test_get_dict_mapping_conversion():
-    from types import MappingProxyType
-
     mp = MappingProxyType({"a": 1})
     result = utils.get_dict(mp)
 

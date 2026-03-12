@@ -1,5 +1,6 @@
 import threading
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 __all__ = ["Cache"]
 

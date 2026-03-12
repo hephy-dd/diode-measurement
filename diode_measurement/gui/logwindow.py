@@ -1,6 +1,7 @@
 import logging
 import threading
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
