@@ -7,8 +7,7 @@ from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..resource import Resource, AutoReconnectResource
-from ..driver import driver_factory
-
+from ..drivers import driver_factory
 from ..state import State, FSMState
 
 __all__ = ["Measurement", "RangeMeasurement"]

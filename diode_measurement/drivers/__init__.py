@@ -1,3 +1,5 @@
+from ..core.driver import Driver
+
 # Drivers
 from .k237 import K237
 from .k595 import K595
@@ -16,7 +18,7 @@ from .k708b import K708B
 
 __all__ = ["driver_factory"]
 
-DRIVERS: dict[str, type] = {
+driver_registry: dict[str, type[Driver]] = {
     "K237": K237,
     "K595": K595,
     "K2410": K2410,
@@ -34,9 +36,9 @@ DRIVERS: dict[str, type] = {
 }
 
 
-def driver_factory(model: str) -> type:
-    """Return driver class referenced by model."""
-    driver = DRIVERS.get(model)
-    if driver is None:
-        raise ValueError(f"No such driver: {model}")
-    return driver
+def driver_factory(model: str) -> type[Driver]:
+    """Return the driver class for the given model."""
+    try:
+        return driver_registry[model]
+    except KeyError as exc:
+        raise ValueError(f"Unknown driver model: {model}") from exc

@@ -1070,32 +1070,32 @@ class Controller(QtCore.QObject):
 
     def on_lcr_perform_correction(self) -> None:
         role = self.view.find_role("LCR")
-        if role:
-            model = role.model()
-            config = role.configs().get(model, {})
-            if model == "K4215":
-                dialog = K4215CorrectionDialog(self.view)
-                external_bias_tee = config.get("external_bias_tee.enabled", False)
-                if external_bias_tee:
-                    dialog.set_hint("<b>With</b> external Bias Tee (applying -10V DC)")
-                if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-                    return
-                self.view.control_tab_widget.setEnabled(False)
-                self.submit_background_job(
-                    K4215PerformCorrectionJob(
-                        model=model,
-                        resource_name=role.resource_name(),
-                        termination=role.termination(),
-                        timeout=role.timeout(),
-                        cable_length=config.get("correction.length"),
-                        open_correction=dialog.is_open_correction(),
-                        short_correction=dialog.is_short_correction(),
-                        load_correction=dialog.get_load_correction(),
-                        external_bias_tee=external_bias_tee,
-                        progress=self.progress_changed.emit,
-                        message=self.message_changed.emit,
-                    )
+        if role is None:
+            return
+        model = role.model()
+        config = role.configs().get(model, {})
+        if model == "K4215":
+            dialog = K4215CorrectionDialog(self.view)
+            external_bias_tee = config.get("external_bias_tee.enabled", False)
+            if external_bias_tee:
+                dialog.set_hint("<b>With</b> external Bias Tee (applying -10V DC)")
+            if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+                return
+            self.view.control_tab_widget.setEnabled(False)
+            self.submit_background_job(
+                K4215PerformCorrectionJob(
+                    resource_name=role.resource_name(),
+                    termination=role.termination(),
+                    timeout=role.timeout(),
+                    cable_length=config.get("correction.length"),
+                    open_correction=dialog.is_open_correction(),
+                    short_correction=dialog.is_short_correction(),
+                    load_correction=dialog.get_load_correction(),
+                    external_bias_tee=external_bias_tee,
+                    progress=self.progress_changed.emit,
+                    message=self.message_changed.emit,
                 )
+            )
 
 
 class IVPlotsController(QtCore.QObject):

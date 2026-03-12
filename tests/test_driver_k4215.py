@@ -1,6 +1,6 @@
 import pytest
 
-from diode_measurement.driver.k4215 import K4215
+from diode_measurement.drivers.k4215 import K4215
 
 from . import res
 
@@ -411,7 +411,7 @@ def test_driver_k4215_external_bias_tee(res):
     # Test external bias tee configuration
     res.buffer = []  # Need enough responses for all the _write calls
     d._external_bias_tee_enabled = True
-    d._enable_bias_tee_dc_voltage()
+    d.enable_bias_tee_dc_voltage()
     expected_commands = [
         ":CVU:CONFIG:ACVHI 1",
         ":CVU:CONFIG:DCVHI 1",

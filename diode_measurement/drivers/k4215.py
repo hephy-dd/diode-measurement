@@ -3,12 +3,12 @@ from typing import Optional
 
 import pyvisa.errors
 
-from .driver import Resource, LCRMeter, InstrumentError, handle_exception
+from ..core.driver import Resource, BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K4215"]
 
 
-class K4215(LCRMeter):
+class K4215(BaseDriver):
     correction_timeout: float = 120.0
 
     def __init__(self, resource: Resource) -> None:
@@ -74,7 +74,7 @@ class K4215(LCRMeter):
 
         # Enable -10V DC bias for P3 bias tee if selected
         if self._external_bias_tee_enabled:
-            self._enable_bias_tee_dc_voltage()
+            self.enable_bias_tee_dc_voltage()
 
         # Configure impedance/function type, default CPRP
         function_type = options.get("function.type", "CPRP")
@@ -325,7 +325,7 @@ class K4215(LCRMeter):
         # not implemented by the instrument, return 0
         return 0.0
 
-    def _enable_bias_tee_dc_voltage(self) -> None:
+    def enable_bias_tee_dc_voltage(self) -> None:
         """Enable -10V DC at HI and LO terminals for P3 bias tee."""
         self._write(":CVU:CONFIG:ACVHI 1")
         self._write(":CVU:CONFIG:DCVHI 1")
@@ -335,7 +335,7 @@ class K4215(LCRMeter):
         self._write(":CVU:DCV:OFFSET -10")
         self._write(":CVU:DCV -10")
 
-    def _reset_bias_tee_dc_voltage(self) -> None:
+    def reset_bias_tee_dc_voltage(self) -> None:
         self._write(":CVU:CONFIG:ACVHI 1")
         self._write(":CVU:CONFIG:DCVHI 1")
         self._write(":CVU:DCV:OFFSET 0")
@@ -364,4 +364,4 @@ class K4215(LCRMeter):
     def finalize(self) -> None:
         """Clean up and reset the instrument."""
         if self._external_bias_tee_enabled:
-            self._reset_bias_tee_dc_voltage()
+            self.reset_bias_tee_dc_voltage()

@@ -2,7 +2,7 @@ import time
 import logging
 from typing import Optional
 
-from .driver import SourceMeter, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K237"]
 
@@ -38,7 +38,7 @@ ERROR_MESSAGES = {
 logger = logging.getLogger(__name__)
 
 
-class K237(SourceMeter):
+class K237(BaseDriver):
     WRITE_DELAY = 0.250
 
     def identify(self) -> str:

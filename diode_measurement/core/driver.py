@@ -1,6 +1,5 @@
 import logging
-from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Iterator, Optional, Protocol
 
 from comet.driver.generic import InstrumentError
 
@@ -8,7 +7,7 @@ from ..resource import Resource
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["Driver"]
+__all__ = ["Driver", "BaseDriver"]
 
 
 def handle_exception(method):
@@ -24,82 +23,46 @@ def handle_exception(method):
 class DriverError(Exception): ...
 
 
-class Driver(ABC):
+class BaseDriver:
     def __init__(self, resource: Resource) -> None:
         self.resource = resource
 
-    @abstractmethod
+
+class Driver(Protocol):
+    def __init__(self, resource: Resource) -> None: ...
     def identify(self) -> str: ...
-
-    @abstractmethod
     def reset(self) -> None: ...
-
-    @abstractmethod
     def clear(self) -> None: ...
-
-    @abstractmethod
     def next_error(self) -> Optional[InstrumentError]: ...
-
-    @abstractmethod
-    def configure(self, options: dict) -> None: ...
+    def configure(self, options: dict[str, Any]) -> None: ...
 
 
-class SourceMeter(Driver):
-    @abstractmethod
+class SourceMeter(Driver, Protocol):
     def get_output_enabled(self) -> bool: ...
-
-    @abstractmethod
     def set_output_enabled(self, enabled: bool) -> None: ...
-
-    @abstractmethod
     def get_voltage_level(self) -> float: ...
-
-    @abstractmethod
     def set_voltage_level(self, level: float) -> None: ...
-
-    @abstractmethod
     def set_voltage_range(self, level: float) -> None: ...
-
-    @abstractmethod
     def set_current_compliance_level(self, level: float) -> None: ...
-
-    @abstractmethod
     def compliance_tripped(self) -> bool: ...
-
-    @abstractmethod
     def measure_i(self) -> float: ...
-
-    @abstractmethod
     def measure_iv(self) -> tuple[float, float]: ...
 
 
-class Electrometer(SourceMeter):
-    @abstractmethod
+class Electrometer(SourceMeter, Protocol):
     def set_zero_check_enabled(self, enabled: bool) -> None: ...
 
-    @abstractmethod
-    def measure_i(self) -> float: ...
 
-
-class LCRMeter(SourceMeter):
-    @abstractmethod
+class LCRMeter(SourceMeter, Protocol):
     def measure_impedance(self) -> tuple[float, float]: ...
 
 
-class DMM(Driver):
-    @abstractmethod
+class DMM(Driver, Protocol):
     def measure_temperature(self) -> float: ...
 
 
-class SwitchingMatrix(Driver):
-    @abstractmethod
-    def close_channels(self, channels: list) -> None: ...
-
-    @abstractmethod
-    def open_channels(self, channels: list) -> None: ...
-
-    @abstractmethod
+class SwitchingMatrix(Driver, Protocol):
+    def close_channels(self, channels: Iterator[str]) -> None: ...
+    def open_channels(self, channels: Iterator[str]) -> None: ...
     def open_all_channels(self) -> None: ...
-
-    @abstractmethod
-    def closed_channels(self) -> list: ...
+    def closed_channels(self) -> list[str]: ...

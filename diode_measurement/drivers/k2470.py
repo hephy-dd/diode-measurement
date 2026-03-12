@@ -1,11 +1,11 @@
 from typing import Optional
 
-from .driver import SourceMeter, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K2470"]
 
 
-class K2470(SourceMeter):
+class K2470(BaseDriver):
     def identify(self) -> str:
         return self._query("*IDN?")
 

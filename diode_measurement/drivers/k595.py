@@ -2,7 +2,7 @@ import math
 import time
 from typing import Optional
 
-from .driver import LCRMeter, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K595"]
 
@@ -17,7 +17,7 @@ ERROR_MESSAGES = {
 }
 
 
-class K595(LCRMeter):
+class K595(BaseDriver):
     WRITE_DELAY = 0.250
 
     def identify(self) -> str:

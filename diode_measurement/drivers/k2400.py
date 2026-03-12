@@ -1,11 +1,11 @@
 from typing import Optional
 
-from .driver import SourceMeter, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K2400"]
 
 
-class K2400(SourceMeter):
+class K2400(BaseDriver):
     def __init__(self, resource) -> None:
         super().__init__(resource)
         self._format_element: Optional[str] = None

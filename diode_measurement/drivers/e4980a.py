@@ -1,12 +1,12 @@
 import time
 from typing import Optional
 
-from .driver import LCRMeter, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["E4980A"]
 
 
-class E4980A(LCRMeter):
+class E4980A(BaseDriver):
     def identify(self) -> str:
         return self._query("*IDN?").strip()
 

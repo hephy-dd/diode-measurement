@@ -1,4 +1,4 @@
-from diode_measurement.driver.e4980a import E4980A
+from diode_measurement.drivers.e4980a import E4980A
 
 from . import res
 

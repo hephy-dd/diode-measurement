@@ -1,6 +1,6 @@
 import pytest
 
-from diode_measurement.driver.k2400 import K2400
+from diode_measurement.drivers.k2400 import K2400
 
 from . import res
 

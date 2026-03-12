@@ -1,4 +1,4 @@
-from diode_measurement.driver.k2657a import K2657A
+from diode_measurement.drivers.k2657a import K2657A
 
 from . import res
 

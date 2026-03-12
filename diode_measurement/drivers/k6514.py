@@ -1,12 +1,12 @@
 import time
 from typing import Optional
 
-from .driver import Electrometer, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
-__all__ = ["K6517B"]
+__all__ = ["K6514"]
 
 
-class K6517B(Electrometer):
+class K6514(BaseDriver):
     def identify(self) -> str:
         return self._query("*IDN?").strip()
 
@@ -28,7 +28,7 @@ class K6517B(Electrometer):
         self.set_format_elements(["READ"])
         self.set_sense_function("CURR")
 
-        sense_range = options.get("sense.range", 20e-3)
+        sense_range = options.get("sense.range", 200e-6)
         self.set_sense_current_range(sense_range)
 
         sense_auto_range_lower_limit = options.get(
@@ -44,40 +44,34 @@ class K6517B(Electrometer):
         sense_auto_range = options.get("sense.auto_range", True)
         self.set_sense_current_range_auto(sense_auto_range)
 
-        source_meter_connect = options.get("source.meter_connect", False)
-        self.set_source_voltage_mconnect(source_meter_connect)
-
         filter_mode = options.get("filter.mode", "MOV")
-        self.set_sense_current_average_tcontrol(filter_mode)
+        self.set_sense_average_tcontrol(filter_mode)
 
         filter_count = options.get("filter.count", 10)
-        self.set_sense_current_average_count(filter_count)
+        self.set_sense_average_count(filter_count)
 
         filter_enable = options.get("filter.enable", False)
-        self.set_sense_current_average_state(filter_enable)
+        self.set_sense_average_state(filter_enable)
 
-        nplc = options.get("nplc", 1.0)
+        nplc = options.get("nplc", 5.0)
         self.set_sense_current_nplcycles(nplc)
 
     def get_output_enabled(self) -> bool:
-        return bool(int(self._query(":OUTP:STAT?")))
+        return False
 
-    def set_output_enabled(self, enabled: bool) -> None:
-        self._write(f":OUTP:STAT {enabled:d}")
+    def set_output_enabled(self, enabled: bool) -> None: ...
 
     def get_voltage_level(self) -> float:
-        return float(self._query(":SOUR:VOLT:LEV?"))
+        return 0
 
-    def set_voltage_level(self, level: float) -> None:
-        self._write(f":SOUR:VOLT:LEV {level:E}")
+    def set_voltage_level(self, level: float) -> None: ...
 
-    def set_voltage_range(self, level: float) -> None:
-        self._write(f":SOUR:VOLT:RANG {level:E}")
+    def set_voltage_range(self, level: float) -> None: ...
 
-    def set_current_compliance_level(self, level: float) -> None: ...  # fixed to 1 mA
+    def set_current_compliance_level(self, level: float) -> None: ...  # not supported
 
     def compliance_tripped(self) -> bool:
-        return bool(int(self._query(":SOUR:CURR:LIM?")))
+        return False
 
     def measure_i(self, timeout=10.0, interval=0.250):
         # Request operation complete
@@ -120,20 +114,17 @@ class K6517B(Electrometer):
     def set_sense_current_range_auto_upper_limit(self, limit: float) -> None:
         self._write(f":SENS:CURR:RANG:AUTO:ULIM {limit:E}")
 
-    def set_sense_current_average_tcontrol(self, tcontrol: str) -> None:
-        self._write(f":SENS:CURR:AVER:TCON {tcontrol}")
+    def set_sense_average_tcontrol(self, tcontrol: str) -> None:
+        self._write(f":SENS:AVER:TCON {tcontrol}")
 
-    def set_sense_current_average_count(self, count: int) -> None:
-        self._write(f":SENS:CURR:AVER:COUN {count:d}")
+    def set_sense_average_count(self, count: int) -> None:
+        self._write(f":SENS:AVER:COUN {count:d}")
 
-    def set_sense_current_average_state(self, state: bool) -> None:
-        self._write(f":SENS:CURR:AVER:STAT {state:d}")
+    def set_sense_average_state(self, state: bool) -> None:
+        self._write(f":SENS:AVER:STAT {state:d}")
 
     def set_sense_current_nplcycles(self, nplc: float) -> None:
         self._write(f":SENS:CURR:NPLC {nplc:E}")
-
-    def set_source_voltage_mconnect(self, enabled: bool) -> None:
-        self._write(f":SOUR:VOLT:MCON {enabled:d}")
 
     def set_zero_check_enabled(self, enabled: bool) -> None:
         self._write(f":SYST:ZCH {enabled:d}")
