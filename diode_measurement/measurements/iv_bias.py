@@ -4,7 +4,7 @@ import time
 
 from comet.estimate import Estimate
 
-from . import ReadingType, State, EventHandler, RangeMeasurement
+from ..core.measurement import ReadingType, State, EventHandler, RangeMeasurement
 
 __all__ = ["IVBiasMeasurement"]
 

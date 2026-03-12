@@ -4,7 +4,7 @@ import time
 
 from comet.utils import inverse_square
 
-from . import ReadingType, State, EventHandler, RangeMeasurement
+from ..core.measurement import ReadingType, State, EventHandler, RangeMeasurement
 
 __all__ = ["CVMeasurement"]
 

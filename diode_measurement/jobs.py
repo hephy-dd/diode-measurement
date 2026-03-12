@@ -5,10 +5,10 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Optional, Protocol
 
-from .measurement import Measurement
-from .measurement.iv import IVMeasurement
-from .measurement.iv_bias import IVBiasMeasurement
-from .measurement.cv import CVMeasurement
+from .measurements import Measurement
+from .measurements.iv import IVMeasurement
+from .measurements.iv_bias import IVBiasMeasurement
+from .measurements.cv import CVMeasurement
 
 from .driver import driver_factory
 from .utils import open_resource

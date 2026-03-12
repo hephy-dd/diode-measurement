@@ -11,6 +11,8 @@ from PySide6 import QtCore, QtWidgets, QtStateMachine
 
 from comet.utils import safe_filename
 
+from .core.measurement import ReadingType, Measurement
+
 # Source meter units
 from .view.panels import K237Panel
 from .view.panels import K2410Panel
@@ -40,10 +42,9 @@ from .view.dialogs import ChangeVoltageDialog
 
 from .view.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
 
-from .measurement import ReadingType, Measurement
-from .measurement.iv import IVMeasurement
-from .measurement.iv_bias import IVBiasMeasurement
-from .measurement.cv import CVMeasurement
+from .measurements.iv import IVMeasurement
+from .measurements.iv_bias import IVBiasMeasurement
+from .measurements.cv import CVMeasurement
 
 from .reader import Reader
 
