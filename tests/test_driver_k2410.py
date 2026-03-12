@@ -1,4 +1,4 @@
-from diode_measurement.driver.k2410 import K2410
+from diode_measurement.drivers.k2410 import K2410
 
 from . import res
 

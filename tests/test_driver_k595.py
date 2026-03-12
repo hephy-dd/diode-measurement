@@ -1,6 +1,6 @@
 import math
 
-from diode_measurement.driver.k595 import K595
+from diode_measurement.drivers.k595 import K595
 
 from . import res
 

@@ -12,14 +12,14 @@ import time
 from dataclasses import dataclass
 from concurrent.futures import Future
 from queue import Queue, Empty
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from diode_measurement.utils import safe_bool, safe_int, safe_str
+from diode_measurement.core.plugin import Plugin
 from diode_measurement.controller import Controller
-
-from . import Plugin
+from diode_measurement.utils import get_bool, get_int, get_str
 
 __all__ = ["RPCServerPlugin"]
 
@@ -380,9 +380,9 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
     def read_settings(self) -> None:
         settings = QtCore.QSettings()
         settings.beginGroup("tcpServer")
-        enabled = safe_bool(settings.value("enabled"), False)
-        hostname = safe_str(settings.value("hostname"), "")
-        port = safe_int(settings.value("port"), 8000)
+        enabled = get_bool(settings.value("enabled"), False)
+        hostname = get_str(settings.value("hostname"), "")
+        port = get_int(settings.value("port"), 8000)
         settings.endGroup()
         self.rpc_widget.set_server_enabled(enabled)
         self.rpc_widget.set_hostname(hostname)
@@ -410,7 +410,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         self.rpc_widget = RPCWidget()
         self.running.connect(lambda state: self.rpc_widget.set_connected(state))
         self.rpc_widget.restart_signal.connect(lambda: self._request_restart())
-        context.view.control_tab_widget.insertTab(
+        context.main_window.control_tab_widget.insertTab(
             1000, self.rpc_widget, self.rpc_widget.windowTitle()
         )
         self.message_ready.connect(self._append_protocol)

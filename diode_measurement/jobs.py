@@ -3,14 +3,15 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Optional, Protocol
+from collections.abc import Callable, Mapping
+from typing import Any, Optional, Protocol
 
-from .measurement import Measurement
-from .measurement.iv import IVMeasurement
-from .measurement.iv_bias import IVBiasMeasurement
-from .measurement.cv import CVMeasurement
+from .measurements import Measurement
+from .measurements.iv import IVMeasurement
+from .measurements.iv_bias import IVBiasMeasurement
+from .measurements.cv import CVMeasurement
 
-from .driver import driver_factory
+from .drivers import K4215
 from .utils import open_resource
 from .writer import Writer
 
@@ -87,7 +88,6 @@ class MeasurementJob:
 
 @dataclass
 class K4215PerformCorrectionJob:
-    model: str
     resource_name: str
     termination: str
     timeout: float
@@ -106,7 +106,9 @@ class K4215PerformCorrectionJob:
         logger.info("Performing cable correction...")
         self.progress(0, 0, 0)
 
-        def wait_until_done(instr, timeout=120.0, interval=1.0):
+        def wait_until_done(
+            instr: K4215, timeout: float = 120.0, interval: float = 1.0
+        ) -> None:
             timeout_at = time.monotonic() + timeout
             while time.monotonic() < timeout_at:
                 if instr.has_correction_finished():
@@ -116,20 +118,20 @@ class K4215PerformCorrectionJob:
             raise TimeoutError("Timeout expired before cable correction completed.")
 
         with open_resource(self.resource_name, self.termination, self.timeout) as res:
-            instr = driver_factory(self.model)(res)
+            instr = K4215(res)
 
             if self.open_correction:
                 if self.external_bias_tee:
                     self.message("Performing OPEN correction with Bias Tee...")
                     logger.info("Enable external Bias Tee (-10V DC)")
                     try:
-                        instr._enable_bias_tee_dc_voltage()
+                        instr.enable_bias_tee_dc_voltage()
                         time.sleep(1)
                         instr.start_open_correction(self.cable_length)
                         wait_until_done(instr, correction_timeout)
                     finally:
                         logger.info("Reset external Bias Tee")
-                        instr._reset_bias_tee_dc_voltage()
+                        instr.reset_bias_tee_dc_voltage()
                 else:
                     self.message("Performing OPEN correction...")
                     instr.start_open_correction(self.cable_length)

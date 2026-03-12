@@ -1,4 +1,4 @@
-from diode_measurement.driver.k6517b import K6517B
+from diode_measurement.drivers.k6517b import K6517B
 
 from . import res
 

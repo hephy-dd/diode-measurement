@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
+from typing import Any, Optional
 
 __all__ = ["State"]
 

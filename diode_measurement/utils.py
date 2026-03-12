@@ -1,6 +1,6 @@
 import re
-
-from typing import Any, Iterable
+from collections.abc import Iterable, Mapping
+from typing import Any, Optional
 
 import pyvisa
 
@@ -13,9 +13,11 @@ __all__ = [
     "format_switch",
     "limits",
     "convert",
-    "safe_bool",
-    "safe_int",
-    "safe_str",
+    "get_bool",
+    "get_int",
+    "get_float",
+    "get_str",
+    "get_dict",
 ]
 
 
@@ -94,13 +96,16 @@ def convert(value: float, from_unit: str, to_unit: str) -> float:
     return (value * ureg(from_unit)).to(to_unit).m
 
 
-def safe_bool(value: Any, default: bool = False) -> bool:
-    """Return value converted to bool; return default if conversion fails."""
+def get_bool(value: Any, default: bool = False) -> bool:
+    """Return a parsed boolean, or default if the value is not recognized."""
     if isinstance(value, bool):
         return value
 
     if value is None:
         return default
+
+    if isinstance(value, int):
+        return value != 0
 
     if isinstance(value, str):
         v = value.strip().lower()
@@ -110,14 +115,14 @@ def safe_bool(value: Any, default: bool = False) -> bool:
             return False
         return default
 
-    try:
-        return bool(value)
-    except Exception:
-        return default
+    return default
 
 
-def safe_int(value: Any, default: int = 0) -> int:
-    """Return value converted to int; return default if conversion fails."""
+def get_int(value: Any, default: int = 0) -> int:
+    """Return value converted to int, or default if conversion fails."""
+    if isinstance(value, bool):
+        return int(value)
+
     if isinstance(value, int):
         return value
 
@@ -130,8 +135,28 @@ def safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
-def safe_str(value: Any, default: str = "") -> str:
-    """Return value converted to str; return default if value is None."""
+def get_float(value: Any, default: float = 0.0) -> float:
+    """Return value converted to float, or default if conversion fails."""
+    if isinstance(value, bool):
+        return float(value)
+
+    if isinstance(value, float):
+        return value
+
+    if isinstance(value, int):
+        return float(value)
+
+    if value is None:
+        return default
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def get_str(value: Any, default: str = "") -> str:
+    """Return value converted to str, or default if conversion fails or value is None."""
     if isinstance(value, str):
         return value
 
@@ -142,3 +167,17 @@ def safe_str(value: Any, default: str = "") -> str:
         return str(value)
     except Exception:
         return default
+
+
+def get_dict(value: Any, default: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    """Return a dict value, or default if the input is not mapping-like."""
+    if isinstance(value, dict):
+        return value
+
+    if isinstance(value, Mapping):
+        return dict(value)
+
+    if default is None:
+        return {}
+
+    return default
