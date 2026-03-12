@@ -6,7 +6,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from . import __version__
 from .core.plugin import PluginRegistry
 from .controller import Controller
-from .view.mainwindow import MainWindow
+from .gui.mainwindow import MainWindow
 
 from .plugins import RPCServerPlugin, ScreenshotPlugin
 

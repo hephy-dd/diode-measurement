@@ -4,7 +4,7 @@ import pathlib
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from diode_measurement.core.plugin import Plugin
-from diode_measurement.utils import safe_bool
+from diode_measurement.utils import get_bool
 
 __all__ = ["ScreenshotPlugin"]
 
@@ -29,7 +29,7 @@ class ScreenshotPlugin(Plugin):
             "Save screenshot of plots at end of measurement"
         )
 
-        layout = context.view.general_widget.output_group_box.layout()
+        layout = context.main_window.general_widget.output_group_box.layout()
         layout.insertWidget(layout.count() - 1, self.save_screenshot_check_box)
 
         self.context.measurement_finished.connect(self.save_screenshot)
@@ -37,7 +37,7 @@ class ScreenshotPlugin(Plugin):
     def remove_widgets(self, context) -> None:
         context.measurement_finished.disconnect(self.save_screenshot)
 
-        layout = context.view.general_widget.output_group_box.layout()
+        layout = context.main_window.general_widget.output_group_box.layout()
         layout.removeWidget(self.save_screenshot_check_box)
 
         self.save_screenshot_check_box.setParent(None)  # type: ignore
@@ -45,7 +45,7 @@ class ScreenshotPlugin(Plugin):
 
     def read_settings(self) -> None:
         settings = QtCore.QSettings()
-        enabled = safe_bool(settings.value("saveScreenshot"), False)
+        enabled = get_bool(settings.value("saveScreenshot"), False)
         self.save_screenshot_check_box.setChecked(enabled)
 
     def write_settings(self) -> None:
@@ -60,13 +60,13 @@ class ScreenshotPlugin(Plugin):
         return ""
 
     def is_option_enabled(self) -> bool:
-        if self.context.view.general_widget.output_group_box.isChecked():
+        if self.context.main_window.general_widget.output_group_box.isChecked():
             if self.save_screenshot_check_box.isChecked():
                 return True
         return False
 
     def grab_screenshot(self) -> QtGui.QPixmap:
-        return self.context.view.dataStackedWidget.grab()
+        return self.context.main_window.dataStackedWidget.grab()
 
     def save_screenshot(self) -> None:
         """Save screenshot of active IV/CV plots."""

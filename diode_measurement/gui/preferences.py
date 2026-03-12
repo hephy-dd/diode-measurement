@@ -2,7 +2,7 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import safe_str
+from ..utils import get_str
 
 TIMESTAMP_FORMATS: list[str] = [
     ".3f",
@@ -84,11 +84,11 @@ class PreferencesDialog(QtWidgets.QDialog):
 
     def read_settings(self) -> None:
         settings = QtCore.QSettings()
-        timestamp_format = safe_str(
+        timestamp_format = get_str(
             settings.value("writer/timestampFormat"), TIMESTAMP_FORMATS[1]
         )
         self.set_timestamp_format(timestamp_format)
-        value_format = safe_str(settings.value("writer/valueFormat"), VALUE_FORMATS[0])
+        value_format = get_str(settings.value("writer/valueFormat"), VALUE_FORMATS[0])
         self.set_value_format(value_format)
 
     def write_settings(self) -> None:
