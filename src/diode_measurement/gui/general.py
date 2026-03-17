@@ -44,6 +44,9 @@ class GeneralWidget(QtWidgets.QWidget):
         self.dmm_check_box = QtWidgets.QCheckBox("DMM", self)
         self.dmm_check_box.checkStateChanged.connect(self.instruments_changed)
 
+        self.tcu_check_box = QtWidgets.QCheckBox("TCU", self)
+        self.tcu_check_box.checkStateChanged.connect(self.instruments_changed)
+
         self.switch_check_box = QtWidgets.QCheckBox("Switch", self)
         self.switch_check_box.checkStateChanged.connect(self.instruments_changed)
 
@@ -165,6 +168,7 @@ class GeneralWidget(QtWidgets.QWidget):
         self.instrument_layout.addWidget(self.elm2_check_box)
         self.instrument_layout.addWidget(self.lcr_check_box)
         self.instrument_layout.addWidget(self.dmm_check_box)
+        self.instrument_layout.addWidget(self.tcu_check_box)
         self.instrument_layout.addWidget(self.switch_check_box)
         self.instrument_layout.addStretch()
         self.instrument_layout.setContentsMargins(0, 0, 0, 0)
@@ -316,6 +320,12 @@ class GeneralWidget(QtWidgets.QWidget):
 
     def set_dmm_enabled(self, enabled):
         return self.dmm_check_box.setChecked(enabled)
+
+    def is_tcu_enabled(self):
+        return self.tcu_check_box.isChecked()
+
+    def set_tcu_enabled(self, enabled):
+        return self.tcu_check_box.setChecked(enabled)
 
     def is_switch_enabled(self):
         return self.switch_check_box.isChecked()

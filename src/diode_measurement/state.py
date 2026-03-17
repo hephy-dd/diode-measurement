@@ -1,3 +1,4 @@
+import threading
 from enum import Enum
 from collections.abc import Iterator
 from typing import Any, Optional
@@ -16,6 +17,8 @@ class FSMState(str, Enum):
 class State:
     def __init__(self) -> None:
         self._state: dict[str, Any] = {}
+        self.abort_event = threading.Event()
+        self.tcu_poll_interval: float = 5.0
 
     @property
     def measurement_type(self) -> str:
@@ -31,7 +34,7 @@ class State:
 
     @property
     def stop_requested(self) -> bool:
-        return self._state.get("stop_requested", False)
+        return self.abort_event.is_set()
 
     @property
     def auto_reconnect(self) -> bool:

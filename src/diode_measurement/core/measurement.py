@@ -1,8 +1,9 @@
 import contextlib
 import logging
 import time
+import threading
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange
@@ -21,13 +22,56 @@ ReadingType = dict[str, Any]
 class EventHandler:
     def __init__(self) -> None:
         self.handlers: list[Callable] = []
+        self.lock = threading.RLock()
 
     def subscribe(self, handler: Callable) -> None:
         self.handlers.append(handler)
 
     def __call__(self, *args, **kwargs) -> None:
-        for handler in self.handlers:
-            handler(*args, **kwargs)
+        with self.lock:
+            for handler in self.handlers:
+                try:
+                    handler(*args, **kwargs)
+                except Exception as exc:
+                    logger.exception(exc)
+
+
+class TCURole:
+    def __init__(self, tcu, event_bus: Callable[[dict[str, Any]], None]) -> None:
+        self.tcu = tcu
+        self.event_bus = event_bus
+        self.poll_interval = 5.0
+        self._abort_event = threading.Event()
+        self._lock = threading.RLock()
+        self._thread = threading.Thread(target=self._poll)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._abort_event.set()
+        self._thread.join()
+
+    def _poll(self) -> None:
+        while not self._abort_event.is_set():
+            try:
+                with self._lock:
+                    tcu_temperature = self.tcu.temperature
+            except Exception:
+                logger.exception("Failed to read TCU temperature")
+            else:
+                self.event_bus({"tcu_temperature": tcu_temperature})
+            self._abort_event.wait(self.poll_interval)
+
+    def ensure_setpoint(self) -> None:
+        with self._lock:
+            if self.tcu.is_within_setpoint():
+                return
+        while not self._abort_event.is_set():
+            self._abort_event.wait(self.poll_interval)
+            with self._lock:
+                if self.tcu.is_within_setpoint():
+                    break
 
 
 class Measurement:
@@ -41,6 +85,8 @@ class Measurement:
         self.failed_event: EventHandler = EventHandler()
         self.warning_event: EventHandler = EventHandler()
         self.update_event: EventHandler = EventHandler()
+
+        self.tcu_role: Optional[TCURole] = None
 
     def register_instrument(self, name: str) -> None:
         role = self.state.find_role(name)
@@ -384,6 +430,15 @@ class RangeMeasurement(Measurement):
         for instrument in self.instruments.values():
             self.check_interlock(instrument)
 
+        # TCU (optional)
+        tcu = self.instruments.get("tcu")
+        if tcu is not None:
+            self.tcu_role = TCURole(tcu, self.update_event)
+
+        if self.tcu_role is not None:
+            self.tcu_role.start()
+            self.tcu_role.ensure_setpoint()
+
         self.bias_current_compliance = self.state.current_compliance
         if self.bias_source_instrument:
             self.set_bias_source_compliance(self.bias_current_compliance)
@@ -491,6 +546,9 @@ class RangeMeasurement(Measurement):
                 self.set_bias_source_output_state(False)
 
             self.finalize_switch()
+
+            if self.tcu_role is not None:
+                self.tcu_role.stop()
 
         finally:
             self.update_event(

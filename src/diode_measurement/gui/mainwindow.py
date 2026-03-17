@@ -168,6 +168,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dmm_group_box = QtWidgets.QGroupBox()
         self.dmm_group_box.setTitle("DMM Status")
 
+        self.tcu_group_box = QtWidgets.QGroupBox()
+        self.tcu_group_box.setTitle("TCU Status")
+
         self.smuVoltageLineEdit = QtWidgets.QLineEdit("---")
         self.smuVoltageLineEdit.setReadOnly(True)
         self.smuVoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
@@ -231,6 +234,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dmmTemperatureLineEdit = QtWidgets.QLineEdit("---")
         self.dmmTemperatureLineEdit.setReadOnly(True)
         self.dmmTemperatureLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
+        self.tcuTemperatureLineEdit = QtWidgets.QLineEdit("---")
+        self.tcuTemperatureLineEdit.setReadOnly(True)
+        self.tcuTemperatureLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
         centralWidget = QtWidgets.QWidget()
         self.setCentralWidget(centralWidget)
@@ -371,6 +378,15 @@ class MainWindow(QtWidgets.QMainWindow):
         dmm_group_box.setStretch(0, 2)
         dmm_group_box.setStretch(1, 3)
 
+        tcu_group_box = QtWidgets.QHBoxLayout(self.tcu_group_box)
+        vboxLayout = QtWidgets.QVBoxLayout()
+        vboxLayout.addWidget(QtWidgets.QLabel("Temperature"))
+        vboxLayout.addWidget(self.tcuTemperatureLineEdit)
+        tcu_group_box.addLayout(vboxLayout)
+        tcu_group_box.addStretch()
+        tcu_group_box.setStretch(0, 2)
+        tcu_group_box.setStretch(1, 3)
+
         bottomLayout = QtWidgets.QHBoxLayout()
         bottomLayout.addLayout(control_layout)
         bottomLayout.addWidget(self.control_tab_widget)
@@ -381,6 +397,7 @@ class MainWindow(QtWidgets.QMainWindow):
         vboxLayout.addWidget(self.elm2_group_box)
         vboxLayout.addWidget(self.lcr_group_box)
         vboxLayout.addWidget(self.dmm_group_box)
+        vboxLayout.addWidget(self.tcu_group_box)
         vboxLayout.addStretch()
         bottomLayout.addLayout(vboxLayout)
         bottomLayout.setStretch(0, 0)
@@ -428,6 +445,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lcrCurrentLineEdit.setText("---")
         self.setLCROutputState(None)
         self.dmmTemperatureLineEdit.setText("---")
+        self.tcuTemperatureLineEdit.setText("---")
 
     def set_idle_state(self) -> None:
         self.import_action.setEnabled(True)
@@ -597,7 +615,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lcrCurrentLineEdit.setText(format_metric(capacity, "F"))
 
     def updateDMMTemperature(self, temperature: float) -> None:
-        self.dmmTemperatureLineEdit.setText(format_metric(temperature, "°C"))
+        self.dmmTemperatureLineEdit.setText(format_metric(temperature, "°C", 1))
+
+    def updateTCUTemperature(self, temperature: float) -> None:
+        self.tcuTemperatureLineEdit.setText(format_metric(temperature, "°C", 1))
 
     @QtCore.Slot()
     def on_show_preferences(self) -> None:

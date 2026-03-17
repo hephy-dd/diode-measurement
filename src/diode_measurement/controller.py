@@ -34,6 +34,9 @@ from .gui.panels.k4215 import K4215CorrectionDialog
 # DMM
 from .gui.panels import K2700Panel
 
+# TCU
+from .gui.panels import AC3Panel
+
 # Switches
 from .gui.panels import BrandBoxPanel
 from .gui.panels import K707BPanel
@@ -143,9 +146,13 @@ class Controller(QtCore.QObject):
         panel.perform_correction_clicked.connect(self.on_lcr_perform_correction)
         role.add_instrument_panel(panel)
 
-        # Temperatur
+        # DMM
         role = main_window.add_role("DMM")
         role.add_instrument_panel(K2700Panel())
+
+        # TCU
+        role = main_window.add_role("TCU")
+        role.add_instrument_panel(AC3Panel())
 
         # Switch
         role = main_window.add_role("Switch")
@@ -201,6 +208,7 @@ class Controller(QtCore.QObject):
         general_widget.elm2_check_box.toggled.connect(self.on_toggle_elm2)
         general_widget.lcr_check_box.toggled.connect(self.on_toggle_lcr)
         general_widget.dmm_check_box.toggled.connect(self.on_toggle_dmm)
+        general_widget.tcu_check_box.toggled.connect(self.on_toggle_tcu)
         general_widget.switch_check_box.toggled.connect(self.on_toggle_switch)
 
         self.on_toggle_smu2(False)
@@ -208,6 +216,7 @@ class Controller(QtCore.QObject):
         self.on_toggle_elm2(False)
         self.on_toggle_lcr(False)
         self.on_toggle_dmm(False)
+        self.on_toggle_tcu(False)
         self.on_toggle_switch(False)
 
         main_window.clear_message()
@@ -344,6 +353,7 @@ class Controller(QtCore.QObject):
         )
         roles.setdefault("lcr", {}).update({"enabled": general_widget.is_lcr_enabled()})
         roles.setdefault("dmm", {}).update({"enabled": general_widget.is_dmm_enabled()})
+        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_tcu_enabled()})
         roles.setdefault("switch", {}).update(
             {"enabled": general_widget.is_switch_enabled()}
         )
@@ -415,6 +425,9 @@ class Controller(QtCore.QObject):
 
         enabled = get_bool(settings.value("dmm/enabled"), False)
         general_widget.set_dmm_enabled(enabled)
+
+        enabled = get_bool(settings.value("tcu/enabled"), False)
+        general_widget.set_tcu_enabled(enabled)
 
         enabled = get_bool(settings.value("switch/enabled"), False)
         general_widget.set_switch_enabled(enabled)
@@ -510,6 +523,9 @@ class Controller(QtCore.QObject):
 
         enabled = general_widget.is_dmm_enabled()
         settings.setValue("dmm/enabled", enabled)
+
+        enabled = general_widget.is_tcu_enabled()
+        settings.setValue("tcu/enabled", enabled)
 
         enabled = general_widget.is_switch_enabled()
         settings.setValue("switch/enabled", enabled)
@@ -643,7 +659,7 @@ class Controller(QtCore.QObject):
     def set_stopping_state(self) -> None:
         self.main_window.set_stopping_state()
         self.main_window.set_message("Stop requested...")
-        self.state.update({"stop_requested": True})
+        self.state.abort_event.set()
 
     # Slots
 
@@ -689,6 +705,9 @@ class Controller(QtCore.QObject):
         if "dmm_temperature" in data:
             self.main_window.updateDMMTemperature(data["dmm_temperature"])
             cache.update({"dmm_temperature": data["dmm_temperature"]})
+        if "tcu_temperature" in data:
+            self.main_window.updateTCUTemperature(data["tcu_temperature"])
+            cache.update({"tcu_temperature": data["tcu_temperature"]})
         if "source_output_state" in data:
             self.main_window.updateSourceOutputState(data["source_output_state"])
         if "bias_source_output_state" in data:
@@ -885,6 +904,11 @@ class Controller(QtCore.QObject):
         self.main_window.dmm_group_box.setVisible(state)
 
     @QtCore.Slot(bool)
+    def on_toggle_tcu(self, state: bool) -> None:
+        self.main_window.tcu_group_box.setEnabled(state)
+        self.main_window.tcu_group_box.setVisible(state)
+
+    @QtCore.Slot(bool)
     def on_toggle_switch(self, state: bool) -> None: ...
 
     @QtCore.Slot()
@@ -1006,7 +1030,7 @@ class Controller(QtCore.QObject):
 
             # Update state
             self.state.update(state)
-            self.state.update({"stop_requested": False})
+            self.state.abort_event.clear()
 
             with self.cache:
                 self.cache.update(
