@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- TCU (Temperature Control Unit) role and support for AC3 Chiller (#136).
+- Per-Instrument reset options (#137).
+
+### Changed
+
+- Switch build backend from setuptools to Hatchling (#119).
+- Adopt `src` layout for package sources (#119).
+
+### Removed
+
+- Global reset instruments option (#137).
+
 ## [0.24.0] - 2026-03-12
 
 ### Added
