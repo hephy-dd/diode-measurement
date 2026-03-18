@@ -130,9 +130,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.continuous_check_box = QtWidgets.QCheckBox("&Continuous Meas.")
         self.continuous_check_box.setStatusTip("Enable continuous measurement")
 
-        self.reset_check_box = QtWidgets.QCheckBox("&Reset Instruments")
-        self.reset_check_box.setStatusTip("Reset instruments on start")
-
         self.auto_reconnect_check_box = QtWidgets.QCheckBox("&Auto Reconnect")
         self.auto_reconnect_check_box.setStatusTip(
             "Auto reconnect and retry on connection erros"
@@ -284,7 +281,6 @@ class MainWindow(QtWidgets.QMainWindow):
         control_layout.addWidget(self.start_button)
         control_layout.addWidget(self.stop_button)
         control_layout.addWidget(self.continuous_check_box)
-        control_layout.addWidget(self.reset_check_box)
         control_layout.addWidget(self.auto_reconnect_check_box)
         control_layout.addStretch()
 
@@ -470,7 +466,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stop_button.setEnabled(False)
         self.stop_button.setChecked(False)
         self.continuous_check_box.setEnabled(True)
-        self.reset_check_box.setEnabled(True)
         self.auto_reconnect_check_box.setEnabled(True)
         self.general_widget.set_idle_state()
         self.set_change_voltage_enabled(False)
@@ -494,7 +489,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stop_button.setEnabled(True)
         self.stop_button.setChecked(False)
         self.continuous_check_box.setEnabled(False)
-        self.reset_check_box.setEnabled(False)
         self.auto_reconnect_check_box.setEnabled(False)
         self.general_widget.set_running_state()
         for role in self.roles():
@@ -538,12 +532,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def set_change_voltage_enabled(self, state: bool) -> None:
         self.changeVoltageAction.setEnabled(state)
         self.general_widget.set_change_voltage_enabled(state)
-
-    def is_reset_instruments(self) -> bool:
-        return self.reset_check_box.isChecked()
-
-    def set_reset_instruments(self, enabled: bool) -> None:
-        return self.reset_check_box.setChecked(enabled)
 
     def is_auto_reconnect(self) -> bool:
         return self.auto_reconnect_check_box.isChecked()

@@ -134,7 +134,6 @@ class RPCHandler:
 
     def on_start(
         self,
-        reset: Optional[bool] = None,
         continuous: Optional[bool] = None,
         auto_reconnect: Optional[bool] = None,
         measurement_type: Optional[str] = None,
@@ -147,8 +146,6 @@ class RPCHandler:
         waiting_time_continuous: Optional[float] = None,
     ) -> None:
         parameters: dict[str, Any] = {}
-        if reset is not None:
-            parameters["reset"] = reset
         if continuous is not None:
             parameters["continuous"] = continuous
         if auto_reconnect is not None:

@@ -49,7 +49,7 @@ class Resource:
             finally:
                 self._rm = None
                 self._resource = None
-            return False
+        return False
 
     @property
     def resource(self) -> pyvisa.resources.MessageBasedResource:
