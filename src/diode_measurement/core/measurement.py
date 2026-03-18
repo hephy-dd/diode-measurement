@@ -2,7 +2,7 @@ import contextlib
 import logging
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange
@@ -11,6 +11,10 @@ from ..resource import Resource, AutoReconnectResource
 from ..drivers import driver_factory
 from ..state import State, FSMState
 
+from .actor import Actor
+from .driver import TCU
+from .utils import EventHandler, IntervalTimer
+
 __all__ = ["Measurement", "RangeMeasurement"]
 
 logger = logging.getLogger(__name__)
@@ -18,16 +22,43 @@ logger = logging.getLogger(__name__)
 ReadingType = dict[str, Any]
 
 
-class EventHandler:
-    def __init__(self) -> None:
-        self.handlers: list[Callable] = []
+class TCUActor(Actor):
+    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None]) -> None:
+        super().__init__()
+        self.tcu = tcu
+        self.event_bus = event_bus
+        self.poll_interval: float = 5.0
+        self.query_timeout: float = 10.0
+        self._interval_timer = IntervalTimer(self.poll_interval)
 
-    def subscribe(self, handler: Callable) -> None:
-        self.handlers.append(handler)
+    def on_idle(self) -> None:
+        if not self._interval_timer.expired():
+            return
+        self._interval_timer.reset()
+        try:
+            temperature = self.tcu.get_temperature()
+        except Exception:
+            logging.exception("Failed to read TCU temperature")
+        else:
+            self.event_bus({"tcu_temperature": temperature})
+        try:
+            state = self.tcu.get_state()
+        except Exception:
+            logging.exception("Failed to read TCU state")
+        else:
+            self.event_bus({"tcu_state": state})
 
-    def __call__(self, *args, **kwargs) -> None:
-        for handler in self.handlers:
-            handler(*args, **kwargs)
+    def on_message(self, message: Any) -> Any:
+        return message()
+
+    def is_within_setpoint(self) -> bool:
+        return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
+
+    def ensure_setpoint(self) -> None:
+        while not self._abort_event.is_set():
+            if self.is_within_setpoint():
+                break
+            self.sleep(self.poll_interval)
 
 
 class Measurement:
@@ -41,6 +72,8 @@ class Measurement:
         self.failed_event: EventHandler = EventHandler()
         self.warning_event: EventHandler = EventHandler()
         self.update_event: EventHandler = EventHandler()
+
+        self.tcu_actor: Optional[TCUActor] = None
 
     def register_instrument(self, name: str) -> None:
         role = self.state.find_role(name)
@@ -384,6 +417,18 @@ class RangeMeasurement(Measurement):
         for instrument in self.instruments.values():
             self.check_interlock(instrument)
 
+        # TCU (optional)
+        tcu = self.instruments.get("tcu")
+        if tcu is not None:
+            self.tcu_actor = TCUActor(tcu, self.update_event)
+
+        if self.tcu_actor is not None:
+            self.tcu_actor.start()
+            if not self.tcu_actor.is_within_setpoint():
+                self.update_message("Waiting for TCU to reach setpoint...")
+                self.update_progress(0, 0, 0)
+            self.tcu_actor.ensure_setpoint()
+
         self.bias_current_compliance = self.state.current_compliance
         if self.bias_source_instrument:
             self.set_bias_source_compliance(self.bias_current_compliance)
@@ -492,6 +537,9 @@ class RangeMeasurement(Measurement):
 
             self.finalize_switch()
 
+            if self.tcu_actor is not None:
+                self.tcu_actor.stop()
+
         finally:
             self.update_event(
                 {
@@ -505,6 +553,8 @@ class RangeMeasurement(Measurement):
                     "elm2_current": None,
                     "lcr_capacity": None,
                     "dmm_temperature": None,
+                    "tcu_temperature": None,
+                    "tcu_state": None,
                 }
             )
 
