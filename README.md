@@ -192,18 +192,17 @@ Start notification starts a new measurement.
 {"jsonrpc": "2.0", "method": "start"}
 ```
 
-Optional parameters are `continuous` (Boolean), `reset` (Boolean),
-`auto_reconnect` (Boolean), `begin_voltage` (Volt), `end_voltage` (Volt),
-`step_voltage` (Volt), `waiting_time` (seconds), `compliance` (Ampere) and
-`waiting_time_continuous` (seconds). Specified values will be applied to the
-user interface before starting the measurement.
+Optional parameters are `continuous` (Boolean), `auto_reconnect` (Boolean),
+`begin_voltage` (Volt), `end_voltage` (Volt), `step_voltage` (Volt),
+`waiting_time` (seconds), `compliance` (Ampere) and `waiting_time_continuous`
+(seconds). Specified values will be applied to the user interface before
+starting the measurement.
 
 ```json
 {
   "jsonrpc": "2.0",
   "method": "start",
   "params": {
-    "reset": true,
     "end_voltage": -100.0,
     "step_voltage": 10.0,
     "waiting_time": 1.0

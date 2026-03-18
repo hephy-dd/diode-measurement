@@ -53,6 +53,10 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.test_connection_button.setMaximumWidth(48)
         self.test_connection_button.clicked.connect(self.test_conntection)
 
+        self.reset_instrument_check_box = QtWidgets.QCheckBox(self)
+        self.reset_instrument_check_box.setText("Reset Instrument")
+        self.reset_instrument_check_box.setStatusTip("Reset instrument on start measurement")
+
         layout = QtWidgets.QGridLayout(self)
         layout.addWidget(self.model_label, 0, 0, 1, 3)
         layout.addWidget(self.model_combo_box, 1, 0, 1, 3)
@@ -63,7 +67,8 @@ class ResourceWidget(QtWidgets.QGroupBox):
         layout.addWidget(self.termination_combo_box, 5, 0, 1, 1)
         layout.addWidget(self.timeout_spin_box, 5, 1, 1, 1)
         layout.addWidget(self.test_connection_button, 5, 2, 1, 1)
-        layout.setRowStretch(6, 1)
+        layout.addWidget(self.reset_instrument_check_box, 6, 0, 1, 3)
+        layout.setRowStretch(7, 1)
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 1)
         layout.setColumnStretch(2, 0)
@@ -74,6 +79,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.termination_combo_box.setEnabled(not state)
         self.timeout_spin_box.setEnabled(not state)
         self.test_connection_button.setEnabled(not state)
+        self.reset_instrument_check_box.setEnabled(not state)
 
     def model(self) -> str:
         return self.model_combo_box.currentText()
@@ -104,6 +110,12 @@ class ResourceWidget(QtWidgets.QGroupBox):
 
     def set_timeout(self, timeout: float) -> None:
         self.timeout_spin_box.setValue(timeout)
+
+    def is_reset_instrument(self) -> bool:
+        return self.reset_instrument_check_box.isChecked()
+
+    def set_reset_instrument(self, enabled: bool) -> None:
+        self.reset_instrument_check_box.setChecked(enabled)
 
     @QtCore.Slot(str)
     def on_model_text_changed(self, text: str) -> None:

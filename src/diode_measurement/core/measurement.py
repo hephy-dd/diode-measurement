@@ -386,8 +386,9 @@ class RangeMeasurement(Measurement):
         self.initialize_switch()
 
         # Reset (optional)
-        if self.state.is_reset_instruments:
-            for key, instrument in self.instruments.items():
+        for key, instrument in self.instruments.items():
+            role = self.state.find_role(key)
+            if role and role.get("reset_instrument"):
                 logger.info("Reset %s...", key.upper())
                 instrument.reset()
                 logger.info("Reset %s... done.", key.upper())
@@ -519,6 +520,9 @@ class RangeMeasurement(Measurement):
 
     def finalize(self) -> None:
         try:
+            if self.tcu_actor is not None:
+                self.tcu_actor.stop()
+
             self.finalize_elms()
 
             self.ramp_to_zero()
@@ -536,11 +540,10 @@ class RangeMeasurement(Measurement):
                 self.set_bias_source_output_state(False)
 
             self.finalize_switch()
-
+        finally:
             if self.tcu_actor is not None:
                 self.tcu_actor.stop()
 
-        finally:
             self.update_event(
                 {
                     "source_voltage": None,

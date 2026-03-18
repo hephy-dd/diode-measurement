@@ -304,7 +304,6 @@ class Controller(QtCore.QObject):
         state["timestamp"] = time.time()
 
         state["continuous"] = self.main_window.is_continuous()
-        state["reset_instruments"] = self.main_window.is_reset_instruments()
         state["auto_reconnect"] = self.main_window.is_auto_reconnect()
         state["voltage_begin"] = general_widget.begin_voltage()
         state["voltage_end"] = general_widget.end_voltage()
@@ -329,6 +328,7 @@ class Controller(QtCore.QObject):
                     "model": role.resource_widget.model(),
                     "termination": role.resource_widget.termination(),
                     "timeout": role.resource_widget.timeout(),
+                    "reset_instrument": role.resource_widget.is_reset_instrument(),
                 }
             )
             config.update({"options": role.current_config()})
@@ -391,12 +391,6 @@ class Controller(QtCore.QObject):
 
         continuous = get_bool(settings.value("continuous"), False)
         self.main_window.set_continuous(continuous)
-
-        reset = get_bool(
-            settings.value("reset"),
-            False,
-        )
-        self.main_window.set_reset_instruments(reset)
 
         auto_reconnect = get_bool(settings.value("autoReconnect"), False)
         self.main_window.set_auto_reconnect(auto_reconnect)
@@ -476,6 +470,7 @@ class Controller(QtCore.QObject):
             role.set_resource_name(get_str(settings.value("resource"), ""))
             role.set_termination(get_str(settings.value("termination"), ""))
             role.set_timeout(get_float(settings.value("timeout"), 4.0))
+            role.set_reset_instrument(get_bool(settings.value("reset_instrument"), False))
             role.set_resources(get_dict(settings.value("resources"), {}))
             role.set_configs(get_dict(settings.value("configs"), {}))
             settings.endGroup()
@@ -492,9 +487,6 @@ class Controller(QtCore.QObject):
 
         continuous = self.main_window.is_continuous()
         settings.setValue("continuous", continuous)
-
-        reset = self.main_window.is_reset_instruments()
-        settings.setValue("reset", reset)
 
         auto_reconnect = self.main_window.is_auto_reconnect()
         settings.setValue("autoReconnect", auto_reconnect)
@@ -574,6 +566,7 @@ class Controller(QtCore.QObject):
             settings.setValue("resource", role.resource_name())
             settings.setValue("termination", role.termination())
             settings.setValue("timeout", role.timeout())
+            settings.setValue("reset_instrument", role.is_reset_instrument())
             settings.setValue("resources", role.resources())
             settings.setValue("configs", role.configs())
             settings.endGroup()
@@ -970,9 +963,7 @@ class Controller(QtCore.QObject):
     def configure(self, params: Mapping[str, Any]) -> None:
         general_widget = self.main_window.general_widget
         for key, value in params.items():
-            if key == "reset":
-                self.main_window.set_reset_instruments(value)
-            elif key == "continuous":
+            if key == "continuous":
                 self.main_window.set_continuous(value)
             elif key == "auto_reconnect":
                 self.main_window.set_auto_reconnect(value)

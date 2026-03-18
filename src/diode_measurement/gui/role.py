@@ -62,6 +62,12 @@ class RoleWidget(QtWidgets.QWidget):
     def set_timeout(self, timeout: float) -> None:
         self.resource_widget.set_timeout(timeout)
 
+    def is_reset_instrument(self) -> bool:
+        return self.resource_widget.is_reset_instrument()
+
+    def set_reset_instrument(self, enabled: bool) -> None:
+        self.resource_widget.set_reset_instrument(enabled)
+
     def resources(self) -> dict[str, Any]:
         return self._resources.copy()
 
@@ -130,6 +136,7 @@ class RoleWidget(QtWidgets.QWidget):
                 self.set_resource_name(resource.get("resource_name", ""))
                 self.set_termination(resource.get("termination", "\r\n"))
                 self.set_timeout(resource.get("timeout", 8.0))
+                self.set_reset_instrument(resource.get("reset_instrument", False))
             except Exception as exc:
                 logging.exception(exc)
             self.stacked_widget.setCurrentWidget(widget)

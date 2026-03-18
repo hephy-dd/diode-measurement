@@ -45,10 +45,6 @@ class State:
         return self._state.get("continuous", False)
 
     @property
-    def is_reset_instruments(self) -> bool:
-        return self._state.get("reset_instruments", False)
-
-    @property
     def continue_in_compliance(self) -> bool:
         return self._state.get("continue_in_compliance", False)
 
