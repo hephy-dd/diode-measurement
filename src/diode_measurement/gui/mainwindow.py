@@ -239,6 +239,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tcuTemperatureLineEdit.setReadOnly(True)
         self.tcuTemperatureLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
+        self.tcuStateLineEdit = QtWidgets.QLineEdit("---")
+        self.tcuStateLineEdit.setReadOnly(True)
+        self.tcuStateLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
         centralWidget = QtWidgets.QWidget()
         self.setCentralWidget(centralWidget)
 
@@ -383,9 +387,16 @@ class MainWindow(QtWidgets.QMainWindow):
         vboxLayout.addWidget(QtWidgets.QLabel("Temperature"))
         vboxLayout.addWidget(self.tcuTemperatureLineEdit)
         tcu_group_box.addLayout(vboxLayout)
-        tcu_group_box.addStretch()
-        tcu_group_box.setStretch(0, 2)
+        vboxLayout = QtWidgets.QVBoxLayout()
+        vboxLayout.addWidget(QtWidgets.QLabel("State"))
+        vboxLayout.addWidget(self.tcuStateLineEdit)
+        tcu_group_box.addLayout(vboxLayout)
+        vboxLayout = QtWidgets.QVBoxLayout()
+        vboxLayout.addWidget(QtWidgets.QLabel())
+        tcu_group_box.addLayout(vboxLayout)
+        tcu_group_box.setStretch(0, 3)
         tcu_group_box.setStretch(1, 3)
+        tcu_group_box.setStretch(2, 1)
 
         bottomLayout = QtWidgets.QHBoxLayout()
         bottomLayout.addLayout(control_layout)
@@ -446,6 +457,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setLCROutputState(None)
         self.dmmTemperatureLineEdit.setText("---")
         self.tcuTemperatureLineEdit.setText("---")
+        self.tcuStateLineEdit.setText("---")
 
     def set_idle_state(self) -> None:
         self.import_action.setEnabled(True)
@@ -619,6 +631,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def updateTCUTemperature(self, temperature: float) -> None:
         self.tcuTemperatureLineEdit.setText(format_metric(temperature, "°C", 1))
+
+    def updateTCUState(self, state: str) -> None:
+        self.tcuStateLineEdit.setText(str(state or "---"))
 
     @QtCore.Slot()
     def on_show_preferences(self) -> None:

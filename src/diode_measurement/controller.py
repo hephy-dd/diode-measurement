@@ -708,6 +708,9 @@ class Controller(QtCore.QObject):
         if "tcu_temperature" in data:
             self.main_window.updateTCUTemperature(data["tcu_temperature"])
             cache.update({"tcu_temperature": data["tcu_temperature"]})
+        if "tcu_state" in data:
+            self.main_window.updateTCUState(data["tcu_state"])
+            cache.update({"tcu_state": data["tcu_state"]})
         if "source_output_state" in data:
             self.main_window.updateSourceOutputState(data["source_output_state"])
         if "bias_source_output_state" in data:

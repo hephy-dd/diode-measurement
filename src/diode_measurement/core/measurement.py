@@ -1,7 +1,6 @@
 import contextlib
 import logging
 import time
-import threading
 from collections.abc import Callable
 from typing import Any, Optional
 
@@ -12,6 +11,10 @@ from ..resource import Resource, AutoReconnectResource
 from ..drivers import driver_factory
 from ..state import State, FSMState
 
+from .actor import Actor
+from .driver import TCU
+from .utils import EventHandler, IntervalTimer
+
 __all__ = ["Measurement", "RangeMeasurement"]
 
 logger = logging.getLogger(__name__)
@@ -19,59 +22,43 @@ logger = logging.getLogger(__name__)
 ReadingType = dict[str, Any]
 
 
-class EventHandler:
-    def __init__(self) -> None:
-        self.handlers: list[Callable] = []
-        self.lock = threading.RLock()
-
-    def subscribe(self, handler: Callable) -> None:
-        self.handlers.append(handler)
-
-    def __call__(self, *args, **kwargs) -> None:
-        with self.lock:
-            for handler in self.handlers:
-                try:
-                    handler(*args, **kwargs)
-                except Exception as exc:
-                    logger.exception(exc)
-
-
-class TCURole:
-    def __init__(self, tcu, event_bus: Callable[[dict[str, Any]], None]) -> None:
+class TCUActor(Actor):
+    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None]) -> None:
+        super().__init__()
         self.tcu = tcu
         self.event_bus = event_bus
-        self.poll_interval = 5.0
-        self._abort_event = threading.Event()
-        self._lock = threading.RLock()
-        self._thread = threading.Thread(target=self._poll)
+        self.poll_interval: float = 5.0
+        self.query_timeout: float = 10.0
+        self._interval_timer = IntervalTimer(self.poll_interval)
 
-    def start(self) -> None:
-        self._thread.start()
+    def on_idle(self) -> None:
+        if not self._interval_timer.expired():
+            return
+        self._interval_timer.reset()
+        try:
+            temperature = self.tcu.get_temperature()
+        except Exception:
+            logging.exception("Failed to read TCU temperature")
+        else:
+            self.event_bus({"tcu_temperature": temperature})
+        try:
+            state = self.tcu.get_state()
+        except Exception:
+            logging.exception("Failed to read TCU state")
+        else:
+            self.event_bus({"tcu_state": state})
 
-    def stop(self) -> None:
-        self._abort_event.set()
-        self._thread.join()
+    def on_message(self, message: Any) -> Any:
+        return message()
 
-    def _poll(self) -> None:
-        while not self._abort_event.is_set():
-            try:
-                with self._lock:
-                    tcu_temperature = self.tcu.temperature
-            except Exception:
-                logger.exception("Failed to read TCU temperature")
-            else:
-                self.event_bus({"tcu_temperature": tcu_temperature})
-            self._abort_event.wait(self.poll_interval)
+    def is_within_setpoint(self) -> bool:
+        return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
 
     def ensure_setpoint(self) -> None:
-        with self._lock:
-            if self.tcu.is_within_setpoint():
-                return
         while not self._abort_event.is_set():
-            self._abort_event.wait(self.poll_interval)
-            with self._lock:
-                if self.tcu.is_within_setpoint():
-                    break
+            if self.is_within_setpoint():
+                break
+            self.sleep(self.poll_interval)
 
 
 class Measurement:
@@ -86,7 +73,7 @@ class Measurement:
         self.warning_event: EventHandler = EventHandler()
         self.update_event: EventHandler = EventHandler()
 
-        self.tcu_role: Optional[TCURole] = None
+        self.tcu_actor: Optional[TCUActor] = None
 
     def register_instrument(self, name: str) -> None:
         role = self.state.find_role(name)
@@ -433,11 +420,14 @@ class RangeMeasurement(Measurement):
         # TCU (optional)
         tcu = self.instruments.get("tcu")
         if tcu is not None:
-            self.tcu_role = TCURole(tcu, self.update_event)
+            self.tcu_actor = TCUActor(tcu, self.update_event)
 
-        if self.tcu_role is not None:
-            self.tcu_role.start()
-            self.tcu_role.ensure_setpoint()
+        if self.tcu_actor is not None:
+            self.tcu_actor.start()
+            if not self.tcu_actor.is_within_setpoint():
+                self.update_message("Waiting for TCU to reach setpoint...")
+                self.update_progress(0, 0, 0)
+            self.tcu_actor.ensure_setpoint()
 
         self.bias_current_compliance = self.state.current_compliance
         if self.bias_source_instrument:
@@ -547,8 +537,8 @@ class RangeMeasurement(Measurement):
 
             self.finalize_switch()
 
-            if self.tcu_role is not None:
-                self.tcu_role.stop()
+            if self.tcu_actor is not None:
+                self.tcu_actor.stop()
 
         finally:
             self.update_event(
@@ -563,6 +553,8 @@ class RangeMeasurement(Measurement):
                     "elm2_current": None,
                     "lcr_capacity": None,
                     "dmm_temperature": None,
+                    "tcu_temperature": None,
+                    "tcu_state": None,
                 }
             )
 
