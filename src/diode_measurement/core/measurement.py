@@ -23,8 +23,8 @@ ReadingType = dict[str, Any]
 
 
 class TCUActor(Actor):
-    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None]) -> None:
-        super().__init__()
+    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None], abort_event) -> None:
+        super().__init__(abort_event=abort_event)
         self.tcu = tcu
         self.event_bus = event_bus
         self.poll_interval: float = 5.0
@@ -421,7 +421,11 @@ class RangeMeasurement(Measurement):
         # TCU (optional)
         tcu = self.instruments.get("tcu")
         if tcu is not None:
-            self.tcu_actor = TCUActor(tcu, self.update_event)
+            self.tcu_actor = TCUActor(
+                tcu=tcu,
+                event_bus=self.update_event,
+                abort_event=self.state.abort_event,
+            )
 
         if self.tcu_actor is not None:
             self.tcu_actor.start()

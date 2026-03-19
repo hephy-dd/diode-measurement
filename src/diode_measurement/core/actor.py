@@ -2,14 +2,14 @@ import logging
 import queue
 import threading
 from concurrent.futures import Future
-from typing import Any
+from typing import Any, Optional
 
 __all__ = ["Actor"]
 
 
 class Actor:
-    def __init__(self) -> None:
-        self._abort_event = threading.Event()
+    def __init__(self, abort_event: Optional[threading.Event()] = None) -> None:
+        self._abort_event = threading.Event() if abort_event is None else abort_event
         self._inbox: queue.Queue[tuple[Any, Future]] = queue.Queue()
         self._thread = threading.Thread(target=self._event_loop)
 
