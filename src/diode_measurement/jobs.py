@@ -3,8 +3,8 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from collections.abc import Callable, Mapping
-from typing import Any, Optional, Protocol
+from collections.abc import Callable
+from typing import Optional, Protocol
 
 from .measurements import Measurement
 from .measurements.iv import IVMeasurement
@@ -25,18 +25,15 @@ class Job(Protocol):
 @dataclass
 class MeasurementJob:
     measurement: Measurement
-    options: Mapping[str, Any]
+    timestamp_format: str
+    value_format: str
     has_finished: Callable[[], None]
 
     def create_writer(self, fp) -> Writer:
         writer: Writer = Writer(fp)
         # Configure writer
-        timestamp_format = self.options.get("timestamp_format")
-        if timestamp_format is not None:
-            writer.timestamp_format = timestamp_format
-        value_format = self.options.get("value_format")
-        if value_format is not None:
-            writer.value_format = value_format
+        writer.timestamp_format = self.timestamp_format
+        writer.value_format = self.value_format
         return writer
 
     def __call__(self) -> None:
@@ -47,7 +44,7 @@ class MeasurementJob:
 
     def run_measurement(self) -> None:
         measurement = self.measurement
-        filename = measurement.state.get("filename")
+        filename = measurement.state.filename
         with contextlib.ExitStack() as stack:
             if filename:
                 logger.info("preparing output file: %s", filename)
@@ -62,7 +59,7 @@ class MeasurementJob:
                 # TODO
                 # Note: using signals executes slots in main thread, should be worker thread
                 measurement.started_event.subscribe(
-                    lambda state=dict(measurement.state): writer.write_meta(state)
+                    lambda state=measurement.state: writer.write_meta(state)
                 )
                 if isinstance(measurement, IVMeasurement):
                     measurement.iv_reading_event.subscribe(

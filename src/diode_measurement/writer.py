@@ -3,6 +3,8 @@ import math
 
 from typing import Any, Optional, TextIO
 
+from .state import State
+
 __all__ = ["Writer"]
 
 
@@ -56,51 +58,32 @@ class Writer:
     def write_table_row(self, columns: list) -> None:
         self._writer.writerow(columns)
 
-    def write_meta(self, data: dict) -> None:
+    def write_meta(self, state: State) -> None:
         self._current_table = None
-        self.write_tag("sample", data.get("sample"))
-        self.write_tag("measurement_type", data.get("measurement_type"))
-        if "bias_voltage" in data:
-            self.write_tag(
-                "bias_voltage[V]",
-                safe_format(data.get("bias_voltage"), self.value_format),
-            )
-        self.write_tag(
-            "voltage_begin[V]",
-            safe_format(data.get("voltage_begin"), self.value_format),
-        )
-        self.write_tag(
-            "voltage_end[V]", safe_format(data.get("voltage_end"), self.value_format)
-        )
-        self.write_tag(
-            "voltage_step[V]", safe_format(data.get("voltage_step"), self.value_format)
-        )
-        self.write_tag(
-            "waiting_time[s]", safe_format(data.get("waiting_time"), self.value_format)
-        )
-        self.write_tag(
-            "current_compliance[A]",
-            safe_format(data.get("current_compliance"), self.value_format),
-        )
-        self.write_meta_lcr(data)
+        self.write_tag("sample", state.sample)
+        self.write_tag("measurement_type", state.measurement_type)
+        if state.measurement_type in ["iv_bias"]:
+            self.write_tag("bias_voltage[V]", safe_format(state.bias_voltage, self.value_format))
+        self.write_tag("voltage_begin[V]", safe_format(state.voltage_begin, self.value_format))
+        self.write_tag("voltage_end[V]", safe_format(state.voltage_end, self.value_format))
+        self.write_tag("voltage_step[V]", safe_format(state.voltage_step, self.value_format))
+        self.write_tag("waiting_time[s]", safe_format(state.waiting_time, self.value_format))
+        self.write_tag("current_compliance[A]", safe_format(state.current_compliance, self.value_format))
+        self.write_meta_lcr(state)
         self.flush()
 
-    def write_meta_lcr(self, data: dict[str, Any]) -> None:
-        lcr = data.get("roles", {}).get("lcr", {})
+    def write_meta_lcr(self, state: State) -> None:
+        lcr = state.roles.get("lcr", {})
         if lcr.get("enabled"):
             lcr_options = lcr.get("options", {})
             # lcr.options.voltage
             voltage = lcr_options.get("voltage")
             if voltage is not None:
-                self.write_tag(
-                    "lcr_ac_amplitude[V]", safe_format(voltage, self.value_format)
-                )
+                self.write_tag("lcr_ac_amplitude[V]", safe_format(voltage, self.value_format))
             # lcr.options.frequency
             frequency = lcr_options.get("frequency")
             if frequency is not None:
-                self.write_tag(
-                    "lcr_ac_frequency[Hz]", safe_format(frequency, self.value_format)
-                )
+                self.write_tag("lcr_ac_frequency[Hz]", safe_format(frequency, self.value_format))
 
     def write_iv_row(self, data: dict[str, Any]) -> None:
         if self._current_table != "iv":

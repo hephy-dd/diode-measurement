@@ -1,6 +1,5 @@
 import threading
 from enum import Enum
-from collections.abc import Iterator
 from typing import Any, Optional
 
 __all__ = ["State"]
@@ -16,97 +15,110 @@ class FSMState(str, Enum):
 
 class State:
     def __init__(self) -> None:
-        self._state: dict[str, Any] = {}
+        self._lock = threading.RLock()
         self.abort_event = threading.Event()
+
         self.tcu_poll_interval: float = 5.0
+        self.auto_reconnect: bool = False
+        self.is_continuous: bool = False
 
-    @property
-    def measurement_type(self) -> str:
-        return self._state.get("measurement_type", "")
+        self.start_timestamp: float = 0.0
+        self.measurement_type: str = ""
+        self.source_role: Optional[str] = None
+        self.bias_source_role: Optional[str] = None
+        self.sample: str = ""
+        self.filename: str = ""
 
-    @property
-    def timestamp(self) -> float:
-        return self._state.get("timestamp", 0.0)
+        self.voltage_begin: float = 0.0
+        self.voltage_end: float = 0.0
+        self.voltage_step: float = 1.0
+        self.waiting_time: float = 1.0
 
-    @property
-    def sample(self) -> str:
-        return self._state.get("sample", "")
+        self.bias_voltage: float = 0.0
+
+        self._source_voltage: float = 0.0
+        self._bias_source_voltage: float = 0.0
+        self._change_voltage_continuous: Optional[dict] = None
+
+        self._current_compliance: float = 0.0
+        self._continue_in_compliance: bool = False
+        self._waiting_time_continuous: float = 1.0
+        self.settle_waiting_time: float = 1.0
+
+        self.roles: dict[str, Any] = {}
 
     @property
     def stop_requested(self) -> bool:
         return self.abort_event.is_set()
 
     @property
-    def auto_reconnect(self) -> bool:
-        return self._state.get("auto_reconnect", False)
-
-    @property
-    def is_continuous(self) -> bool:
-        return self._state.get("continuous", False)
-
-    @property
     def continue_in_compliance(self) -> bool:
-        return self._state.get("continue_in_compliance", False)
+        with self._lock:
+            return self._continue_in_compliance
 
-    @property
-    def waiting_time(self) -> float:
-        return self._state.get("waiting_time", 1.0)
+    @continue_in_compliance.setter
+    def continue_in_compliance(self, value: bool) -> None:
+        with self._lock:
+            self._continue_in_compliance = value
 
     @property
     def waiting_time_continuous(self) -> float:
-        return self._state.get("waiting_time_continuous", 1.0)
+        with self._lock:
+            return self._waiting_time_continuous
+
+    @waiting_time_continuous.setter
+    def waiting_time_continuous(self, value: float) -> None:
+        with self._lock:
+            self._waiting_time_continuous = value
 
     @property
-    def source_voltage(self) -> Optional[float]:
-        return self._state.get("source_voltage")
+    def source_voltage(self) -> float:
+        with self._lock:
+            return self._source_voltage
+
+    @source_voltage.setter
+    def source_voltage(self, value: float) -> None:
+        with self._lock:
+            self._source_voltage = value
 
     @property
-    def bias_source_voltage(self) -> Optional[float]:
-        return self._state.get("bias_source_voltage")
+    def bias_source_voltage(self) -> float:
+        with self._lock:
+            return self._bias_source_voltage
 
-    @property
-    def bias_voltage(self) -> float:
-        return self._state.get("bias_voltage", 0.0)
-
-    @property
-    def voltage_begin(self) -> float:
-        return self._state.get("voltage_begin", 0.0)
-
-    @property
-    def voltage_end(self) -> float:
-        return self._state.get("voltage_end", 0.0)
-
-    @property
-    def voltage_step(self) -> float:
-        return self._state.get("voltage_step", 1.0)
+    @bias_source_voltage.setter
+    def bias_source_voltage(self, value: float) -> None:
+        with self._lock:
+            self._bias_source_voltage = value
 
     @property
     def current_compliance(self) -> float:
-        return self._state.get("current_compliance", 0.0)
+        with self._lock:
+            return self._current_compliance
+
+    @current_compliance.setter
+    def current_compliance(self, value: float) -> None:
+        with self._lock:
+            self._current_compliance = value
 
     @property
-    def source_role(self) -> Optional[str]:
-        return self._state.get("source_role")
+    def is_change_voltage_continuous(self) -> bool:
+        with self._lock:
+            return self._change_voltage_continuous is not None
 
-    @property
-    def bias_source_role(self) -> Optional[str]:
-        return self._state.get("bias_source_role")
+    def put_change_voltage_continuous(self, end_voltage: float, step_voltage: float, waiting_time: float) -> None:
+        with self._lock:
+            self._change_voltage_continuous = {
+                "end_voltage": end_voltage,
+                "step_voltage": step_voltage,
+                "waiting_time": waiting_time,
+            }
 
-    @property
-    def change_voltage_continuous(self) -> Optional[float]:
-        return self._state.get("change_voltage_continuous")
-
-    def pop_change_voltage_continuous(self) -> Optional[float]:
-        return self._state.pop("change_voltage_continuous", None)
+    def pop_change_voltage_continuous(self) -> Optional[dict]:
+        with self._lock:
+            change_voltage_continuous = self._change_voltage_continuous
+            self._change_voltage_continuous = None
+            return change_voltage_continuous
 
     def find_role(self, name: str) -> dict:
-        return self._state.get("roles", {}).get(name, {})
-
-    def update(self, data: dict[str, Any]) -> None:
-        self._state.update(data)
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._state.get(key, default)
-
-    def __iter__(self) -> Iterator:
-        return iter(self._state.items())
+        return self.roles.get(name, {})

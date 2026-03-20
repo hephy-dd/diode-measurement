@@ -293,28 +293,27 @@ class Controller(QtCore.QObject):
             snapshot["temperature"] = self.cache.get("dmm_temperature")
             return snapshot
 
-    def prepare_state(self) -> dict[str, Any]:
-        state: dict[str, Any] = {}
-
+    def prepare_state(self) -> State:
         general_widget = self.main_window.general_widget
         current_measurement = general_widget.current_measurement() or {}
 
-        state["sample"] = general_widget.sample_name()
-        state["measurement_type"] = current_measurement.get("type")
-        state["timestamp"] = time.time()
+        state: State = State()
+        state.sample = general_widget.sample_name()
+        state.measurement_type = current_measurement.get("type", "")
+        state.start_timestamp = time.time()
+        state.is_continuous = self.main_window.is_continuous()
+        state.auto_reconnect = self.main_window.is_auto_reconnect()
+        state.voltage_begin = general_widget.begin_voltage()
+        state.voltage_end = general_widget.end_voltage()
+        state.voltage_step = general_widget.step_voltage()
+        state.waiting_time = general_widget.waiting_time()
+        state.bias_voltage = general_widget.bias_voltage()
+        state.current_compliance = general_widget.current_compliance()
+        state.continue_in_compliance = general_widget.is_continue_in_compliance()
+        state.waiting_time_continuous = general_widget.waiting_time_continuous()
 
-        state["continuous"] = self.main_window.is_continuous()
-        state["auto_reconnect"] = self.main_window.is_auto_reconnect()
-        state["voltage_begin"] = general_widget.begin_voltage()
-        state["voltage_end"] = general_widget.end_voltage()
-        state["voltage_step"] = general_widget.step_voltage()
-        state["waiting_time"] = general_widget.waiting_time()
-        state["bias_voltage"] = general_widget.bias_voltage()
-        state["current_compliance"] = general_widget.current_compliance()
-        state["continue_in_compliance"] = general_widget.is_continue_in_compliance()
-        state["waiting_time_continuous"] = general_widget.waiting_time_continuous()
-
-        roles: dict[str, Any] = state.setdefault("roles", {})
+        roles: dict[str, Any] = {}
+        state.roles = roles
 
         for role in self.main_window.roles():
             key = role.name().lower()
@@ -334,14 +333,14 @@ class Controller(QtCore.QObject):
             config.update({"options": role.current_config()})
 
         if general_widget.is_smu_enabled():
-            state["source_role"] = "smu"
+            state.source_role = "smu"
         elif general_widget.is_elm_enabled():
-            state["source_role"] = "elm"
+            state.source_role = "elm"
         elif general_widget.is_lcr_enabled():
-            state["source_role"] = "lcr"
+            state.source_role = "lcr"
 
         if general_widget.is_smu2_enabled():
-            state["bias_source_role"] = "smu2"
+            state.bias_source_role = "smu2"
 
         roles.setdefault("smu", {}).update({"enabled": general_widget.is_smu_enabled()})
         roles.setdefault("smu2", {}).update(
@@ -357,9 +356,6 @@ class Controller(QtCore.QObject):
         roles.setdefault("switch", {}).update(
             {"enabled": general_widget.is_switch_enabled()}
         )
-
-        for key, value in state.items():
-            logger.info("> %s: %s", key, value)
 
         return state
 
@@ -599,11 +595,7 @@ class Controller(QtCore.QObject):
                 # Meta
                 general_widget.measurement_combo_box.setCurrentIndex(-1)
                 if meta.get("measurement_type"):
-                    for index in range(general_widget.measurement_combo_box.count()):
-                        spec = general_widget.measurement_combo_box.itemData(index)
-                        if spec["type"] == meta.get("measurement_type"):
-                            general_widget.measurement_combo_box.setCurrentIndex(index)
-                            break
+                    general_widget.set_current_measurement(meta.get("measurement_type"))
                 if meta.get("sample"):
                     general_widget.set_sample_name(meta.get("sample"))
                 if meta.get("voltage_begin"):
@@ -769,14 +761,14 @@ class Controller(QtCore.QObject):
         enabled = "ELM" in spec.get("instruments", [])
         self.main_window.general_widget.elm_check_box.setEnabled(enabled)
         self.main_window.general_widget.elm_check_box.setVisible(enabled)
-        self.main_window.elm_group_box.setEnabled(enabled)
-        self.main_window.elm_group_box.setVisible(enabled)
+        self.main_window.elm_group_box.setEnabled(enabled and self.main_window.general_widget.is_elm_enabled())
+        self.main_window.elm_group_box.setVisible(enabled and self.main_window.general_widget.is_elm_enabled())
 
         enabled = "ELM2" in spec.get("instruments", [])
         self.main_window.general_widget.elm2_check_box.setEnabled(enabled)
         self.main_window.general_widget.elm2_check_box.setVisible(enabled)
-        self.main_window.elm2_group_box.setEnabled(enabled)
-        self.main_window.elm2_group_box.setVisible(enabled)
+        self.main_window.elm2_group_box.setEnabled(enabled and self.main_window.general_widget.is_elm2_enabled())
+        self.main_window.elm2_group_box.setVisible(enabled and self.main_window.general_widget.is_elm2_enabled())
 
         enabled = "LCR" in spec.get("instruments", [])
         self.main_window.general_widget.lcr_check_box.setEnabled(enabled)
@@ -916,17 +908,17 @@ class Controller(QtCore.QObject):
     @QtCore.Slot(float)
     def on_current_compliance_changed(self, value: float) -> None:
         logger.info("updated current_compliance: %s", format_metric(value, "A"))
-        self.state.update({"current_compliance": value})
+        self.state.current_compliance = value
 
     @QtCore.Slot(bool)
     def on_continue_in_compliance_changed(self, checked: bool) -> None:
         logger.info("updated continue_in_compliance: %s", checked)
-        self.state.update({"continue_in_compliance": checked})
+        self.state.continue_in_compliance = checked
 
     @QtCore.Slot(float)
     def on_waiting_time_continuous_changed(self, value: float) -> None:
         logger.info("updated waiting_time_continuous: %s", format_metric(value, "s"))
-        self.state.update({"waiting_time_continuous": value})
+        self.state.waiting_time_continuous = value
 
     def update_continuous_option(self) -> None:
         # Tweak continuous option
@@ -941,7 +933,7 @@ class Controller(QtCore.QObject):
     def create_filename(self) -> str:
         path = self.main_window.general_widget.output_dir()
         sample = self.state.sample
-        timestamp = datetime.fromtimestamp(self.state.timestamp).strftime(
+        timestamp = datetime.fromtimestamp(self.state.start_timestamp).strftime(
             "%Y-%m-%dT%H-%M-%S"
         )
         filename = safe_filename(f"{sample}-{timestamp}.txt")
@@ -1016,44 +1008,35 @@ class Controller(QtCore.QObject):
     def on_start_measurement(self) -> None:
         try:
             logger.debug("preparing state...")
-            state = self.prepare_state()
+            self.state = self.prepare_state()
             logger.debug("preparing state... done.")
 
-            if not state.get("source_role"):
-                raise RuntimeError("No source instrument selected.")
+            self.change_voltage_controller.state = self.state  # TODO
 
-            # Update state
-            self.state.update(state)
-            self.state.abort_event.clear()
+            if self.state.source_role is None:
+                raise RuntimeError("No source instrument selected.")
 
             with self.cache:
                 self.cache.update(
                     {
-                        "measurement_type": state.get("measurement_type"),
-                        "sample": state.get("sample"),
+                        "measurement_type": self.state.measurement_type,
+                        "sample": self.state.sample,
                     }
                 )
 
             # Filename
             output_enabled = self.main_window.general_widget.is_output_enabled()
-            filename = self.create_filename() if output_enabled else None
-            self.state.update({"filename": filename})
+            if output_enabled:
+                self.state.filename = self.create_filename()
+            else:
+                self.state.filename = ""
 
             # Create and run measurement
             measurement = self.create_measurement()
 
-            options: dict[str, Any] = {}
-
             settings = QtCore.QSettings()
-            timestamp_format = settings.value("writer/timestampFormat", ".6f", str)
-            valueFormat = settings.value("writer/valueFormat", "+.3E", str)
-
-            options.update(
-                {
-                    "timestamp_format": timestamp_format,
-                    "value_format": valueFormat,
-                }
-            )
+            timestamp_format = get_str(settings.value("writer/timestampFormat"), ".6f")
+            value_format = get_str(settings.value("writer/valueFormat"), "+.3E")
 
             self.main_window.clear()
             self.iv_plots_controller.clear()
@@ -1062,7 +1045,10 @@ class Controller(QtCore.QObject):
             self.cv_plots_controller.update_timer.start(500)
 
             job = MeasurementJob(
-                measurement, options, has_finished=self.measurement_finished.emit
+                measurement,
+                timestamp_format=timestamp_format,
+                value_format=value_format,
+                has_finished=self.measurement_finished.emit,
             )
             self.submit_background_job(job)
 
@@ -1419,15 +1405,7 @@ class ChangeVoltageController(QtCore.QObject):
                 format_metric(step_voltage, "V"),
                 format_metric(waiting_time, "s"),
             )
-            self.state.update(
-                {
-                    "change_voltage_continuous": {
-                        "end_voltage": end_voltage,
-                        "step_voltage": step_voltage,
-                        "waiting_time": waiting_time,
-                    }
-                }
-            )
+            self.state.put_change_voltage_continuous(end_voltage, step_voltage, waiting_time)
             self.main_window.set_change_voltage_enabled(False)
 
     @QtCore.Slot()

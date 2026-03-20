@@ -23,8 +23,8 @@ ReadingType = dict[str, Any]
 
 
 class TCUActor(Actor):
-    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None], abort_event) -> None:
-        super().__init__(abort_event=abort_event)
+    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None]) -> None:
+        super().__init__()
         self.tcu = tcu
         self.event_bus = event_bus
         self.poll_interval: float = 5.0
@@ -53,12 +53,6 @@ class TCUActor(Actor):
 
     def is_within_setpoint(self) -> bool:
         return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
-
-    def ensure_setpoint(self) -> None:
-        while not self._abort_event.is_set():
-            if self.is_within_setpoint():
-                break
-            self.sleep(self.poll_interval)
 
 
 class Measurement:
@@ -139,9 +133,10 @@ class Measurement:
                     logger.debug("initialize...")
                     self.initialize()
                     logger.debug("initialize... done.")
-                    logger.debug("measure...")
-                    self.measure()
-                    logger.debug("measure... done.")
+                    if not self.state.stop_requested:
+                        logger.debug("measure...")
+                        self.measure()
+                        logger.debug("measure... done.")
                 except Exception as exc:
                     logger.exception(exc)
                     self.failed_event(exc)
@@ -168,6 +163,9 @@ class RangeMeasurement(Measurement):
         self.it_reading_event: EventHandler = EventHandler()
         self.it_change_voltage_ready_event: EventHandler = EventHandler()
 
+        self.current_compliance: float = 0.0  # TODO
+        self.bias_current_compliance: float = 0.0  # TODO
+
     # Interlock check
 
     def check_interlock(self, instrument) -> None:
@@ -185,7 +183,6 @@ class RangeMeasurement(Measurement):
         logger.info("Source output state: %s", state)
         self.source_instrument.set_output_enabled(state)  # type: ignore
         self.update_event({"source_output_state": state})
-        self.state.update({"source_output_state": state})
 
     def get_source_voltage(self) -> float:
         return self.source_instrument.get_voltage_level()  # type: ignore
@@ -194,7 +191,7 @@ class RangeMeasurement(Measurement):
         logger.info("Source voltage level: %gV", voltage)
         self.source_instrument.set_voltage_level(voltage)  # type: ignore
         self.update_event({"source_voltage": voltage})
-        self.state.update({"source_voltage": voltage})
+        self.state.source_voltage = voltage  # TODO remove
 
     def set_source_voltage_range(self, voltage: float) -> None:
         logger.info("Source voltage range: %gV", voltage)
@@ -209,7 +206,6 @@ class RangeMeasurement(Measurement):
         logger.info("Bias source output state: %s", state)
         self.bias_source_instrument.set_output_enabled(state)  # type: ignore
         self.update_event({"bias_source_output_state": state})
-        self.state.update({"bias_source_output_state": state})
 
     def get_bias_source_voltage(self) -> float:
         return self.bias_source_instrument.get_voltage_level()  # type: ignore
@@ -218,7 +214,7 @@ class RangeMeasurement(Measurement):
         logger.info("Bias source voltage level: %gV", voltage)
         self.bias_source_instrument.set_voltage_level(voltage)  # type: ignore
         self.update_event({"bias_source_voltage": voltage})
-        self.state.update({"bias_source_voltage": voltage})
+        self.state.bias_source_voltage = voltage
 
     def set_bias_source_voltage_range(self, voltage: float) -> None:
         logger.info("Bias source voltage range: %gV", voltage)
@@ -235,7 +231,7 @@ class RangeMeasurement(Measurement):
     def update_current_compliance(self) -> None:
         """Update current compliance if value changed."""
         current_compliance = self.state.current_compliance
-        if self.current_compliance != current_compliance:  # type: ignore
+        if self.current_compliance != current_compliance:
             self.current_compliance = current_compliance
             self.set_source_compliance(self.current_compliance)
             self.check_error_state(self.source_instrument)
@@ -259,7 +255,7 @@ class RangeMeasurement(Measurement):
     def update_bias_current_compliance(self) -> None:
         """Update current compliance if value changed."""
         current_compliance = self.state.current_compliance
-        if self.bias_current_compliance != current_compliance:  # type: ignore
+        if self.bias_current_compliance != current_compliance:
             self.bias_current_compliance = current_compliance
             self.set_bias_source_compliance(self.bias_current_compliance)
             self.check_error_state(self.bias_source_instrument)
@@ -282,7 +278,7 @@ class RangeMeasurement(Measurement):
                 if self.state.stop_requested:
                     self.update_message("Stopping...")
                     break
-                if self.state.change_voltage_continuous:
+                if self.state.is_change_voltage_continuous:
                     break
                 remaining: float = round(threshold - now)
                 self.update_estimate_message_continuous(
@@ -292,9 +288,8 @@ class RangeMeasurement(Measurement):
                 now = time.time()
 
     def apply_change_voltage(self):
-        params = self.state.change_voltage_continuous
+        params = self.state.pop_change_voltage_continuous()  # TODO
         if params is not None:
-            self.state.pop_change_voltage_continuous()  # TODO
             self.set_fsm_state(FSMState.RAMPING)
             self.ramp_to_continuous(
                 params.get("end_voltage"),
@@ -421,18 +416,17 @@ class RangeMeasurement(Measurement):
         # TCU (optional)
         tcu = self.instruments.get("tcu")
         if tcu is not None:
-            self.tcu_actor = TCUActor(
-                tcu=tcu,
-                event_bus=self.update_event,
-                abort_event=self.state.abort_event,
-            )
-
-        if self.tcu_actor is not None:
+            self.tcu_actor = TCUActor(tcu, event_bus=self.update_event)
             self.tcu_actor.start()
-            if not self.tcu_actor.is_within_setpoint():
+
+            while True:
+                if self.state.stop_requested:
+                    return
+                if self.tcu_actor.is_within_setpoint():
+                    break
                 self.update_message("Waiting for TCU to reach setpoint...")
                 self.update_progress(0, 0, 0)
-            self.tcu_actor.ensure_setpoint()
+                self.state.abort_event.wait(2.5)
 
         self.bias_current_compliance = self.state.current_compliance
         if self.bias_source_instrument:
@@ -472,9 +466,8 @@ class RangeMeasurement(Measurement):
 
     def apply_settle_waiting_time(self) -> None:
         """Wait after output enable/ramp"""
-        waiting_time_settle: float = self.state.get("settle_waiting_time", 1.0)
         logger.debug("apply settle time...")
-        time.sleep(waiting_time_settle)
+        time.sleep(self.state.settle_waiting_time)
         logger.debug("apply settle time... done.")
 
     def measure(self) -> None:
@@ -621,7 +614,7 @@ class RangeMeasurement(Measurement):
     def acquire_continuous_reading(self) -> None: ...
 
     def ramp_to_begin(self) -> None:
-        source_voltage: float = self.state.source_voltage  # type: ignore
+        source_voltage: float = self.state.source_voltage
         voltage_begin: float = self.state.voltage_begin
         voltage_end: float = self.state.voltage_end
         voltage_step: float = 5.0
@@ -734,7 +727,7 @@ class RangeMeasurement(Measurement):
     def ramp_to_continuous(
         self, end_voltage: float, step_voltage: float, waiting_time: float
     ) -> None:
-        source_voltage: float = self.state.source_voltage  # type: ignore
+        source_voltage: float = self.state.source_voltage
 
         ramp: LinearRange = LinearRange(source_voltage, end_voltage, step_voltage)
         estimate: Estimate = Estimate(len(ramp))

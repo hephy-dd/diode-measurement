@@ -53,12 +53,6 @@ class ScreenshotPlugin(Plugin):
         enabled = self.save_screenshot_check_box.isChecked()
         settings.setValue("saveScreenshot", enabled)
 
-    def output_filename(self) -> str:
-        filename = self.context.state.get("filename")
-        if isinstance(filename, str):
-            return filename
-        return ""
-
     def is_option_enabled(self) -> bool:
         if self.context.main_window.general_widget.output_group_box.isChecked():
             if self.save_screenshot_check_box.isChecked():
@@ -72,7 +66,7 @@ class ScreenshotPlugin(Plugin):
         """Save screenshot of active IV/CV plots."""
         try:
             if self.is_option_enabled():
-                p = pathlib.Path(self.output_filename())
+                p = pathlib.Path(self.context.state.filename)
                 # Only if output file was produced.
                 if p.exists():
                     filename = str(p.with_suffix(".png"))
