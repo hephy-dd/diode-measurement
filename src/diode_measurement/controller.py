@@ -12,7 +12,7 @@ from PySide6 import QtCore, QtWidgets, QtStateMachine
 
 from comet.utils import safe_filename
 
-from .core.measurement import ReadingType, Measurement
+from .core.measurement import ReadingType
 
 # Source meter units
 from .gui.panels import K237Panel
@@ -47,8 +47,6 @@ from .gui.widgets import show_exception
 from .gui.dialogs import ChangeVoltageDialog
 from .gui.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
 
-from .measurements import IVMeasurement, IVBiasMeasurement, CVMeasurement
-
 from .reader import Reader
 
 from .utils import get_resource, format_metric
@@ -57,17 +55,11 @@ from .utils import get_bool, get_int, get_float, get_str, get_dict
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
 from .cache import Cache
 from .settings import DEFAULTS
-from .state import State, FSMState
+from .state import State, FSMState, Role
 
 __all__ = ["Controller"]
 
 logger = logging.getLogger(__name__)
-
-MEASUREMENTS: dict = {
-    "iv": IVMeasurement,
-    "iv_bias": IVBiasMeasurement,
-    "cv": CVMeasurement,
-}
 
 
 class Controller(QtCore.QObject):
@@ -225,6 +217,12 @@ class Controller(QtCore.QObject):
         self.message_changed.connect(main_window.set_message)
         self.progress_changed.connect(main_window.set_progress)
 
+        # Readings
+
+        self.readings_timer = QtCore.QTimer(self)
+        self.readings_timer.timeout.connect(self.flush_readings)
+        self.readings_timer.start(500)
+
         # States
 
         self.idle_state = QtStateMachine.QState()
@@ -275,6 +273,26 @@ class Controller(QtCore.QObject):
             except Exception as exc:
                 logger.exception(exc)
 
+    @QtCore.Slot()
+    def flush_readings(self) -> None:
+        max_size: int = 1024
+        for _ in range(max_size):
+            try:
+                reading: ReadingType = self.state.reading_queue.get_nowait()
+            except queue.Empty:
+                break
+            else:
+                self.append_reading(reading)
+
+    def append_reading(self, reading: ReadingType) -> None:
+        type_ = reading.get("type")
+        if type_ == "iv":
+            self.iv_plots_controller.append_iv_reading(reading)
+        elif type_ == "it":
+            self.iv_plots_controller.append_it_reading(reading)
+        elif type_ == "cv":
+            self.cv_plots_controller.append_cv_reading(reading)
+
     def snapshot(self):
         """Return application state snapshot."""
         with self.cache:
@@ -312,50 +330,31 @@ class Controller(QtCore.QObject):
         state.continue_in_compliance = general_widget.is_continue_in_compliance()
         state.waiting_time_continuous = general_widget.waiting_time_continuous()
 
-        roles: dict[str, Any] = {}
-        state.roles = roles
-
         for role in self.main_window.roles():
             key = role.name().lower()
             resource = role.resource_widget.resource_name()
             resource_name, visa_library = get_resource(resource)
-            config = roles.setdefault(key, {})
-            config.update(
-                {
-                    "resource_name": resource_name,
-                    "visa_library": visa_library,
-                    "model": role.resource_widget.model(),
-                    "termination": role.resource_widget.termination(),
-                    "timeout": role.resource_widget.timeout(),
-                    "reset_instrument": role.resource_widget.is_reset_instrument(),
-                }
-            )
-            config.update({"options": role.current_config()})
 
-        if general_widget.is_smu_enabled():
+            state.set_role(key, Role(
+                enabled=general_widget.is_role_enabled(key),
+                model=role.resource_widget.model(),
+                visa_library=visa_library,
+                resource_name=resource_name,
+                termination=role.resource_widget.termination(),
+                timeout=role.resource_widget.timeout(),
+                reset_instrument=role.resource_widget.is_reset_instrument(),
+                options=role.current_config(),
+            ))
+
+        if general_widget.is_role_enabled("smu"):
             state.source_role = "smu"
-        elif general_widget.is_elm_enabled():
+        elif general_widget.is_role_enabled("elm"):
             state.source_role = "elm"
-        elif general_widget.is_lcr_enabled():
+        elif general_widget.is_role_enabled("lcr"):
             state.source_role = "lcr"
 
-        if general_widget.is_smu2_enabled():
+        if general_widget.is_role_enabled("smu2"):
             state.bias_source_role = "smu2"
-
-        roles.setdefault("smu", {}).update({"enabled": general_widget.is_smu_enabled()})
-        roles.setdefault("smu2", {}).update(
-            {"enabled": general_widget.is_smu2_enabled()}
-        )
-        roles.setdefault("elm", {}).update({"enabled": general_widget.is_elm_enabled()})
-        roles.setdefault("elm2", {}).update(
-            {"enabled": general_widget.is_elm2_enabled()}
-        )
-        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_lcr_enabled()})
-        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_dmm_enabled()})
-        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_tcu_enabled()})
-        roles.setdefault("switch", {}).update(
-            {"enabled": general_widget.is_switch_enabled()}
-        )
 
         return state
 
@@ -399,28 +398,28 @@ class Controller(QtCore.QObject):
         general_widget.measurement_combo_box.setCurrentIndex(index)
 
         enabled = get_bool(settings.value("smu/enabled"), False)
-        general_widget.set_smu_enabled(enabled)
+        general_widget.set_role_enabled("smu", enabled)
 
         enabled = get_bool(settings.value("smu2/enabled"), False)
-        general_widget.set_smu2_enabled(enabled)
+        general_widget.set_role_enabled("smu2", enabled)
 
         enabled = get_bool(settings.value("elm/enabled"), False)
-        general_widget.set_elm_enabled(enabled)
+        general_widget.set_role_enabled("elm", enabled)
 
         enabled = get_bool(settings.value("elm2/enabled"), False)
-        general_widget.set_elm2_enabled(enabled)
+        general_widget.set_role_enabled("elm2", enabled)
 
         enabled = get_bool(settings.value("lcr/enabled"), False)
-        general_widget.set_lcr_enabled(enabled)
+        general_widget.set_role_enabled("lcr", enabled)
 
         enabled = get_bool(settings.value("dmm/enabled"), False)
-        general_widget.set_dmm_enabled(enabled)
+        general_widget.set_role_enabled("dmm", enabled)
 
         enabled = get_bool(settings.value("tcu/enabled"), False)
-        general_widget.set_tcu_enabled(enabled)
+        general_widget.set_role_enabled("tcu", enabled)
 
         enabled = get_bool(settings.value("switch/enabled"), False)
-        general_widget.set_switch_enabled(enabled)
+        general_widget.set_role_enabled("switch", enabled)
 
         output_enabled = get_bool(settings.value("outputEnabled"), False)
         general_widget.set_output_enabled(output_enabled)
@@ -494,28 +493,28 @@ class Controller(QtCore.QObject):
         measurement_index = general_widget.measurement_combo_box.currentIndex()
         settings.setValue("measurement/index", measurement_index)
 
-        enabled = general_widget.is_smu_enabled()
+        enabled = general_widget.is_role_enabled("smu")
         settings.setValue("smu/enabled", enabled)
 
-        enabled = general_widget.is_smu2_enabled()
+        enabled = general_widget.is_role_enabled("smu2")
         settings.setValue("smu2/enabled", enabled)
 
-        enabled = general_widget.is_elm_enabled()
+        enabled = general_widget.is_role_enabled("elm")
         settings.setValue("elm/enabled", enabled)
 
-        enabled = general_widget.is_elm2_enabled()
+        enabled = general_widget.is_role_enabled("elm2")
         settings.setValue("elm2/enabled", enabled)
 
-        enabled = general_widget.is_lcr_enabled()
+        enabled = general_widget.is_role_enabled("lcr")
         settings.setValue("lcr/enabled", enabled)
 
-        enabled = general_widget.is_dmm_enabled()
+        enabled = general_widget.is_role_enabled("dmm")
         settings.setValue("dmm/enabled", enabled)
 
-        enabled = general_widget.is_tcu_enabled()
+        enabled = general_widget.is_role_enabled("tcu")
         settings.setValue("tcu/enabled", enabled)
 
-        enabled = general_widget.is_switch_enabled()
+        enabled = general_widget.is_role_enabled("switch")
         settings.setValue("switch/enabled", enabled)
 
         output_enabled = general_widget.is_output_enabled()
@@ -635,8 +634,6 @@ class Controller(QtCore.QObject):
         self.update_continuous_option()
         with self.cache:
             self.cache.clear()
-        self.iv_plots_controller.update_timer.stop()
-        self.cv_plots_controller.update_timer.stop()
 
     def set_running_state(self) -> None:
         self.main_window.set_running_state()
@@ -723,77 +720,76 @@ class Controller(QtCore.QObject):
 
     @QtCore.Slot(int)
     def on_measurement_changed(self, index: int) -> None:
+        general_widget = self.main_window.general_widget
         spec: dict[str, Any] = DEFAULTS[index]
 
         if spec.get("type") == "iv":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
             self.main_window.continuous_action.setEnabled(True)
-            self.main_window.general_widget.bias_group_box.setEnabled(False)
-            self.main_window.general_widget.continuous_group_box.setEnabled(
+            general_widget.bias_group_box.setEnabled(False)
+            general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
         elif spec.get("type") == "iv_bias":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
             self.main_window.continuous_action.setEnabled(True)
-            self.main_window.general_widget.bias_group_box.setEnabled(True)
-            self.main_window.general_widget.continuous_group_box.setEnabled(
+            general_widget.bias_group_box.setEnabled(True)
+            general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
         elif spec.get("type") == "cv":
             self.main_window.set_data_widget(self.cv_plots_controller.data_widget)
             self.main_window.continuous_action.setEnabled(False)
-            self.main_window.general_widget.bias_group_box.setEnabled(False)
-            self.main_window.general_widget.continuous_group_box.setEnabled(False)
+            general_widget.bias_group_box.setEnabled(False)
+            general_widget.continuous_group_box.setEnabled(False)
         self.update_continuous_option()
 
         enabled = "SMU" in spec.get("instruments", [])
-        self.main_window.general_widget.smu_check_box.setEnabled(enabled)
-        self.main_window.general_widget.smu_check_box.setVisible(enabled)
+        general_widget.smu_check_box.setEnabled(enabled)
+        general_widget.smu_check_box.setVisible(enabled)
         self.main_window.smu_group_box.setEnabled(enabled)
         self.main_window.smu_group_box.setVisible(enabled)
 
         enabled = "SMU2" in spec.get("instruments", [])
-        self.main_window.general_widget.smu2_check_box.setEnabled(enabled)
-        self.main_window.general_widget.smu2_check_box.setVisible(enabled)
+        general_widget.smu2_check_box.setEnabled(enabled)
+        general_widget.smu2_check_box.setVisible(enabled)
         self.main_window.smu2_group_box.setEnabled(enabled)
         self.main_window.smu2_group_box.setVisible(enabled)
 
         enabled = "ELM" in spec.get("instruments", [])
-        self.main_window.general_widget.elm_check_box.setEnabled(enabled)
-        self.main_window.general_widget.elm_check_box.setVisible(enabled)
-        self.main_window.elm_group_box.setEnabled(enabled and self.main_window.general_widget.is_elm_enabled())
-        self.main_window.elm_group_box.setVisible(enabled and self.main_window.general_widget.is_elm_enabled())
+        general_widget.elm_check_box.setEnabled(enabled)
+        general_widget.elm_check_box.setVisible(enabled)
+        self.main_window.elm_group_box.setEnabled(enabled and general_widget.is_role_enabled("elm"))
+        self.main_window.elm_group_box.setVisible(enabled and general_widget.is_role_enabled("elm"))
 
         enabled = "ELM2" in spec.get("instruments", [])
-        self.main_window.general_widget.elm2_check_box.setEnabled(enabled)
-        self.main_window.general_widget.elm2_check_box.setVisible(enabled)
-        self.main_window.elm2_group_box.setEnabled(enabled and self.main_window.general_widget.is_elm2_enabled())
-        self.main_window.elm2_group_box.setVisible(enabled and self.main_window.general_widget.is_elm2_enabled())
+        general_widget.elm2_check_box.setEnabled(enabled)
+        general_widget.elm2_check_box.setVisible(enabled)
+        self.main_window.elm2_group_box.setEnabled(enabled and general_widget.is_role_enabled("elm2"))
+        self.main_window.elm2_group_box.setVisible(enabled and general_widget.is_role_enabled("elm2"))
 
         enabled = "LCR" in spec.get("instruments", [])
-        self.main_window.general_widget.lcr_check_box.setEnabled(enabled)
-        self.main_window.general_widget.lcr_check_box.setVisible(enabled)
+        general_widget.lcr_check_box.setEnabled(enabled)
+        general_widget.lcr_check_box.setVisible(enabled)
         self.main_window.lcr_group_box.setEnabled(enabled)
         self.main_window.lcr_group_box.setVisible(enabled)
 
         default_instruments: list[str] = spec.get("default_instruments") or []
 
-        general_widget = self.main_window.general_widget
-
         enabled = "SMU" in default_instruments
-        general_widget.set_smu_enabled(enabled)
+        general_widget.set_role_enabled("smu", enabled)
 
         enabled = "SMU2" in default_instruments
-        general_widget.set_smu2_enabled(enabled)
+        general_widget.set_role_enabled("smu2", enabled)
 
         enabled = "ELM" in default_instruments
-        general_widget.set_elm_enabled(enabled)
+        general_widget.set_role_enabled("elm", enabled)
 
         enabled = "ELM2" in default_instruments
-        general_widget.set_elm2_enabled(enabled)
+        general_widget.set_role_enabled("elm2", enabled)
 
         enabled = "LCR" in default_instruments
-        general_widget.set_lcr_enabled(enabled)
+        general_widget.set_role_enabled("lcr", enabled)
 
         voltage_unit = spec.get("voltage_unit", "V")
         general_widget.set_voltage_unit(voltage_unit)
@@ -829,19 +825,19 @@ class Controller(QtCore.QObject):
         # HACK Not all instruments support compliance!
         # TODO Implement instrument capabilities to lock not supported inputs
         #
-        if general_widget.is_smu_enabled():
+        if general_widget.is_role_enabled("smu"):
             ...
-        elif general_widget.is_elm_enabled():
+        elif general_widget.is_role_enabled("elm"):
             role = self.main_window.find_role("ELM")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_elm2_enabled():
+        elif general_widget.is_role_enabled("elm2"):
             role = self.main_window.find_role("ELM2")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_lcr_enabled():
+        elif general_widget.is_role_enabled("lcr"):
             role = self.main_window.find_role("LCR")
             if role and role.resource_widget.model() in [
                 "K595",
@@ -939,19 +935,6 @@ class Controller(QtCore.QObject):
         filename = safe_filename(f"{sample}-{timestamp}.txt")
         return os.path.join(path, filename)
 
-    def connect_iv_plots(self, measurement) -> None:
-        measurement.iv_reading_queue = self.iv_plots_controller.iv_reading_queue
-        measurement.iv_reading_lock = self.iv_plots_controller.iv_reading_lock
-        measurement.it_reading_queue = self.iv_plots_controller.it_reading_queue
-        measurement.it_reading_lock = self.iv_plots_controller.it_reading_lock
-        measurement.it_change_voltage_ready_event.subscribe(
-            self.change_voltage_ready.emit
-        )
-
-    def connect_cv_plots(self, measurement) -> None:
-        measurement.cv_reading_queue = self.cv_plots_controller.cv_reading_queue
-        measurement.cv_reading_lock = self.cv_plots_controller.cv_reading_lock
-
     def configure(self, params: Mapping[str, Any]) -> None:
         general_widget = self.main_window.general_widget
         for key, value in params.items():
@@ -980,30 +963,6 @@ class Controller(QtCore.QObject):
             else:
                 raise KeyError(f"Invalid configuration key: {key}")
 
-    def create_measurement(self) -> Measurement:
-        measurement_type = self.state.measurement_type
-        measurement_cls = MEASUREMENTS.get(measurement_type)
-        if measurement_cls is None:
-            raise ValueError(f"No such measurement type: {measurement_type}")
-        measurement = measurement_cls(self.state)
-
-        measurement.update_event.subscribe(self.update.emit)
-
-        if isinstance(measurement, IVMeasurement):
-            self.connect_iv_plots(measurement)
-        elif isinstance(measurement, IVBiasMeasurement):
-            self.connect_iv_plots(measurement)
-        elif isinstance(measurement, CVMeasurement):
-            self.connect_cv_plots(measurement)
-
-        # Prepare role drivers
-        for role in self.main_window.roles():
-            measurement.register_instrument(role.name().lower())
-
-        measurement.failed_event.subscribe(self.failed.emit)
-
-        return measurement
-
     @QtCore.Slot()
     def on_start_measurement(self) -> None:
         try:
@@ -1031,9 +990,6 @@ class Controller(QtCore.QObject):
             else:
                 self.state.filename = ""
 
-            # Create and run measurement
-            measurement = self.create_measurement()
-
             settings = QtCore.QSettings()
             timestamp_format = get_str(settings.value("writer/timestampFormat"), ".6f")
             value_format = get_str(settings.value("writer/valueFormat"), "+.3E")
@@ -1041,14 +997,18 @@ class Controller(QtCore.QObject):
             self.main_window.clear()
             self.iv_plots_controller.clear()
             self.cv_plots_controller.clear()
-            self.iv_plots_controller.update_timer.start(500)
-            self.cv_plots_controller.update_timer.start(500)
+
+            roles = [role.name().lower() for role in self.main_window.roles()]
 
             job = MeasurementJob(
-                measurement,
+                state=self.state,
+                roles=roles,
                 timestamp_format=timestamp_format,
                 value_format=value_format,
-                has_finished=self.measurement_finished.emit,
+                on_finished=self.measurement_finished.emit,
+                on_failed=self.failed.emit,
+                on_update=self.update.emit,
+                on_voltage_changed=self.change_voltage_ready.emit,
             )
             self.submit_background_job(job)
 
@@ -1114,18 +1074,7 @@ class IVPlotsController(QtCore.QObject):
         self.iv_layout.setStretch(1, 1)
         self.iv_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.iv_reading_queue: list[ReadingType] = []
-        self.iv_reading_lock = threading.RLock()
-        self.it_reading_queue: list[ReadingType] = []
-        self.it_reading_lock = threading.RLock()
-
-        self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.on_flush_iv_readings)
-        self.update_timer.timeout.connect(self.on_flush_it_readings)
-
     def clear(self):
-        self.iv_reading_queue.clear()
-        self.it_reading_queue.clear()
         self.iv_plot_widget.clear()
         self.iv_plot_widget.reset()
         self.it_plot_widget.clear()
@@ -1151,15 +1100,6 @@ class IVPlotsController(QtCore.QObject):
 
     def set_continuous(self, enabled):
         self.it_plot_widget.setVisible(enabled)
-
-    def on_flush_iv_readings(self) -> None:
-        with self.iv_reading_lock:
-            readings = self.iv_reading_queue.copy()
-            self.iv_reading_queue.clear()
-        for reading in readings:
-            self.append_iv_reading(reading, fit=False)
-        if len(readings):
-            self.iv_plot_widget.fit()
 
     def append_iv_reading(self, reading: dict, fit: bool = True) -> None:
         voltage: float = reading.get("voltage", math.nan)
@@ -1218,15 +1158,6 @@ class IVPlotsController(QtCore.QObject):
             parent.on_toggle_elm(bool(len(elm_points)))
             parent.on_toggle_elm2(bool(len(elm2_points)))
         widget.fit()
-
-    def on_flush_it_readings(self) -> None:
-        with self.it_reading_lock:
-            readings = self.it_reading_queue.copy()
-            self.it_reading_queue.clear()
-        for reading in readings:
-            self.append_it_reading(reading, fit=False)
-        if len(readings):
-            self.it_plot_widget.fit()
 
     def append_it_reading(self, reading: dict, fit: bool = True) -> None:
         timestamp: float = reading.get("timestamp", math.nan)
@@ -1295,14 +1226,7 @@ class CVPlotsController(QtCore.QObject):
         self.cv_layout.setStretch(1, 1)
         self.cv_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.cv_reading_queue: list[ReadingType] = []
-        self.cv_reading_lock = threading.RLock()
-
-        self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.flush_cv_readings)
-
     def clear(self) -> None:
-        self.cv_reading_queue.clear()
         self.cv_plot_widget.clear()
         self.cv_plot_widget.reset()
         self.cv2_plot_widget.clear()
@@ -1319,15 +1243,6 @@ class CVPlotsController(QtCore.QObject):
     def toggle_lcr_series(self, state): ...
 
     def set_continuous(self, enabled): ...
-
-    def flush_cv_readings(self) -> None:
-        with self.cv_reading_lock:
-            readings = self.cv_reading_queue.copy()
-            self.cv_reading_queue.clear()
-        for reading in readings:
-            self.append_cv_reading(reading, fit=False)
-        if len(readings):
-            self.cv_plot_widget.fit()
 
     def append_cv_reading(self, reading: dict, fit: bool = True) -> None:
         voltage: float = reading.get("voltage", math.nan)

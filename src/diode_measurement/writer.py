@@ -73,15 +73,14 @@ class Writer:
         self.flush()
 
     def write_meta_lcr(self, state: State) -> None:
-        lcr = state.roles.get("lcr", {})
-        if lcr.get("enabled"):
-            lcr_options = lcr.get("options", {})
+        lcr = state.find_role("lcr")
+        if lcr and lcr.enabled:
             # lcr.options.voltage
-            voltage = lcr_options.get("voltage")
+            voltage = lcr.options.get("voltage")
             if voltage is not None:
                 self.write_tag("lcr_ac_amplitude[V]", safe_format(voltage, self.value_format))
             # lcr.options.frequency
-            frequency = lcr_options.get("frequency")
+            frequency = lcr.options.get("frequency")
             if frequency is not None:
                 self.write_tag("lcr_ac_frequency[Hz]", safe_format(frequency, self.value_format))
 

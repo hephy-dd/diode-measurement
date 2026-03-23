@@ -6,16 +6,24 @@ from dataclasses import dataclass
 from collections.abc import Callable
 from typing import Optional, Protocol
 
-from .measurements import Measurement
+from .core.measurement import Context, Measurement
 from .measurements.iv import IVMeasurement
 from .measurements.iv_bias import IVBiasMeasurement
 from .measurements.cv import CVMeasurement
 
-from .drivers import K4215
+from .drivers import driver_factory, K4215
+from .resource import Resource, AutoReconnectResource
+from .state import Role, State
 from .utils import open_resource
 from .writer import Writer
 
 logger = logging.getLogger(__name__)
+
+measurement_registry: dict[str, type[Measurement]] = {
+    "iv": IVMeasurement,
+    "iv_bias": IVBiasMeasurement,
+    "cv": CVMeasurement,
+}
 
 
 class Job(Protocol):
@@ -24,10 +32,52 @@ class Job(Protocol):
 
 @dataclass
 class MeasurementJob:
-    measurement: Measurement
+    state: State
+    roles: list[str]
     timestamp_format: str
     value_format: str
-    has_finished: Callable[[], None]
+    on_finished: Callable[[], None]
+    on_failed: Callable[[Exception], None]
+    on_update: Callable[[dict], None]
+    on_voltage_changed: Callable[[], None]
+
+    def create_resource(self, role: Role, auto_reconnect: bool) -> Resource:
+        # If auto reconnect use experimental class AutoReconnectResource
+        resource_cls = AutoReconnectResource if auto_reconnect else Resource
+        resource = resource_cls(
+            resource_name=role.resource_name,
+            visa_library=role.visa_library,
+            read_termination=role.termination,
+            write_termination=role.termination,
+            timeout=role.timeout * 1000,  # in millisecs
+        )
+        return resource
+
+    def create_measurement(self, stack) -> Measurement:
+        context = Context(self.state)
+        auto_reconnect = self.state.auto_reconnect
+        for name in self.roles:
+            role = self.state.find_role(name)
+            if role is None:
+                raise KeyError(f"No such role: {name!r}")
+            if not role.enabled:
+                continue
+            if not role.resource_name.strip():
+                raise ValueError(
+                    f"Empty resource name not allowed for {name.upper()} ({role.model})."
+                )
+            cls = driver_factory(role.model)
+            if not cls:
+                raise RuntimeError("No such driver: %s", role.model)
+            resource = self.create_resource(role, auto_reconnect)
+            context.instruments[name] = cls(stack.enter_context(resource))
+
+        measurement_type = self.state.measurement_type
+        measurement_cls = measurement_registry.get(measurement_type)
+        if measurement_cls is None:
+            raise ValueError(f"No such measurement type: {measurement_type}")
+
+        return measurement_cls(context)
 
     def create_writer(self, fp) -> Writer:
         writer: Writer = Writer(fp)
@@ -40,12 +90,16 @@ class MeasurementJob:
         try:
             self.run_measurement()
         finally:
-            self.has_finished()
+            self.on_finished()
 
     def run_measurement(self) -> None:
-        measurement = self.measurement
-        filename = measurement.state.filename
         with contextlib.ExitStack() as stack:
+            measurement = self.create_measurement(stack)
+            measurement.failed_event.subscribe(self.on_failed)
+            measurement.update_event.subscribe(self.on_update)
+            measurement.change_voltage_ready_event.subscribe(self.on_voltage_changed)
+
+            filename = self.state.filename
             if filename:
                 logger.info("preparing output file: %s", filename)
 
@@ -59,7 +113,7 @@ class MeasurementJob:
                 # TODO
                 # Note: using signals executes slots in main thread, should be worker thread
                 measurement.started_event.subscribe(
-                    lambda state=measurement.state: writer.write_meta(state)
+                    lambda state=self.state: writer.write_meta(state)
                 )
                 if isinstance(measurement, IVMeasurement):
                     measurement.iv_reading_event.subscribe(

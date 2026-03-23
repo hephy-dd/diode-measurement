@@ -277,61 +277,53 @@ class GeneralWidget(QtWidgets.QWidget):
                     return
 
     def set_measurement_roles(self, roles: list[str]) -> None:
-        self.set_smu_enabled("smu" in roles)
-        self.set_smu2_enabled("smu2" in roles)
-        self.set_elm_enabled("elm" in roles)
-        self.set_elm2_enabled("elm2" in roles)
-        self.set_lcr_enabled("lcr" in roles)
-        self.set_dmm_enabled("dmm" in roles)
-        self.set_switch_enabled("switch" in roles)
+        self.set_role_enabled("smu", "smu" in roles)
+        self.set_role_enabled("smu2", "smu2" in roles)
+        self.set_role_enabled("elm", "elm" in roles)
+        self.set_role_enabled("elm2", "elm2" in roles)
+        self.set_role_enabled("lcr", "lcr" in roles)
+        self.set_role_enabled("dmm", "dmm" in roles)
+        self.set_role_enabled("tcu", "tcu" in roles)
+        self.set_role_enabled("switch", "switch" in roles)
 
-    def is_smu_enabled(self):
-        return self.smu_check_box.isChecked()
+    def is_role_enabled(self, name: str) -> bool:
+        name = name.lower().strip()
+        if name == "smu":
+            return self.smu_check_box.isChecked()
+        elif name == "smu2":
+            return self.smu2_check_box.isChecked()
+        elif name == "elm":
+            return self.elm_check_box.isChecked()
+        elif name == "elm2":
+            return self.elm2_check_box.isChecked()
+        elif name == "lcr":
+            return self.lcr_check_box.isChecked()
+        elif name == "dmm":
+            return self.dmm_check_box.isChecked()
+        elif name == "tcu":
+            return self.tcu_check_box.isChecked()
+        elif name == "switch":
+            return self.switch_check_box.isChecked()
+        return False
 
-    def set_smu_enabled(self, enabled):
-        return self.smu_check_box.setChecked(enabled)
-
-    def is_smu2_enabled(self):
-        return self.smu2_check_box.isChecked()
-
-    def set_smu2_enabled(self, enabled):
-        return self.smu2_check_box.setChecked(enabled)
-
-    def is_elm_enabled(self):
-        return self.elm_check_box.isChecked()
-
-    def set_elm_enabled(self, enabled):
-        return self.elm_check_box.setChecked(enabled)
-
-    def is_elm2_enabled(self):
-        return self.elm2_check_box.isChecked()
-
-    def set_elm2_enabled(self, enabled):
-        return self.elm2_check_box.setChecked(enabled)
-
-    def is_lcr_enabled(self):
-        return self.lcr_check_box.isChecked()
-
-    def set_lcr_enabled(self, enabled):
-        return self.lcr_check_box.setChecked(enabled)
-
-    def is_dmm_enabled(self):
-        return self.dmm_check_box.isChecked()
-
-    def set_dmm_enabled(self, enabled):
-        return self.dmm_check_box.setChecked(enabled)
-
-    def is_tcu_enabled(self):
-        return self.tcu_check_box.isChecked()
-
-    def set_tcu_enabled(self, enabled):
-        return self.tcu_check_box.setChecked(enabled)
-
-    def is_switch_enabled(self):
-        return self.switch_check_box.isChecked()
-
-    def set_switch_enabled(self, enabled):
-        return self.switch_check_box.setChecked(enabled)
+    def set_role_enabled(self, name: str, enabled: bool) -> None:
+        name = name.lower().strip()
+        if name == "smu":
+            self.smu_check_box.setChecked(enabled)
+        elif name == "smu2":
+            self.smu2_check_box.setChecked(enabled)
+        elif name == "elm":
+            self.elm_check_box.setChecked(enabled)
+        elif name == "elm2":
+            self.elm2_check_box.setChecked(enabled)
+        elif name == "lcr":
+            self.lcr_check_box.setChecked(enabled)
+        elif name == "dmm":
+            self.dmm_check_box.setChecked(enabled)
+        elif name == "tcu":
+            self.tcu_check_box.setChecked(enabled)
+        elif name == "switch":
+            self.switch_check_box.setChecked(enabled)
 
     def is_output_enabled(self):
         return self.output_group_box.isChecked()

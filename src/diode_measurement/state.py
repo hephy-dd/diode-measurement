@@ -1,5 +1,7 @@
 import threading
+import queue
 from enum import Enum
+from dataclasses import dataclass
 from typing import Any, Optional
 
 __all__ = ["State"]
@@ -11,6 +13,18 @@ class FSMState(str, Enum):
     RAMPING = "ramping"
     CONTINUOUS = "continuous"
     STOPPING = "stopping"
+
+
+@dataclass
+class Role:
+    enabled: bool
+    model: str
+    resource_name: str
+    visa_library: str
+    termination: str
+    timeout: float
+    reset_instrument: bool
+    options: dict[str, Any]
 
 
 class State:
@@ -45,11 +59,9 @@ class State:
         self._waiting_time_continuous: float = 1.0
         self.settle_waiting_time: float = 1.0
 
-        self.roles: dict[str, Any] = {}
+        self._roles: dict[str, Role] = {}
 
-    @property
-    def stop_requested(self) -> bool:
-        return self.abort_event.is_set()
+        self.reading_queue: queue.Queue[dict[str, Any]] = queue.Queue()
 
     @property
     def continue_in_compliance(self) -> bool:
@@ -120,5 +132,8 @@ class State:
             self._change_voltage_continuous = None
             return change_voltage_continuous
 
-    def find_role(self, name: str) -> dict:
-        return self.roles.get(name, {})
+    def set_role(self, name: str, role: Role) -> None:
+        self._roles[name] = role
+
+    def find_role(self, name: str) -> Optional[Role]:
+        return self._roles.get(name)

@@ -4,7 +4,7 @@ import time
 
 from comet.estimate import Estimate
 
-from ..core.measurement import ReadingType, State, EventHandler, RangeMeasurement
+from ..core.measurement import ReadingType, Context, EventHandler, RangeMeasurement
 
 __all__ = ["IVBiasMeasurement"]
 
@@ -12,16 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 class IVBiasMeasurement(RangeMeasurement):
-    def __init__(self, state: State) -> None:
-        super().__init__(state)
+    def __init__(self, context: Context) -> None:
+        super().__init__(context)
         self.iv_reading_event: EventHandler = EventHandler()
 
     def acquire_reading_data(self, voltage=None) -> ReadingType:
-        smu = self.instruments.get("smu")
-        smu2 = self.instruments.get("smu2")
-        elm = self.instruments.get("elm")
-        elm2 = self.instruments.get("elm2")
-        dmm = self.instruments.get("dmm")
+        instruments = self.context.instruments
+        smu = instruments.get("smu")
+        smu2 = instruments.get("smu2")
+        elm = instruments.get("elm")
+        elm2 = instruments.get("elm2")
+        dmm = instruments.get("dmm")
         if voltage is None:
             voltage = self.get_source_voltage()
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
@@ -43,11 +44,12 @@ class IVBiasMeasurement(RangeMeasurement):
 
     def acquire_reading(self) -> None:
         reading: ReadingType = self.acquire_reading_data()
+        reading.setdefault("type", "iv")
         logger.info(reading)
-        # TODO
-        if hasattr(self, "iv_reading_lock") and hasattr(self, "iv_reading_queue"):
-            with self.iv_reading_lock:
-                self.iv_reading_queue.append(reading)
+
+        self.state.reading_queue.put_nowait(reading)
+        self.iv_reading_event(reading)
+
         self.update_event(
             {
                 "smu_voltage": reading.get("v_smu"),
@@ -59,7 +61,6 @@ class IVBiasMeasurement(RangeMeasurement):
                 "dmm_temperature": reading.get("t_dmm"),
             }
         )
-        self.iv_reading_event(reading)
 
     def acquire_continuous_reading(self) -> None:
         t: float = time.time()
@@ -72,20 +73,17 @@ class IVBiasMeasurement(RangeMeasurement):
         def handle_reading(reading: ReadingType) -> None:
             """Handle a single reading, update UI and write to files."""
             logger.info(reading)
+            self.state.reading_queue.put_nowait(reading)
             self.it_reading_event(reading)
 
         voltage = self.get_source_voltage()
 
-        while not self.state.stop_requested:
+        while not self.context.stop_requested:
             dt: float = time.time() - t
 
             reading: ReadingType = self.acquire_reading_data(voltage=voltage)
+            reading.setdefault("type", "it")
             handle_reading(reading)
-
-            # TODO
-            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
-                with self.it_reading_lock:
-                    self.it_reading_queue.append(reading)
 
             # Limit some actions for fast measurements
             if dt > interval:
@@ -114,7 +112,7 @@ class IVBiasMeasurement(RangeMeasurement):
 
                 t = time.time()
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 break
 
             self.apply_waiting_time_continuous(estimate)

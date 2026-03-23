@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import time
 from collections.abc import Callable
@@ -7,9 +6,7 @@ from typing import Any, Optional
 from comet.estimate import Estimate
 from comet.functions import LinearRange
 
-from ..resource import Resource, AutoReconnectResource
-from ..drivers import driver_factory
-from ..state import State, FSMState
+from ..state import FSMState, State
 
 from .actor import Actor
 from .driver import TCU
@@ -55,48 +52,33 @@ class TCUActor(Actor):
         return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
 
 
-class Measurement:
+class Context:
     def __init__(self, state: State) -> None:
-        super().__init__()
-        self.state: State = state
+        self.state = state
         self.instruments: dict = {}
-        self._instruments: dict = {}
+
+    def sleep(self, seconds: float) -> None:
+        self.state.abort_event.wait(seconds)
+
+    @property
+    def stop_requested(self) -> bool:
+        return self.state.abort_event.is_set()
+
+
+class Measurement:
+    def __init__(self, context: Context) -> None:
+        super().__init__()
+        self.context: Context = context
+        self.state = context.state
+
         self.started_event: EventHandler = EventHandler()
         self.finished_event: EventHandler = EventHandler()
         self.failed_event: EventHandler = EventHandler()
         self.warning_event: EventHandler = EventHandler()
         self.update_event: EventHandler = EventHandler()
+        self.change_voltage_ready_event: EventHandler = EventHandler()
 
         self.tcu_actor: Optional[TCUActor] = None
-
-    def register_instrument(self, name: str) -> None:
-        role = self.state.find_role(name)
-        if not role.get("enabled"):
-            return None
-        model = role.get("model", "")
-        resource_name = role.get("resource_name", "")
-        if not resource_name.strip():
-            raise ValueError(
-                f"Empty resource name not allowed for {name.upper()} ({model})."
-            )
-        visa_library = role.get("visa_library", "@py")
-        termination = role.get("termination", "\n")
-        timeout = role.get("timeout", 0) * 1000  # in millisecs
-        cls = driver_factory(model)
-        if not cls:
-            logger.warning("No such driver: %s", model)
-            return None
-        # If auto reconnect use experimental class AutoReconnectResource
-        auto_reconnect = self.state.auto_reconnect
-        resource_cls = AutoReconnectResource if auto_reconnect else Resource
-        resource = resource_cls(
-            resource_name=resource_name,
-            visa_library=visa_library,
-            read_termination=termination,
-            write_termination=termination,
-            timeout=timeout,
-        )
-        self._instruments[name] = cls, resource
 
     def check_error_state(self, context) -> None:
         error = context.next_error()
@@ -119,32 +101,22 @@ class Measurement:
             logger.debug("handle started callbacks...")
             self.started_event()
             logger.debug("handle started callbacks... done.")
-            self.instruments.clear()
-            with contextlib.ExitStack() as stack:
-                logger.debug("creating instrument contexts...")
-                for key, (cls, resource) in self._instruments.items():
-                    logger.debug(
-                        "creating instrument context %s: %s...", key, cls.__name__
-                    )
-                    context = cls(stack.enter_context(resource))
-                    self.instruments[key] = context
-                logger.debug("creating instrument contexts... done.")
-                try:
-                    logger.debug("initialize...")
-                    self.initialize()
-                    logger.debug("initialize... done.")
-                    if not self.state.stop_requested:
-                        logger.debug("measure...")
-                        self.measure()
-                        logger.debug("measure... done.")
-                except Exception as exc:
-                    logger.exception(exc)
-                    self.failed_event(exc)
-                finally:
-                    logger.debug("finalize...")
-                    self.set_fsm_state(FSMState.STOPPING)
-                    self.finalize()
-                    logger.debug("finalize... done.")
+            try:
+                logger.debug("initialize...")
+                self.initialize()
+                logger.debug("initialize... done.")
+                if not self.context.stop_requested:
+                    logger.debug("measure...")
+                    self.measure()
+                    logger.debug("measure... done.")
+            except Exception as exc:
+                logger.exception(exc)
+                self.failed_event(exc)
+            finally:
+                logger.debug("finalize...")
+                self.set_fsm_state(FSMState.STOPPING)
+                self.finalize()
+                logger.debug("finalize... done.")
         except Exception as exc:
             logger.exception(exc)
             self.failed_event(exc)
@@ -152,16 +124,14 @@ class Measurement:
             logger.debug("handle finished callbacks...")
             self.finished_event()
             logger.debug("handle finished callbacks... done.")
-            self.instruments.clear()
             self.set_fsm_state(FSMState.IDLE)
             logger.debug("run measurement... done.")
 
 
 class RangeMeasurement(Measurement):
-    def __init__(self, state: State) -> None:
-        super().__init__(state)
+    def __init__(self, context: Context) -> None:
+        super().__init__(context)
         self.it_reading_event: EventHandler = EventHandler()
-        self.it_change_voltage_ready_event: EventHandler = EventHandler()
 
         self.current_compliance: float = 0.0  # TODO
         self.bias_current_compliance: float = 0.0  # TODO
@@ -275,7 +245,7 @@ class RangeMeasurement(Measurement):
             now: float = time.time()
             threshold: float = now + waiting_time
             while now < threshold:
-                if self.state.stop_requested:
+                if self.context.stop_requested:
                     self.update_message("Stopping...")
                     break
                 if self.state.is_change_voltage_continuous:
@@ -296,9 +266,9 @@ class RangeMeasurement(Measurement):
                 params.get("step_voltage"),
                 params.get("waiting_time"),
             )
-            if not self.state.stop_requested:  # hack
+            if not self.context.stop_requested:  # hack
                 self.set_fsm_state(FSMState.CONTINUOUS)
-        self.it_change_voltage_ready_event()
+        self.change_voltage_ready_event()
 
     def update_message(self, message: str) -> None:
         """Emit update message event."""
@@ -333,8 +303,8 @@ class RangeMeasurement(Measurement):
 
     def initialize(self) -> None:
         source = self.state.source_role
-        if source in self.instruments:
-            self.source_instrument = self.instruments.get(source)
+        if source in self.context.instruments:
+            self.source_instrument = self.context.instruments.get(source)
         else:
             raise RuntimeError("No source instrument set")
 
@@ -343,13 +313,13 @@ class RangeMeasurement(Measurement):
         self.bias_source_instrument = None
         if self.state.measurement_type in ["iv_bias"]:  # TODO
             bias_source = self.state.bias_source_role
-            if bias_source in self.instruments:
-                self.bias_source_instrument = self.instruments.get(bias_source)
+            if bias_source in self.context.instruments:
+                self.bias_source_instrument = self.context.instruments.get(bias_source)
             else:
                 raise RuntimeError("No bias source instrument set")
 
         logger.debug("querying context identities...")
-        for key, context in self.instruments.items():
+        for key, context in self.context.instruments.items():
             logger.debug("reading %s identity...", key.upper())
             identity: str = context.identify()
             logger.debug("reading %s identity... done.", key.upper())
@@ -381,26 +351,29 @@ class RangeMeasurement(Measurement):
         self.initialize_switch()
 
         # Reset (optional)
-        for key, instrument in self.instruments.items():
+        for key, instrument in self.context.instruments.items():
             role = self.state.find_role(key)
-            if role and role.get("reset_instrument"):
+            if role and role.reset_instrument:
                 logger.info("Reset %s...", key.upper())
                 instrument.reset()
                 logger.info("Reset %s... done.", key.upper())
 
         # Clear state
-        for key, instrument in self.instruments.items():
+        for key, instrument in self.context.instruments.items():
             logger.info("Clear %s...", key.upper())
             instrument.clear()
             logger.info("Clear %s... done.", key.upper())
 
         # Configure
-        for key, instrument in self.instruments.items():
+        for key, instrument in self.context.instruments.items():
             logger.info("Configure %s...", key.upper())
-            options = self.state.find_role(key).get("options", {})
-            for name, value in options.items():
+            role = self.state.find_role(key)
+            if not role:
+                logger.error("Configure %s... failed.", key.upper())
+                continue
+            for name, value in role.options.items():
                 logger.info("%s: %r", name, value)
-            instrument.configure(options)
+            instrument.configure(role.options)
             self.check_error_state(instrument)
             logger.info("Configure %s... done.", key.upper())
 
@@ -410,23 +383,23 @@ class RangeMeasurement(Measurement):
         self.check_error_state(self.source_instrument)
 
         # check interlock (optional)
-        for instrument in self.instruments.values():
+        for instrument in self.context.instruments.values():
             self.check_interlock(instrument)
 
         # TCU (optional)
-        tcu = self.instruments.get("tcu")
+        tcu = self.context.instruments.get("tcu")
         if tcu is not None:
             self.tcu_actor = TCUActor(tcu, event_bus=self.update_event)
             self.tcu_actor.start()
 
             while True:
-                if self.state.stop_requested:
+                if self.context.stop_requested:
                     return
                 if self.tcu_actor.is_within_setpoint():
                     break
                 self.update_message("Waiting for TCU to reach setpoint...")
                 self.update_progress(0, 0, 0)
-                self.state.abort_event.wait(2.5)
+                self.context.sleep(2.5)
 
         self.bias_current_compliance = self.state.current_compliance
         if self.bias_source_instrument:
@@ -448,18 +421,18 @@ class RangeMeasurement(Measurement):
         self.apply_settle_waiting_time()
 
     def initialize_elms(self) -> None:
-        elm = self.instruments.get("elm")
+        elm = self.context.instruments.get("elm")
         if elm is not None:
             elm.set_zero_check_enabled(False)
             logger.info("ELM zero check: off")
 
-        elm2 = self.instruments.get("elm2")
+        elm2 = self.context.instruments.get("elm2")
         if elm2 is not None:
             elm2.set_zero_check_enabled(False)
             logger.info("ELM2 zero check: off")
 
     def initialize_switch(self) -> None:
-        switch = self.instruments.get("switch")
+        switch = self.context.instruments.get("switch")
         if switch is not None:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")
@@ -486,7 +459,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 self.update_message("Stopping...")
                 return
             self.set_source_voltage(voltage)
@@ -506,7 +479,7 @@ class RangeMeasurement(Measurement):
 
         self.update_message("")
 
-        if self.state.stop_requested:
+        if self.context.stop_requested:
             self.update_message("Stopping...")
             return
 
@@ -559,23 +532,23 @@ class RangeMeasurement(Measurement):
             )
 
     def finalize_elms(self) -> None:
-        elm = self.instruments.get("elm")
+        elm = self.context.instruments.get("elm")
         if elm is not None:
             elm.set_zero_check_enabled(True)
             logger.info("ELM zero check: on")
 
-        elm2 = self.instruments.get("elm2")
+        elm2 = self.context.instruments.get("elm2")
         if elm2 is not None:
             elm2.set_zero_check_enabled(True)
             logger.info("ELM2 zero check: on")
 
     def finalize_lcr(self) -> None:
-        lcr = self.instruments.get("lcr")
+        lcr = self.context.instruments.get("lcr")
         if lcr is not None:
             lcr.finalize()
 
     def finalize_switch(self) -> None:
-        switch = self.instruments.get("switch")
+        switch = self.context.instruments.get("switch")
         if switch:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")
@@ -631,7 +604,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 break
             self.set_source_voltage(voltage)
             time.sleep(waiting_time)
@@ -688,7 +661,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp bias to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 break
             self.set_bias_source_voltage(voltage)
             time.sleep(waiting_time)
@@ -740,7 +713,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 self.update_message("Stopping...")
                 return
 
@@ -748,14 +721,11 @@ class RangeMeasurement(Measurement):
 
             time.sleep(waiting_time)
 
-            reading = self.acquire_reading_data()
+            reading: ReadingType = self.acquire_reading_data()
+            reading.setdefault("type", "it")
             logger.info(reading)
 
-            # TODO
-            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
-                with self.it_reading_lock:
-                    self.it_reading_queue.append(reading)
-
+            self.state.reading_queue.put_nowait(reading)
             self.it_reading_event(reading)
 
             self.update_event(
