@@ -579,7 +579,8 @@ class RangeMeasurement(Measurement):
     def finalize_lcr(self) -> None:
         lcr = self.instruments.get("lcr")
         if lcr is not None:
-            lcr.finalize()
+            if hasattr(lcr, "finalize"):
+                lcr.finalize()
 
     def finalize_switch(self) -> None:
         switch = self.instruments.get("switch")
