@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-04-15
+
+### Fixed
+
+- RPC `start` method failed to start a measurement and caused the GUI to freeze (#154).
+
 ## [0.24.1] - 2026-03-24
 
 ### Fixed
@@ -500,7 +506,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.24.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.24.2...HEAD
+[0.24.2]: https://github.com/hephy-dd/diode-measurement/compare/0.24.1...0.24.2
 [0.24.1]: https://github.com/hephy-dd/diode-measurement/compare/0.24.0...0.24.1
 [0.24.0]: https://github.com/hephy-dd/diode-measurement/compare/0.23.2...0.24.0
 [0.23.2]: https://github.com/hephy-dd/diode-measurement/compare/0.23.1...0.23.2
