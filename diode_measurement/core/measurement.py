@@ -77,7 +77,7 @@ class Measurement:
             raise RuntimeError(f"Instrument Error: {error.code}: {error.message}")
 
     def set_fsm_state(self, state: FSMState) -> None:
-        self.update_event({"rpc_state": state})
+        self.update_event({"fsm_state": state})
 
     def initialize(self) -> None: ...
 
