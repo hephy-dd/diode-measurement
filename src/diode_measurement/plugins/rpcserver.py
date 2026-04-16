@@ -44,13 +44,13 @@ class StartEvent:
 
     def __call__(self, controller: Controller) -> None:
         controller.configure(self.parameters)
-        controller.started.emit()
+        controller.request_start()
 
 
 @dataclass
 class StopEvent:
     def __call__(self, controller: Controller) -> None:
-        controller.aborted.emit()
+        controller.request_stop()
 
 
 @dataclass

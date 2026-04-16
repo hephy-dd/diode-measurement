@@ -988,6 +988,12 @@ class Controller(QtCore.QObject):
             else:
                 raise KeyError(f"Invalid configuration key: {key}")
 
+    def request_start(self) -> None:
+        self.main_window.start_action.trigger()
+
+    def request_stop(self) -> None:
+        self.aborted.emit()
+
     def create_measurement(self) -> Measurement:
         measurement_type = self.state.measurement_type
         measurement_cls = MEASUREMENTS.get(measurement_type)
