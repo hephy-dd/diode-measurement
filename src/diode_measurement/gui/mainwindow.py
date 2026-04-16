@@ -420,16 +420,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dataStackedWidget.removeWidget(self.dataStackedWidget.currentWidget())
         self.dataStackedWidget.addWidget(widget)
 
-    def add_role(self, name: str) -> RoleWidget:
-        if name in self.roleWidgets:
-            raise KeyError(f"No suc role: {name}")
-        widget = RoleWidget(name)
-        self.roleWidgets[name] = widget
-        self.control_tab_widget.addTab(widget, widget.name())
+    def add_role(self, role: str, title: str) -> RoleWidget:
+        if role in self.roleWidgets:
+            raise KeyError(f"No such role: {role!r}")
+        self.general_widget.add_role(role, title)
+        widget = RoleWidget(role)
+        self.roleWidgets[role] = widget
+        self.control_tab_widget.addTab(widget, title)
         return widget
 
-    def find_role(self, name: str) -> Optional[RoleWidget]:
-        return self.roleWidgets.get(name)
+    def find_role(self, role: str) -> Optional[RoleWidget]:
+        return self.roleWidgets.get(role)
 
     def roles(self) -> list[RoleWidget]:
         return list(self.roleWidgets.values())

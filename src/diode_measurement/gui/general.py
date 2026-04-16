@@ -1,4 +1,5 @@
-from typing import Optional
+import logging
+from typing import Iterable, Optional
 
 from PySide6 import QtCore, QtWidgets
 
@@ -26,29 +27,7 @@ class GeneralWidget(QtWidgets.QWidget):
     def _create_widgets(self) -> None:
         self.measurement_combo_box = QtWidgets.QComboBox(self)
 
-        self.smu_check_box = QtWidgets.QCheckBox("SMU", self)
-        self.smu_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.smu2_check_box = QtWidgets.QCheckBox("SMU2", self)
-        self.smu2_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.elm_check_box = QtWidgets.QCheckBox("ELM", self)
-        self.elm_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.elm2_check_box = QtWidgets.QCheckBox("ELM2", self)
-        self.elm2_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.lcr_check_box = QtWidgets.QCheckBox("LCR", self)
-        self.lcr_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.dmm_check_box = QtWidgets.QCheckBox("DMM", self)
-        self.dmm_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.tcu_check_box = QtWidgets.QCheckBox("TCU", self)
-        self.tcu_check_box.checkStateChanged.connect(self.instruments_changed)
-
-        self.switch_check_box = QtWidgets.QCheckBox("Switch", self)
-        self.switch_check_box.checkStateChanged.connect(self.instruments_changed)
+        self.role_check_boxes: dict[str, QtWidgets.QCheckBox] = {}
 
         self.begin_voltage_spin_box = QtWidgets.QDoubleSpinBox(self)
         self.begin_voltage_spin_box.setDecimals(3)
@@ -162,14 +141,6 @@ class GeneralWidget(QtWidgets.QWidget):
         self.instrument_widget = QtWidgets.QWidget()
         vbox_layout.addWidget(self.instrument_widget)
         self.instrument_layout = QtWidgets.QHBoxLayout(self.instrument_widget)
-        self.instrument_layout.addWidget(self.smu_check_box)
-        self.instrument_layout.addWidget(self.smu2_check_box)
-        self.instrument_layout.addWidget(self.elm_check_box)
-        self.instrument_layout.addWidget(self.elm2_check_box)
-        self.instrument_layout.addWidget(self.lcr_check_box)
-        self.instrument_layout.addWidget(self.dmm_check_box)
-        self.instrument_layout.addWidget(self.tcu_check_box)
-        self.instrument_layout.addWidget(self.switch_check_box)
         self.instrument_layout.addStretch()
         self.instrument_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -276,62 +247,46 @@ class GeneralWidget(QtWidgets.QWidget):
                     self.measurement_combo_box.setCurrentIndex(index)
                     return
 
-    def set_measurement_roles(self, roles: list[str]) -> None:
-        self.set_smu_enabled("smu" in roles)
-        self.set_smu2_enabled("smu2" in roles)
-        self.set_elm_enabled("elm" in roles)
-        self.set_elm2_enabled("elm2" in roles)
-        self.set_lcr_enabled("lcr" in roles)
-        self.set_dmm_enabled("dmm" in roles)
-        self.set_switch_enabled("switch" in roles)
+    def add_role(self, role: str, title: str) -> None:
+        if role not in self.role_check_boxes:
+            check_box = QtWidgets.QCheckBox(self)
+            check_box.setText(title)
+            check_box.checkStateChanged.connect(self.instruments_changed)
+            index = len(self.role_check_boxes)
+            self.instrument_layout.insertWidget(index, check_box)
+            self.role_check_boxes[role] = check_box
+        else:
+            logging.warning("add_role(): role already exists: %r", role)
 
-    def is_smu_enabled(self):
-        return self.smu_check_box.isChecked()
+    def set_role_active(self, role: str, active: bool) -> None:
+        check_box = self.role_check_boxes.get(role)
+        if check_box is not None:
+            check_box.setEnabled(active)
+            check_box.setVisible(active)
+        else:
+            logging.warning("set_role_active(): no such role: %r", role)
 
-    def set_smu_enabled(self, enabled):
-        return self.smu_check_box.setChecked(enabled)
+    def is_role_enabled(self, role: str) -> bool:
+        check_box = self.role_check_boxes.get(role)
+        if check_box is not None:
+            return check_box.isChecked()
+        else:
+            logging.warning("is_role_enabled(): no such role: %r", role)
+            return False
 
-    def is_smu2_enabled(self):
-        return self.smu2_check_box.isChecked()
+    def set_role_enabled(self, role: str, enabled: bool) -> None:
+        check_box = self.role_check_boxes.get(role)
+        if check_box is not None:
+            check_box.setChecked(enabled)
+        else:
+            logging.warning("set_role_enabled(): no such role: %r", role)
 
-    def set_smu2_enabled(self, enabled):
-        return self.smu2_check_box.setChecked(enabled)
-
-    def is_elm_enabled(self):
-        return self.elm_check_box.isChecked()
-
-    def set_elm_enabled(self, enabled):
-        return self.elm_check_box.setChecked(enabled)
-
-    def is_elm2_enabled(self):
-        return self.elm2_check_box.isChecked()
-
-    def set_elm2_enabled(self, enabled):
-        return self.elm2_check_box.setChecked(enabled)
-
-    def is_lcr_enabled(self):
-        return self.lcr_check_box.isChecked()
-
-    def set_lcr_enabled(self, enabled):
-        return self.lcr_check_box.setChecked(enabled)
-
-    def is_dmm_enabled(self):
-        return self.dmm_check_box.isChecked()
-
-    def set_dmm_enabled(self, enabled):
-        return self.dmm_check_box.setChecked(enabled)
-
-    def is_tcu_enabled(self):
-        return self.tcu_check_box.isChecked()
-
-    def set_tcu_enabled(self, enabled):
-        return self.tcu_check_box.setChecked(enabled)
-
-    def is_switch_enabled(self):
-        return self.switch_check_box.isChecked()
-
-    def set_switch_enabled(self, enabled):
-        return self.switch_check_box.setChecked(enabled)
+    def set_measurement_roles(self, roles: Iterable[str]) -> None:
+        for role in roles:
+            if role not in self.role_check_boxes:
+                logging.warning("set_measurement_roles(): no such role: %r", role)
+        for role in self.role_check_boxes:
+            self.set_role_enabled(role, role in roles)
 
     def is_output_enabled(self):
         return self.output_group_box.isChecked()

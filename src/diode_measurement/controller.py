@@ -112,33 +112,33 @@ class Controller(QtCore.QObject):
         self.failed.connect(self.handle_exception)
 
         # Source meter unit
-        role = main_window.add_role("SMU")
+        role = main_window.add_role("smu", "SMU")
         role.add_instrument_panel(K237Panel())
         role.add_instrument_panel(K2410Panel())
         role.add_instrument_panel(K2470Panel())
         role.add_instrument_panel(K2657APanel())
 
         # Bias source meter unit
-        role = main_window.add_role("SMU2")
+        role = main_window.add_role("smu2", "SMU2")
         role.add_instrument_panel(K237Panel())
         role.add_instrument_panel(K2410Panel())
         role.add_instrument_panel(K2470Panel())
         role.add_instrument_panel(K2657APanel())
 
         # Electrometer
-        role = main_window.add_role("ELM")
+        role = main_window.add_role("elm", "ELM")
         role.add_instrument_panel(K6514Panel())
         role.add_instrument_panel(K6517BPanel())
         role.resource_widget.model_changed.connect(self.on_instruments_changed)  # HACK
 
         # Electrometer 2
-        role = main_window.add_role("ELM2")
+        role = main_window.add_role("elm2", "ELM2")
         role.add_instrument_panel(K6514Panel())
         role.add_instrument_panel(K6517BPanel())
         role.resource_widget.model_changed.connect(self.on_instruments_changed)  # HACK
 
         # LCR meter
-        role = main_window.add_role("LCR")
+        role = main_window.add_role("lcr", "LCR")
         role.add_instrument_panel(K595Panel())
         role.add_instrument_panel(E4980APanel())
         role.add_instrument_panel(A4284APanel())
@@ -147,15 +147,15 @@ class Controller(QtCore.QObject):
         role.add_instrument_panel(panel)
 
         # DMM
-        role = main_window.add_role("DMM")
+        role = main_window.add_role("dmm", "DMM")
         role.add_instrument_panel(K2700Panel())
 
         # TCU
-        role = main_window.add_role("TCU")
+        role = main_window.add_role("tcu", "TCU")
         role.add_instrument_panel(AC3Panel())
 
         # Switch
-        role = main_window.add_role("Switch")
+        role = main_window.add_role("switch", "Switch")
         role.add_instrument_panel(BrandBoxPanel())
         role.add_instrument_panel(K707BPanel())
         role.add_instrument_panel(K708BPanel())
@@ -202,14 +202,14 @@ class Controller(QtCore.QObject):
 
         self.on_instruments_changed()
 
-        general_widget.smu_check_box.toggled.connect(self.on_toggle_smu)
-        general_widget.smu2_check_box.toggled.connect(self.on_toggle_smu2)
-        general_widget.elm_check_box.toggled.connect(self.on_toggle_elm)
-        general_widget.elm2_check_box.toggled.connect(self.on_toggle_elm2)
-        general_widget.lcr_check_box.toggled.connect(self.on_toggle_lcr)
-        general_widget.dmm_check_box.toggled.connect(self.on_toggle_dmm)
-        general_widget.tcu_check_box.toggled.connect(self.on_toggle_tcu)
-        general_widget.switch_check_box.toggled.connect(self.on_toggle_switch)
+        general_widget.role_check_boxes["smu"].toggled.connect(self.on_toggle_smu)
+        general_widget.role_check_boxes["smu2"].toggled.connect(self.on_toggle_smu2)
+        general_widget.role_check_boxes["elm"].toggled.connect(self.on_toggle_elm)
+        general_widget.role_check_boxes["elm2"].toggled.connect(self.on_toggle_elm2)
+        general_widget.role_check_boxes["lcr"].toggled.connect(self.on_toggle_lcr)
+        general_widget.role_check_boxes["dmm"].toggled.connect(self.on_toggle_dmm)
+        general_widget.role_check_boxes["tcu"].toggled.connect(self.on_toggle_tcu)
+        general_widget.role_check_boxes["switch"].toggled.connect(self.on_toggle_switch)
 
         self.on_toggle_smu2(False)
         self.on_toggle_elm(False)
@@ -317,7 +317,7 @@ class Controller(QtCore.QObject):
         roles: dict[str, Any] = state.setdefault("roles", {})
 
         for role in self.main_window.roles():
-            key = role.name().lower()
+            key = role.name()
             resource = role.resource_widget.resource_name()
             resource_name, visa_library = get_resource(resource)
             config = roles.setdefault(key, {})
@@ -333,29 +333,29 @@ class Controller(QtCore.QObject):
             )
             config.update({"options": role.current_config()})
 
-        if general_widget.is_smu_enabled():
+        if general_widget.is_role_enabled("smu"):
             state["source_role"] = "smu"
-        elif general_widget.is_elm_enabled():
+        elif general_widget.is_role_enabled("elm"):
             state["source_role"] = "elm"
-        elif general_widget.is_lcr_enabled():
+        elif general_widget.is_role_enabled("lcr"):
             state["source_role"] = "lcr"
 
-        if general_widget.is_smu2_enabled():
+        if general_widget.is_role_enabled("smu2"):
             state["bias_source_role"] = "smu2"
 
-        roles.setdefault("smu", {}).update({"enabled": general_widget.is_smu_enabled()})
+        roles.setdefault("smu", {}).update({"enabled": general_widget.is_role_enabled("smu")})
         roles.setdefault("smu2", {}).update(
-            {"enabled": general_widget.is_smu2_enabled()}
+            {"enabled": general_widget.is_role_enabled("smu2")}
         )
-        roles.setdefault("elm", {}).update({"enabled": general_widget.is_elm_enabled()})
+        roles.setdefault("elm", {}).update({"enabled": general_widget.is_role_enabled("elm")})
         roles.setdefault("elm2", {}).update(
-            {"enabled": general_widget.is_elm2_enabled()}
+            {"enabled": general_widget.is_role_enabled("elm2")}
         )
-        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_lcr_enabled()})
-        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_dmm_enabled()})
-        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_tcu_enabled()})
+        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_role_enabled("lcr")})
+        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_role_enabled("dmm")})
+        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_role_enabled("tcu")})
         roles.setdefault("switch", {}).update(
-            {"enabled": general_widget.is_switch_enabled()}
+            {"enabled": general_widget.is_role_enabled("switch")}
         )
 
         for key, value in state.items():
@@ -403,28 +403,28 @@ class Controller(QtCore.QObject):
         general_widget.measurement_combo_box.setCurrentIndex(index)
 
         enabled = get_bool(settings.value("smu/enabled"), False)
-        general_widget.set_smu_enabled(enabled)
+        general_widget.set_role_enabled("smu", enabled)
 
         enabled = get_bool(settings.value("smu2/enabled"), False)
-        general_widget.set_smu2_enabled(enabled)
+        general_widget.set_role_enabled("smu2", enabled)
 
         enabled = get_bool(settings.value("elm/enabled"), False)
-        general_widget.set_elm_enabled(enabled)
+        general_widget.set_role_enabled("elm", enabled)
 
         enabled = get_bool(settings.value("elm2/enabled"), False)
-        general_widget.set_elm2_enabled(enabled)
+        general_widget.set_role_enabled("elm2", enabled)
 
         enabled = get_bool(settings.value("lcr/enabled"), False)
-        general_widget.set_lcr_enabled(enabled)
+        general_widget.set_role_enabled("lcr", enabled)
 
         enabled = get_bool(settings.value("dmm/enabled"), False)
-        general_widget.set_dmm_enabled(enabled)
+        general_widget.set_role_enabled("dmm", enabled)
 
         enabled = get_bool(settings.value("tcu/enabled"), False)
-        general_widget.set_tcu_enabled(enabled)
+        general_widget.set_role_enabled("tcu", enabled)
 
         enabled = get_bool(settings.value("switch/enabled"), False)
-        general_widget.set_switch_enabled(enabled)
+        general_widget.set_role_enabled("switch", enabled)
 
         output_enabled = get_bool(settings.value("outputEnabled"), False)
         general_widget.set_output_enabled(output_enabled)
@@ -464,7 +464,7 @@ class Controller(QtCore.QObject):
         settings.beginGroup("roles")
 
         for role in self.main_window.roles():
-            name = role.name().lower()
+            name = role.name()
             settings.beginGroup(name)
             role.set_model(get_str(settings.value("model"), ""))
             role.set_resource_name(get_str(settings.value("resource"), ""))
@@ -498,28 +498,28 @@ class Controller(QtCore.QObject):
         measurement_index = general_widget.measurement_combo_box.currentIndex()
         settings.setValue("measurement/index", measurement_index)
 
-        enabled = general_widget.is_smu_enabled()
+        enabled = general_widget.is_role_enabled("smu")
         settings.setValue("smu/enabled", enabled)
 
-        enabled = general_widget.is_smu2_enabled()
+        enabled = general_widget.is_role_enabled("smu2")
         settings.setValue("smu2/enabled", enabled)
 
-        enabled = general_widget.is_elm_enabled()
+        enabled = general_widget.is_role_enabled("elm")
         settings.setValue("elm/enabled", enabled)
 
-        enabled = general_widget.is_elm2_enabled()
+        enabled = general_widget.is_role_enabled("elm2")
         settings.setValue("elm2/enabled", enabled)
 
-        enabled = general_widget.is_lcr_enabled()
+        enabled = general_widget.is_role_enabled("lcr")
         settings.setValue("lcr/enabled", enabled)
 
-        enabled = general_widget.is_dmm_enabled()
+        enabled = general_widget.is_role_enabled("dmm")
         settings.setValue("dmm/enabled", enabled)
 
-        enabled = general_widget.is_tcu_enabled()
+        enabled = general_widget.is_role_enabled("tcu")
         settings.setValue("tcu/enabled", enabled)
 
-        enabled = general_widget.is_switch_enabled()
+        enabled = general_widget.is_role_enabled("switch")
         settings.setValue("switch/enabled", enabled)
 
         output_enabled = general_widget.is_output_enabled()
@@ -560,7 +560,7 @@ class Controller(QtCore.QObject):
         settings.beginGroup("roles")
 
         for role in self.main_window.roles():
-            name = role.name().lower()
+            name = role.name()
             settings.beginGroup(name)
             settings.setValue("model", role.model())
             settings.setValue("resource", role.resource_name())
@@ -754,33 +754,30 @@ class Controller(QtCore.QObject):
             self.main_window.general_widget.continuous_group_box.setEnabled(False)
         self.update_continuous_option()
 
-        enabled = "SMU" in spec.get("instruments", [])
-        self.main_window.general_widget.smu_check_box.setEnabled(enabled)
-        self.main_window.general_widget.smu_check_box.setVisible(enabled)
+        instruments: list[str] = spec.get("instruments", [])
+
+        enabled = "SMU" in instruments
+        self.main_window.general_widget.set_role_active("smu", enabled)
         self.main_window.smu_group_box.setEnabled(enabled)
         self.main_window.smu_group_box.setVisible(enabled)
 
-        enabled = "SMU2" in spec.get("instruments", [])
-        self.main_window.general_widget.smu2_check_box.setEnabled(enabled)
-        self.main_window.general_widget.smu2_check_box.setVisible(enabled)
+        enabled = "SMU2" in instruments
+        self.main_window.general_widget.set_role_active("smu2", enabled)
         self.main_window.smu2_group_box.setEnabled(enabled)
         self.main_window.smu2_group_box.setVisible(enabled)
 
-        enabled = "ELM" in spec.get("instruments", [])
-        self.main_window.general_widget.elm_check_box.setEnabled(enabled)
-        self.main_window.general_widget.elm_check_box.setVisible(enabled)
+        enabled = "ELM" in instruments
+        self.main_window.general_widget.set_role_active("elm", enabled)
         self.main_window.elm_group_box.setEnabled(enabled)
         self.main_window.elm_group_box.setVisible(enabled)
 
-        enabled = "ELM2" in spec.get("instruments", [])
-        self.main_window.general_widget.elm2_check_box.setEnabled(enabled)
-        self.main_window.general_widget.elm2_check_box.setVisible(enabled)
+        enabled = "ELM2" in instruments
+        self.main_window.general_widget.set_role_active("elm2", enabled)
         self.main_window.elm2_group_box.setEnabled(enabled)
         self.main_window.elm2_group_box.setVisible(enabled)
 
-        enabled = "LCR" in spec.get("instruments", [])
-        self.main_window.general_widget.lcr_check_box.setEnabled(enabled)
-        self.main_window.general_widget.lcr_check_box.setVisible(enabled)
+        enabled = "LCR" in instruments
+        self.main_window.general_widget.set_role_active("lcr", enabled)
         self.main_window.lcr_group_box.setEnabled(enabled)
         self.main_window.lcr_group_box.setVisible(enabled)
 
@@ -789,19 +786,19 @@ class Controller(QtCore.QObject):
         general_widget = self.main_window.general_widget
 
         enabled = "SMU" in default_instruments
-        general_widget.set_smu_enabled(enabled)
+        general_widget.set_role_enabled("smu", enabled)
 
         enabled = "SMU2" in default_instruments
-        general_widget.set_smu2_enabled(enabled)
+        general_widget.set_role_enabled("smu2", enabled)
 
         enabled = "ELM" in default_instruments
-        general_widget.set_elm_enabled(enabled)
+        general_widget.set_role_enabled("elm", enabled)
 
         enabled = "ELM2" in default_instruments
-        general_widget.set_elm2_enabled(enabled)
+        general_widget.set_role_enabled("elm2", enabled)
 
         enabled = "LCR" in default_instruments
-        general_widget.set_lcr_enabled(enabled)
+        general_widget.set_role_enabled("lcr", enabled)
 
         voltage_unit = spec.get("voltage_unit", "V")
         general_widget.set_voltage_unit(voltage_unit)
@@ -837,20 +834,20 @@ class Controller(QtCore.QObject):
         # HACK Not all instruments support compliance!
         # TODO Implement instrument capabilities to lock not supported inputs
         #
-        if general_widget.is_smu_enabled():
+        if general_widget.is_role_enabled("smu"):
             ...
-        elif general_widget.is_elm_enabled():
-            role = self.main_window.find_role("ELM")
+        elif general_widget.is_role_enabled("elm"):
+            role = self.main_window.find_role("elm")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_elm2_enabled():
-            role = self.main_window.find_role("ELM2")
+        elif general_widget.is_role_enabled("elm2"):
+            role = self.main_window.find_role("elm2")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_lcr_enabled():
-            role = self.main_window.find_role("LCR")
+        elif general_widget.is_role_enabled("lcr"):
+            role = self.main_window.find_role("lcr")
             if role and role.resource_widget.model() in [
                 "K595",
                 "E4980A",
@@ -1012,7 +1009,7 @@ class Controller(QtCore.QObject):
 
         # Prepare role drivers
         for role in self.main_window.roles():
-            measurement.register_instrument(role.name().lower())
+            measurement.register_instrument(role.name())
 
         measurement.failed_event.subscribe(self.failed.emit)
 
@@ -1090,7 +1087,7 @@ class Controller(QtCore.QObject):
         )
 
     def on_lcr_perform_correction(self) -> None:
-        role = self.main_window.find_role("LCR")
+        role = self.main_window.find_role("lcr")
         if role is None:
             return
         model = role.model()
