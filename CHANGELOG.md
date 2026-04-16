@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.3] - 2026-04-16
+
+### Fixed
+
+- RPC `status` method always returned state `idle` regardless of actual operation (#155).
+
 ## [0.24.2] - 2026-04-15
 
 ### Fixed
@@ -506,7 +512,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.24.2...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.24.3...HEAD
+[0.24.3]: https://github.com/hephy-dd/diode-measurement/compare/0.24.2...0.24.3
 [0.24.2]: https://github.com/hephy-dd/diode-measurement/compare/0.24.1...0.24.2
 [0.24.1]: https://github.com/hephy-dd/diode-measurement/compare/0.24.0...0.24.1
 [0.24.0]: https://github.com/hephy-dd/diode-measurement/compare/0.23.2...0.24.0
