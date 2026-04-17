@@ -131,3 +131,11 @@ class DiodeMeasurementClient:
             params["waiting_time"] = waiting_time
 
         self.query("change_voltage", params)
+
+    def instrument_get(self, instrument: str) -> dict[str, Any]:
+        params = {"instrument": instrument}
+        return self.query("instrument.get", params).get("result", {})
+
+    def instrument_update(self, instrument: str, options: dict[str, Any]) -> dict[str, Any]:
+        params = {"instrument": instrument, "options": options}
+        return self.query("instrument.update", params).get("result", {})

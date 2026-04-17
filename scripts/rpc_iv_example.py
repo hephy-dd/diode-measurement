@@ -12,6 +12,12 @@ print("Waiting for 'idle' state...")
 while client.current_state() != "idle":
     time.sleep(1)
 
+# Update an instrument's options
+options = client.instrument_get("smu").get("options", {})
+options["filter.enable"] = True
+options["filter.count"] = 25
+client.instrument_update("smu", options)
+
 # Start a measurement
 print("Starting measurement...")
 client.start(
