@@ -1,4 +1,4 @@
-from diode_measurement.resource import Resource
+from diode_measurement.core.resource import Resource
 
 
 def test_resource():

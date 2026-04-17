@@ -9,7 +9,7 @@ import logging
 import math
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from concurrent.futures import Future
 from queue import Queue, Empty
 from collections.abc import Callable
@@ -70,7 +70,7 @@ class ChangeVoltageEvent:
 @dataclass
 class StateEvent:
     def __call__(self, controller: Controller) -> dict[str, Any]:
-        return controller.snapshot()
+        return asdict(controller.snapshot())
 
 
 @dataclass

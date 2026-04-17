@@ -1,6 +1,8 @@
+import time
+
 import pytest
 
-from diode_measurement.core import utils
+from diode_measurement.core.timers import IntervalTimer
 
 
 class FakeClock:
@@ -17,17 +19,17 @@ class FakeClock:
 @pytest.fixture
 def clock(monkeypatch):
     clock = FakeClock()
-    monkeypatch.setattr(utils.time, "monotonic", clock)
+    monkeypatch.setattr(time, "monotonic", clock)
     return clock
 
 
 def test_negative_interval():
     with pytest.raises(ValueError):
-        utils.IntervalTimer(-1)
+        IntervalTimer(-1)
 
 
 def test_expiration(clock):
-    t = utils.IntervalTimer(10)
+    t = IntervalTimer(10)
 
     assert not t
 
@@ -36,7 +38,7 @@ def test_expiration(clock):
 
 
 def test_reset(clock):
-    t = utils.IntervalTimer(5)
+    t = IntervalTimer(5)
 
     clock.advance(6)
     assert t
@@ -46,7 +48,7 @@ def test_reset(clock):
 
 
 def test_remaining(clock):
-    t = utils.IntervalTimer(10)
+    t = IntervalTimer(10)
 
     clock.advance(3)
     assert t.remaining() == 7
@@ -56,6 +58,6 @@ def test_remaining(clock):
 
 
 def test_zero_interval(clock):
-    t = utils.IntervalTimer(0)
+    t = IntervalTimer(0)
     assert t
     assert t.remaining() == 0

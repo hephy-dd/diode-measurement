@@ -3,18 +3,18 @@ import os
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from . import __version__
-from .core.plugin import PluginRegistry
-from .controller import Controller
-from .gui.mainwindow import MainWindow
+from .. import __version__
+from ..core.plugin import PluginRegistry
+from ..controller import Controller
+from ..plugins import RPCServerPlugin, ScreenshotPlugin
 
-from .plugins import RPCServerPlugin, ScreenshotPlugin
+from .mainwindow import MainWindow
 
 __all__ = ["bootstrap"]
 
 logger = logging.getLogger(__name__)
 
-PACKAGE_PATH = os.path.realpath(os.path.dirname(__file__))
+PACKAGE_PATH = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 ASSETS_PATH = os.path.join(PACKAGE_PATH, "assets")
 
 

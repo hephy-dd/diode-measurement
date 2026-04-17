@@ -1,5 +1,5 @@
 import threading
-from collections.abc import Iterator
+from collections.abc import Mapping, Iterator
 from typing import Any
 
 __all__ = ["Cache"]
@@ -23,10 +23,10 @@ class Cache:
     def __iter__(self) -> Iterator:
         return iter(self._items)
 
-    def get(self, key: str, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         return self._items.get(key, default)
 
-    def update(self, items: dict[str, Any]) -> None:
+    def update(self, items: Mapping[str, Any]) -> None:
         self._items.update(items)
 
     def clear(self) -> None:

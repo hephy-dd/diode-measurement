@@ -7,7 +7,7 @@ import traceback
 from PySide6 import QtWidgets
 
 from . import __version__
-from .application import bootstrap
+from .gui.application import bootstrap
 from .gui.widgets import show_exception
 
 __all__ = ["main"]

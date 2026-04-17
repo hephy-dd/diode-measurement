@@ -4,6 +4,7 @@ from typing import Iterable, Optional
 from PySide6 import QtCore, QtWidgets
 
 from ..utils import convert
+from ..core.measurement import MeasurementSpec
 
 __all__ = ["GeneralWidget"]
 
@@ -233,17 +234,17 @@ class GeneralWidget(QtWidgets.QWidget):
         self.current_compliance_spin_box.setEnabled(False)
         self.continue_in_compliance_check_box.setEnabled(False)
 
-    def add_measurement(self, spec: dict) -> None:
-        self.measurement_combo_box.addItem(spec.get("title", ""), spec)
+    def add_measurement(self, spec: MeasurementSpec) -> None:
+        self.measurement_combo_box.addItem(spec.title, spec)
 
-    def current_measurement(self) -> Optional[dict]:
+    def current_measurement(self) -> Optional[MeasurementSpec]:
         return self.measurement_combo_box.currentData()
 
     def set_current_measurement(self, measurement_id: str) -> None:
         for index in range(self.measurement_combo_box.count()):
-            data = self.measurement_combo_box.itemData(index)
-            if isinstance(data, dict):
-                if data.get("id") == measurement_id:
+            spec = self.measurement_combo_box.itemData(index)
+            if isinstance(spec, MeasurementSpec):
+                if spec.id == measurement_id:
                     self.measurement_combo_box.setCurrentIndex(index)
                     return
 

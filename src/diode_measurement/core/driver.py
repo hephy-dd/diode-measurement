@@ -3,7 +3,7 @@ from typing import Any, Iterator, Optional, Protocol
 
 from comet.driver.generic import InstrumentError
 
-from ..resource import Resource
+from .resource import Resource
 
 logger = logging.getLogger(__name__)
 

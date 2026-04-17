@@ -1,25 +1,46 @@
 import contextlib
 import logging
 import time
+from dataclasses import dataclass
 from collections.abc import Callable
 from typing import Any, Optional
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange
 
-from ..resource import Resource, AutoReconnectResource
 from ..drivers import driver_factory
 from ..state import State, FSMState
 
 from .actor import Actor
 from .driver import TCU
-from .utils import EventHandler, IntervalTimer
+from .events import EventHandler
+from .resource import Resource, AutoReconnectResource
+from .timers import IntervalTimer
 
-__all__ = ["Measurement", "RangeMeasurement"]
+__all__ = ["MeasurementSpec", "Measurement", "RangeMeasurement"]
 
 logger = logging.getLogger(__name__)
 
 ReadingType = dict[str, Any]
+
+
+@dataclass
+class MeasurementSpec:
+    id: str
+    type: str
+    title: str
+    instruments: list[str]
+    default_instruments: list[str]
+    default_begin_voltage: float
+    default_end_voltage: float
+    default_step_voltage: float
+    default_waiting_time: float
+    default_current_compliance: float
+    voltage_unit: str
+    current_compliance_unit: str
+    default_bias_voltage: float = 0.0
+    default_waiting_time_continuous: float = 0.0
+    is_continuous: bool = False
 
 
 class TCUActor(Actor):

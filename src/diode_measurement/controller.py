@@ -4,6 +4,7 @@ import os
 import threading
 import time
 import queue
+from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Mapping
 from typing import Any, Optional
@@ -12,6 +13,7 @@ from PySide6 import QtCore, QtWidgets, QtStateMachine
 
 from comet.utils import safe_filename
 
+from .core.cache import Cache
 from .core.measurement import ReadingType, Measurement
 
 # Source meter units
@@ -55,8 +57,7 @@ from .utils import get_resource, format_metric
 from .utils import get_bool, get_int, get_float, get_str, get_dict
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
-from .cache import Cache
-from .settings import DEFAULTS
+from .settings import MeasurementSpec, MEASUREMENT_SPECS
 from .state import State, FSMState
 
 __all__ = ["Controller"]
@@ -68,6 +69,22 @@ MEASUREMENTS: dict = {
     "iv_bias": IVBiasMeasurement,
     "cv": CVMeasurement,
 }
+
+
+@dataclass
+class Snapshot:
+    state: FSMState
+    measurement_type: Optional[str]
+    sample: Optional[str]
+    source_voltage: Optional[float]
+    smu_voltage: Optional[float]
+    smu_current: Optional[float]
+    smu2_voltage: Optional[float]
+    smu2_current: Optional[float]
+    elm_current: Optional[float]
+    elm2_current: Optional[float]
+    lcr_capacity: Optional[float]
+    temperature: Optional[float]
 
 
 class Controller(QtCore.QObject):
@@ -98,6 +115,8 @@ class Controller(QtCore.QObject):
 
         self.state: State = State()
         self.cache: Cache = Cache()
+
+        self.measurement_specs: list[MeasurementSpec] = MEASUREMENT_SPECS  # TODO
 
         # Controller
         self.iv_plots_controller = IVPlotsController(self)
@@ -175,8 +194,9 @@ class Controller(QtCore.QObject):
 
         general_widget = main_window.general_widget
 
-        for spec in DEFAULTS:
+        for spec in self.measurement_specs:
             general_widget.add_measurement(spec)
+
         general_widget.measurement_combo_box.currentIndexChanged.connect(
             self.on_measurement_changed
         )
@@ -275,32 +295,35 @@ class Controller(QtCore.QObject):
             except Exception as exc:
                 logger.exception(exc)
 
-    def snapshot(self):
-        """Return application state snapshot."""
+    def snapshot(self) -> Snapshot:
+        """Return thread save application state snapshot."""
         with self.cache:
-            snapshot = {}
-            snapshot["state"] = self.cache.get("fsm_state", FSMState.IDLE)  # TODO
-            snapshot["measurement_type"] = self.cache.get("measurement_type")
-            snapshot["sample"] = self.cache.get("sample")
-            snapshot["source_voltage"] = self.cache.get("source_voltage")
-            snapshot["smu_voltage"] = self.cache.get("smu_voltage")
-            snapshot["smu_current"] = self.cache.get("smu_current")
-            snapshot["smu2_voltage"] = self.cache.get("smu2_voltage")
-            snapshot["smu2_current"] = self.cache.get("smu2_current")
-            snapshot["elm_current"] = self.cache.get("elm_current")
-            snapshot["elm2_current"] = self.cache.get("elm2_current")
-            snapshot["lcr_capacity"] = self.cache.get("lcr_capacity")
-            snapshot["temperature"] = self.cache.get("dmm_temperature")
-            return snapshot
+            return Snapshot(
+                state=self.cache.get("fsm_state", FSMState.IDLE),  # TODO
+                measurement_type=self.cache.get("measurement_type"),
+                sample=self.cache.get("sample"),
+                source_voltage=self.cache.get("source_voltage"),
+                smu_voltage=self.cache.get("smu_voltage"),
+                smu_current=self.cache.get("smu_current"),
+                smu2_voltage=self.cache.get("smu2_voltage"),
+                smu2_current=self.cache.get("smu2_current"),
+                elm_current=self.cache.get("elm_current"),
+                elm2_current=self.cache.get("elm2_current"),
+                lcr_capacity=self.cache.get("lcr_capacity"),
+                temperature=self.cache.get("dmm_temperature"),
+            )
 
     def prepare_state(self) -> dict[str, Any]:
         state: dict[str, Any] = {}
 
         general_widget = self.main_window.general_widget
-        current_measurement = general_widget.current_measurement() or {}
+        current_measurement = general_widget.current_measurement()
+
+        if current_measurement is None:
+            raise ValueError("No measurement selected.")
 
         state["sample"] = general_widget.sample_name()
-        state["measurement_type"] = current_measurement.get("type")
+        state["measurement_type"] = current_measurement.type
         state["timestamp"] = time.time()
 
         state["continuous"] = self.main_window.is_continuous()
@@ -664,7 +687,7 @@ class Controller(QtCore.QObject):
             self.is_exception_dialog_active = False
 
     @QtCore.Slot(dict)
-    def on_update(self, data: dict) -> None:
+    def on_update(self, data: Mapping[str, Any]) -> None:
         cache = {}
         if "fsm_state" in data:
             cache.update({"fsm_state": data["fsm_state"]})
@@ -731,98 +754,83 @@ class Controller(QtCore.QObject):
 
     @QtCore.Slot(int)
     def on_measurement_changed(self, index: int) -> None:
-        spec: dict[str, Any] = DEFAULTS[index]
+        if index >= len(self.measurement_specs):
+            logger.error("Invalid measurement spec index: %d", index)
+            return
 
-        if spec.get("type") == "iv":
+        spec: MeasurementSpec = self.measurement_specs[index]
+
+        if spec.type == "iv":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
             self.main_window.continuous_action.setEnabled(True)
             self.main_window.general_widget.bias_group_box.setEnabled(False)
             self.main_window.general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
-        elif spec.get("type") == "iv_bias":
+        elif spec.type == "iv_bias":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
             self.main_window.continuous_action.setEnabled(True)
             self.main_window.general_widget.bias_group_box.setEnabled(True)
             self.main_window.general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
-        elif spec.get("type") == "cv":
+        elif spec.type == "cv":
             self.main_window.set_data_widget(self.cv_plots_controller.data_widget)
             self.main_window.continuous_action.setEnabled(False)
             self.main_window.general_widget.bias_group_box.setEnabled(False)
             self.main_window.general_widget.continuous_group_box.setEnabled(False)
         self.update_continuous_option()
 
-        instruments: list[str] = spec.get("instruments", [])
-
-        enabled = "SMU" in instruments
+        enabled = "smu" in spec.instruments
         self.main_window.general_widget.set_role_active("smu", enabled)
         self.main_window.smu_group_box.setEnabled(enabled)
         self.main_window.smu_group_box.setVisible(enabled)
 
-        enabled = "SMU2" in instruments
+        enabled = "smu2" in spec.instruments
         self.main_window.general_widget.set_role_active("smu2", enabled)
         self.main_window.smu2_group_box.setEnabled(enabled)
         self.main_window.smu2_group_box.setVisible(enabled)
 
-        enabled = "ELM" in instruments
+        enabled = "elm" in spec.instruments
         self.main_window.general_widget.set_role_active("elm", enabled)
         self.main_window.elm_group_box.setEnabled(enabled)
         self.main_window.elm_group_box.setVisible(enabled)
 
-        enabled = "ELM2" in instruments
+        enabled = "elm2" in spec.instruments
         self.main_window.general_widget.set_role_active("elm2", enabled)
         self.main_window.elm2_group_box.setEnabled(enabled)
         self.main_window.elm2_group_box.setVisible(enabled)
 
-        enabled = "LCR" in instruments
+        enabled = "lcr" in spec.instruments
         self.main_window.general_widget.set_role_active("lcr", enabled)
         self.main_window.lcr_group_box.setEnabled(enabled)
         self.main_window.lcr_group_box.setVisible(enabled)
 
-        default_instruments: list[str] = spec.get("default_instruments") or []
-
         general_widget = self.main_window.general_widget
 
-        enabled = "SMU" in default_instruments
+        enabled = "smu" in spec.default_instruments
         general_widget.set_role_enabled("smu", enabled)
 
-        enabled = "SMU2" in default_instruments
+        enabled = "smu2" in spec.default_instruments
         general_widget.set_role_enabled("smu2", enabled)
 
-        enabled = "ELM" in default_instruments
+        enabled = "elm" in spec.default_instruments
         general_widget.set_role_enabled("elm", enabled)
 
-        enabled = "ELM2" in default_instruments
+        enabled = "elm2" in spec.default_instruments
         general_widget.set_role_enabled("elm2", enabled)
 
-        enabled = "LCR" in default_instruments
+        enabled = "lcr" in spec.default_instruments
         general_widget.set_role_enabled("lcr", enabled)
 
-        voltage_unit = spec.get("voltage_unit", "V")
-        general_widget.set_voltage_unit(voltage_unit)
-
-        begin_voltage = spec.get("default_begin_voltage", 0.0)
-        general_widget.set_begin_voltage(begin_voltage)
-
-        end_voltage = spec.get("default_end_voltage", 0.0)
-        general_widget.set_end_voltage(end_voltage)
-
-        step_voltage = spec.get("default_step_voltage", 0.0)
-        general_widget.set_step_voltage(step_voltage)
-
-        waiting_time = spec.get("default_waiting_time", 1.0)
-        general_widget.set_waiting_time(waiting_time)
-
-        waiting_time_continuous = spec.get("default_waiting_time_continuous", 1.0)
-        general_widget.set_waiting_time_continuous(waiting_time_continuous)
-
-        current_compliance_unit = spec.get("current_compliance_unit", "uA")
-        general_widget.set_current_compliance_unit(current_compliance_unit)
-
-        current_compliance = spec.get("default_current_compliance", 0.0)
-        general_widget.set_current_compliance(current_compliance)
+        general_widget.set_voltage_unit(spec.voltage_unit)
+        general_widget.set_begin_voltage(spec.default_begin_voltage)
+        general_widget.set_end_voltage(spec.default_end_voltage)
+        general_widget.set_step_voltage(spec.default_step_voltage)
+        general_widget.set_waiting_time(spec.default_waiting_time)
+        general_widget.set_waiting_time_continuous(spec.default_waiting_time_continuous)
+        general_widget.set_current_compliance_unit(spec.current_compliance_unit)
+        general_widget.set_current_compliance(spec.default_current_compliance)
 
         self.on_instruments_changed()
 
@@ -927,12 +935,10 @@ class Controller(QtCore.QObject):
 
     def update_continuous_option(self) -> None:
         # Tweak continuous option
-        validTypes = ["iv", "iv_bias"]
         measurement = self.main_window.general_widget.current_measurement()
         enabled = False
-        if measurement:
-            measurementType = measurement.get("type")
-            enabled = measurementType in validTypes
+        if measurement is not None:
+            enabled = measurement.is_continuous
         self.main_window.continuous_check_box.setEnabled(enabled)
 
     def create_filename(self) -> str:
@@ -1077,7 +1083,7 @@ class Controller(QtCore.QObject):
     def request_change_voltage(
         self, end_voltage: float, step_voltage: float, waiting_time: float
     ) -> None:
-        state = self.snapshot().get("state")
+        state = self.snapshot().state
         if state != FSMState.CONTINUOUS:
             raise RuntimeError(
                 f"Cannot change voltage in state '{state.value}'. Expected 'continuous'."
