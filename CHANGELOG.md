@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-04-17
+
 ### Added
 
 - TCU (Temperature Control Unit) role and support for AC3 Chiller (#136).
 - Per-Instrument reset options (#137).
+- Configure instrument options using RPC server (#135, #156).
 
 ### Changed
 
@@ -20,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Global reset instruments option (#137).
+
 ## [0.24.3] - 2026-04-16
 
 ### Fixed
@@ -525,7 +529,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.24.3...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.25.0...HEAD
+[0.25.0]: https://github.com/hephy-dd/diode-measurement/compare/0.24.3...0.25.0
 [0.24.3]: https://github.com/hephy-dd/diode-measurement/compare/0.24.2...0.24.3
 [0.24.2]: https://github.com/hephy-dd/diode-measurement/compare/0.24.1...0.24.2
 [0.24.1]: https://github.com/hephy-dd/diode-measurement/compare/0.24.0...0.24.1
