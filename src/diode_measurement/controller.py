@@ -313,6 +313,35 @@ class Controller(QtCore.QObject):
                 temperature=self.cache.get("dmm_temperature"),
             )
 
+    def get_role_model(self, role: str) -> str:
+        for role_ in self.main_window.roles():
+            if role_.name() == role:
+                return role_.model()
+        raise KeyError("No such role: {role!r}")
+
+    def get_role_config(self, role: str) -> dict[str, Any]:
+        for role_ in self.main_window.roles():
+            if role_.name() == role:
+                return role_.current_config()
+        raise KeyError("No such role: {role!r}")
+
+    def update_role_config(self, role: str, options: Mapping[str, Any]) -> dict[str, Any]:
+        for role_ in self.main_window.roles():
+            if role_.name() == role:
+                config = role_.current_config()
+                for key in options:
+                    if key not in config:
+                        logger.warning("Ignoring invalid config key %r for role %r", key, role)
+                for key in config:
+                    if key in options:
+                        config[key] = options[key]
+                # Update models configs
+                configs = role_.configs()
+                configs[role_.model()] = config
+                role_.set_configs(configs)
+                return role_.current_config()
+        raise KeyError("No such role: {role!r}")
+
     def prepare_state(self) -> dict[str, Any]:
         state: dict[str, Any] = {}
 

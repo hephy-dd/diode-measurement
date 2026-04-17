@@ -264,7 +264,7 @@ Request an application state snapshot.
 {"jsonrpc": "2.0", "method": "state", "id": 0}
 ```
 
-This will return application state parameters.
+This returns application state parameters.
 
 ```json
 {
@@ -286,6 +286,96 @@ This will return application state parameters.
   "id": 0
 }
 ```
+
+#### Get Instrument Options
+
+Get current instrument options using method `instrument.get`.
+
+Required parameter is:
+
+- `instrument` (one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "instrument.get",
+  "params": {
+    "instrument": "smu"
+  },
+  "id": 1
+}
+```
+
+This returns the current model's instrument options.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "instrument": "smu",
+    "model": "K2410",
+    "options": {
+      "filter.enable": false,
+      "filter.count": 10,
+      "filter.mode": "REP",
+      "nplc": 1.0,
+      "route.terminals": "REAR",
+      "system.breakdown.protection": false,
+    }
+  },
+  "id": 1
+}
+```
+
+**Note:** option keys might change in future releases.
+
+#### Update Instrument Options
+
+Update current instrument options using method `instrument.update`.
+
+
+Required parameters are:
+
+- `instrument` (one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+- `options` (specific to selected instrument model)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "instrument.update",
+  "params": {
+    "instrument": "smu",
+    "options" : {
+      "filter.enable": true,
+      "filter.count": 25,
+    }
+  },
+  "id": 2
+}
+```
+
+This returns the current model's updated instrument options.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "instrument": "smu",
+    "model": "K2410",
+    "options": {
+      "filter.enable": true,
+      "filter.count": 25,
+      "filter.mode": "REP",
+      "nplc": 1.0,
+      "route.terminals": "REAR",
+      "system.breakdown.protection": false,
+    }
+  },
+  "id": 2
+}
+```
+
+**Note:** option keys might change in future releases.
 
 ### States
 
