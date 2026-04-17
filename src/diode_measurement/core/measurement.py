@@ -643,7 +643,7 @@ class RangeMeasurement(Measurement):
     def acquire_continuous_reading(self) -> None: ...
 
     def ramp_to_begin(self) -> None:
-        source_voltage: float = self.state.source_voltage  # type: ignore
+        source_voltage = self.get_source_voltage()
         voltage_begin: float = self.state.voltage_begin
         voltage_end: float = self.state.voltage_end
         voltage_step: float = 5.0
@@ -756,7 +756,7 @@ class RangeMeasurement(Measurement):
     def ramp_to_continuous(
         self, end_voltage: float, step_voltage: float, waiting_time: float
     ) -> None:
-        source_voltage: float = self.state.source_voltage  # type: ignore
+        source_voltage: float = self.get_source_voltage()
 
         ramp: LinearRange = LinearRange(source_voltage, end_voltage, step_voltage)
         estimate: Estimate = Estimate(len(ramp))
