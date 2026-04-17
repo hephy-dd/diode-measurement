@@ -196,11 +196,20 @@ Start notification starts a new measurement.
 {"jsonrpc": "2.0", "method": "start"}
 ```
 
-Optional parameters are `continuous` (Boolean), `auto_reconnect` (Boolean),
-`begin_voltage` (Volt), `end_voltage` (Volt), `step_voltage` (Volt),
-`waiting_time` (seconds), `compliance` (Ampere) and `waiting_time_continuous`
-(seconds). Specified values will be applied to the user interface before
-starting the measurement.
+Optional parameters are:
+
+- `continuous` (Boolean)
+- `auto_reconnect` (Boolean)
+- `measurement_type` (one of `iv`, `iv_bias`, `cv_diode`, `cv_mos`)
+- `measurement_instruments` (list of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+- `begin_voltage` (Volt)
+- `end_voltage` (Volt)
+- `step_voltage` (Volt),
+- `waiting_time` (seconds)
+- `compliance` (Ampere)
+- `waiting_time_continuous` (seconds).
+
+**Note:** specified values are applied to the user interface before starting a measurement.
 
 ```json
 {
@@ -226,10 +235,14 @@ Stop notification stops an active measurement.
 
 Change voltage notification applies only during continuous It measurement.
 
-Required parameter `end_voltage` (Volt).
+Required parameters are:
 
-Optional parameters with default values are `step_voltage` (default is `1.0`
-Volt) and `waiting_time` (default is `1.0` seconds).
+- `end_voltage` (Volt)
+
+Optional parameters are:
+
+- `step_voltage` (Volt, default is `1.0`)
+- `waiting_time` (seconds, default is `1.0`)
 
 ```json
 {
@@ -276,8 +289,13 @@ This will return application state parameters.
 
 ### States
 
-Following states are exposed by the state snapshot: `idle`, `configure`,
-`ramping`, `continuous`, `stopping`.
+Following states are exposed by the state snapshot:
+
+- `idle`
+- `configure`
+- `ramping`
+- `continuous`
+- `stopping`
 
 ![State diagram](docs/images/rpc_states.png)
 
