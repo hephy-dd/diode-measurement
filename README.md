@@ -301,26 +301,51 @@ Following states are exposed by the state snapshot:
 
 ### Example
 
-Example using [netcat](https://en.wikipedia.org/wiki/Netcat) to initiate a new
-measurement and applies a new end voltage.
+#### Using netcat
+
+Example using [netcat](https://en.wikipedia.org/wiki/Netcat) to start a new
+measurement and set a target end voltage:
 
 ```bash
-echo '{"jsonrpc": "2.0", "method": "start", "params": {"end_voltage": 100.0}}' | nc localhost 8000
+echo '{"jsonrpc": "2.0", "method": "start", "params": {"end_voltage": 100.0}}' | nc localhost 4000
 ```
 
-Example using Python to read application state from TCP server.
+#### Using Python Socket
+
+Example using Python to query the application state from the TCP server:
 
 ```python
 import json
 import socket
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.connect(('localhost', 8000))
+    sock.connect(("localhost", 4000))
+
     request = {
-      "jsonrpc": "2.0",
-      "method": "state",
-      "id": None
+        "jsonrpc": "2.0",
+        "method": "state",
+        "id": None,
     }
-    sock.sendall(json.dumps(request).encode('utf-8'))
-    print(sock.recv(4096).decode('utf-8'))
+
+    sock.sendall(json.dumps(request).encode("utf-8"))
+    print(sock.recv(4096).decode("utf-8"))
 ```
+
+#### Using Python Client
+
+Example using the `DiodeMeasurementClient`:
+
+```python
+from rpc_client import DiodeMeasurementClient
+
+client = DiodeMeasurementClient("localhost", 4000)
+
+client.start(measurement_type="iv", end_voltage=100.0)
+
+while client.current_state() != "idle":
+    print(client.state())
+    time.sleep(1)
+```
+
+See [scripts](scripts/) for a reference client implementation and example scripts
+demonstrating how to use it.

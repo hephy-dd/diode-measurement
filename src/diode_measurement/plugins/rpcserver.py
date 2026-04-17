@@ -379,7 +379,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         settings.beginGroup("tcpServer")
         enabled = get_bool(settings.value("enabled"), False)
         hostname = get_str(settings.value("hostname"), "")
-        port = get_int(settings.value("port"), 8000)
+        port = get_int(settings.value("port"), 4000)
         settings.endGroup()
         self.rpc_widget.set_server_enabled(enabled)
         self.rpc_widget.set_hostname(hostname)
