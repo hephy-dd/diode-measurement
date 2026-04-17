@@ -74,6 +74,35 @@ class StateEvent:
 
 
 @dataclass
+class InstrumentGetEvent:
+    instrument: str
+
+    def __call__(self, controller: Controller) -> dict[str, Any]:
+        model = controller.get_role_model(self.instrument)
+        options = controller.get_role_config(self.instrument)
+        return {
+            "instrument": self.instrument,
+            "model": model,
+            "options": options,
+         }
+
+
+@dataclass
+class InstrumentUpdateEvent:
+    instrument: str
+    options: dict[str, Any]
+
+    def __call__(self, controller: Controller) -> dict[str, Any]:
+        model = controller.get_role_model(self.instrument)
+        options = controller.update_role_config(self.instrument, self.options)
+        return {
+            "instrument": self.instrument,
+            "model": model,
+            "options": options,
+         }
+
+
+@dataclass
 class Envelope:
     event: Any
     future: Future
@@ -127,6 +156,8 @@ class RPCHandler:
         self.dispatcher["stop"] = self.on_stop
         self.dispatcher["change_voltage"] = self.on_change_voltage
         self.dispatcher["state"] = self.on_state
+        self.dispatcher["instrument.get"] = self.on_instrument_get
+        self.dispatcher["instrument.update"] = self.on_instrument_update
         self.manager = jsonrpc.JSONRPCResponseManager()
 
     def handle(self, request) -> dict[str, Any]:
@@ -188,6 +219,14 @@ class RPCHandler:
     def on_state(self) -> dict[str, Any]:
         result = self.event_handler.notify(StateEvent()).result(self.timeout)
         return json_dict(result)
+
+    def on_instrument_get(self, instrument: str) -> dict[str, Any]:
+        event = InstrumentGetEvent(instrument=instrument)
+        return self.event_handler.notify(event).result(self.timeout)
+
+    def on_instrument_update(self, instrument: str, options: dict[str, Any]) -> dict[str, Any]:
+        event = InstrumentUpdateEvent(instrument=instrument, options=options)
+        return self.event_handler.notify(event).result(self.timeout)
 
 
 class AsyncioTCPServer:
