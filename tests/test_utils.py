@@ -5,14 +5,6 @@ import pytest
 from diode_measurement import utils
 
 
-def test_get_resource():
-    assert utils.get_resource("16") == ("GPIB0::16::INSTR", "")
-    assert utils.get_resource("GPIB::13::INSTR") == ("GPIB::13::INSTR", "")
-    assert utils.get_resource("localhost:10001") == ("TCPIP0::localhost::10001::SOCKET", "@py")
-    assert utils.get_resource("192.168.0.1:10002") == ("TCPIP0::192.168.0.1::10002::SOCKET", "@py")
-    assert utils.get_resource("TCPIP::192.168.0.1::1080::SOCKET") == ("TCPIP::192.168.0.1::1080::SOCKET", "@py")
-
-
 def test_format_metric():
     assert utils.format_metric(0.0042, "A") == "4.200 mA"
     assert utils.format_metric(0.0042, "A", 1) == "4.2 mA"

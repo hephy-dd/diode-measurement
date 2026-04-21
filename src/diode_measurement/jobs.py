@@ -6,13 +6,14 @@ from dataclasses import dataclass
 from collections.abc import Callable, Mapping
 from typing import Any, Optional, Protocol
 
+from .core.resource import parse_resource, Resource
+
 from .measurements import Measurement
 from .measurements.iv import IVMeasurement
 from .measurements.iv_bias import IVBiasMeasurement
 from .measurements.cv import CVMeasurement
 
 from .drivers import K4215
-from .utils import open_resource
 from .writer import Writer
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,10 @@ class K4215PerformCorrectionJob:
                     time.sleep(interval)
             raise TimeoutError("Timeout expired before cable correction completed.")
 
-        with open_resource(self.resource_name, self.termination, self.timeout) as res:
+        resource_name, visa_library = parse_resource(self.resource_name)
+        options = dict(termination=self.termination, timeout=self.timeout * 1e3)
+
+        with Resource(resource_name, visa_library, **options) as res:
             instr = K4215(res)
 
             if self.open_correction:

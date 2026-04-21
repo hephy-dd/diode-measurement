@@ -1,14 +1,9 @@
-import re
 from collections.abc import Iterable, Mapping
 from typing import Any, Optional
-
-import pyvisa
 
 from comet.utils import ureg, auto_scale
 
 __all__ = [
-    "get_resource",
-    "open_resource",
     "format_metric",
     "format_switch",
     "limits",
@@ -19,41 +14,6 @@ __all__ = [
     "get_str",
     "get_dict",
 ]
-
-
-def get_resource(resource_name: str) -> tuple[str, str]:
-    """Create valid VISA resource name for short descriptors."""
-    resource_name = resource_name.strip()
-
-    m = re.match(r"^(\d+)$", resource_name)
-    if m:
-        resource_name = f"GPIB0::{m.group(1)}::INSTR"
-
-    m = re.match(r"^(\d+\.\d+\.\d+\.\d+)\:(\d+)$", resource_name)
-    if m:
-        resource_name = f"TCPIP0::{m.group(1)}::{m.group(2)}::SOCKET"
-
-    m = re.match(r"^(\w+)\:(\d+)$", resource_name)
-    if m:
-        resource_name = f"TCPIP0::{m.group(1)}::{m.group(2)}::SOCKET"
-
-    visa_library = ""
-    if resource_name.startswith("TCPIP"):
-        visa_library = "@py"
-
-    return resource_name, visa_library
-
-
-def open_resource(resource_name: str, termination: str, timeout: float):
-    resource_name, visa_library = get_resource(resource_name)
-    timeout_millisecs = timeout * 1e3
-    rm = pyvisa.ResourceManager(visa_library)
-    return rm.open_resource(
-        resource_name=resource_name,
-        read_termination=termination,
-        write_termination=termination,
-        timeout=timeout_millisecs,
-    )
 
 
 def format_metric(value: float, unit: str, decimals: int = 3) -> str:

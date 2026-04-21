@@ -2,8 +2,8 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
+from ..core.resource import open_resource
 from ..drivers import driver_factory
-from ..utils import open_resource
 
 __all__ = ["ResourceWidget"]
 

@@ -15,6 +15,7 @@ from comet.utils import safe_filename
 
 from .core.cache import Cache
 from .core.measurement import ReadingType, Measurement
+from .core.resource import parse_resource
 
 # Source meter units
 from .gui.panels import K237Panel
@@ -53,7 +54,7 @@ from .measurements import IVMeasurement, IVBiasMeasurement, CVMeasurement
 
 from .reader import Reader
 
-from .utils import get_resource, format_metric
+from .utils import format_metric
 from .utils import get_bool, get_int, get_float, get_str, get_dict
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
@@ -371,7 +372,7 @@ class Controller(QtCore.QObject):
         for role in self.main_window.roles():
             key = role.name()
             resource = role.resource_widget.resource_name()
-            resource_name, visa_library = get_resource(resource)
+            resource_name, visa_library = parse_resource(resource)
             config = roles.setdefault(key, {})
             config.update(
                 {
