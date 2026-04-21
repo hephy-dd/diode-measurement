@@ -180,7 +180,7 @@ class Controller(QtCore.QObject):
         role.add_instrument_panel(K707BPanel())
         role.add_instrument_panel(K708BPanel())
 
-        main_window.import_action.triggered.connect(lambda: self.on_import_file())
+        main_window.import_action.triggered.connect(self.on_import_file)
 
         main_window.start_action.triggered.connect(self.on_start_measurement)
         main_window.start_button.clicked.connect(main_window.start_action.trigger)
@@ -654,7 +654,7 @@ class Controller(QtCore.QObject):
                 if meta.get("measurement_type"):
                     for index in range(general_widget.measurement_combo_box.count()):
                         spec = general_widget.measurement_combo_box.itemData(index)
-                        if spec["type"] == meta.get("measurement_type"):
+                        if spec.type == meta.get("measurement_type"):
                             general_widget.measurement_combo_box.setCurrentIndex(index)
                             break
                 if meta.get("sample"):
