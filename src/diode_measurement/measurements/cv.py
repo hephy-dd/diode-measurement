@@ -4,7 +4,7 @@ import time
 
 from comet.utils import inverse_square
 
-from ..core.measurement import ReadingType, State, EventHandler, RangeMeasurement
+from ..core.measurement import ReadingType, RangeMeasurement
 
 __all__ = ["CVMeasurement"]
 
@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class CVMeasurement(RangeMeasurement):
-    def __init__(self, state: State) -> None:
-        super().__init__(state)
-        self.cv_reading_event: EventHandler = EventHandler()
+    def on_cv_reading(self, reading) -> None:
+        for writer in self.writers:
+            writer.write_cv_row(reading)
 
     def extend_cv_reading(self, reading: ReadingType) -> ReadingType:
         # Calcualte 1c^2 as c2_lcr
@@ -59,4 +59,4 @@ class CVMeasurement(RangeMeasurement):
                 "dmm_temperature": reading.get("t_dmm"),
             }
         )
-        self.cv_reading_event(reading)
+        self.on_cv_reading(reading)

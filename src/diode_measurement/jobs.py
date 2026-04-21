@@ -9,9 +9,6 @@ from typing import Any, Optional, Protocol
 from .core.resource import parse_resource, Resource
 
 from .measurements import Measurement
-from .measurements.iv import IVMeasurement
-from .measurements.iv_bias import IVBiasMeasurement
-from .measurements.cv import CVMeasurement
 
 from .drivers import K4215
 from .writer import Writer
@@ -60,30 +57,7 @@ class MeasurementJob:
 
                 fp = stack.enter_context(open(filename, "w", newline=""))
                 writer = self.create_writer(fp)
-                # TODO
-                # Note: using signals executes slots in main thread, should be worker thread
-                measurement.started_event.subscribe(
-                    lambda state=dict(measurement.state): writer.write_meta(state)
-                )
-                if isinstance(measurement, IVMeasurement):
-                    measurement.iv_reading_event.subscribe(
-                        lambda reading: writer.write_iv_row(reading)
-                    )
-                    measurement.it_reading_event.subscribe(
-                        lambda reading: writer.write_it_row(reading)
-                    )
-                if isinstance(measurement, IVBiasMeasurement):
-                    measurement.iv_reading_event.subscribe(
-                        lambda reading: writer.write_iv_bias_row(reading)
-                    )
-                    measurement.it_reading_event.subscribe(
-                        lambda reading: writer.write_it_bias_row(reading)
-                    )
-                if isinstance(measurement, CVMeasurement):
-                    measurement.cv_reading_event.subscribe(
-                        lambda reading: writer.write_cv_row(reading)
-                    )
-                measurement.finished_event.subscribe(lambda: writer.flush())
+                measurement.add_writer(writer)
             measurement.run()
 
 

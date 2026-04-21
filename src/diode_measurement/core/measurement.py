@@ -10,6 +10,7 @@ from comet.functions import LinearRange
 
 from ..drivers import driver_factory
 from ..state import State, FSMState
+from ..writer import Writer
 
 from .actor import Actor
 from .driver import TCU
@@ -88,13 +89,24 @@ class Measurement:
         self.state: State = state
         self.instruments: dict = {}
         self._instruments: dict = {}
-        self.started_event: EventHandler = EventHandler()
-        self.finished_event: EventHandler = EventHandler()
         self.failed_event: EventHandler = EventHandler()
         self.warning_event: EventHandler = EventHandler()
         self.update_event: EventHandler = EventHandler()
 
         self.tcu_actor: Optional[TCUActor] = None
+
+        self.writers: list[Writer] = []
+
+    def add_writer(self, writer: Writer) -> None:
+        self.writers.append(writer)
+
+    def on_started(self) -> None:
+        for writer in self.writers:
+            writer.write_meta(dict(self.state))
+
+    def on_finished(self) -> None:
+        for writer in self.writers:
+            writer.flush()
 
     def register_instrument(self, name: str) -> None:
         role = self.state.find_role(name)
@@ -144,7 +156,7 @@ class Measurement:
             logger.debug("run measurement...")
             self.set_fsm_state(FSMState.CONFIGURE)
             logger.debug("handle started callbacks...")
-            self.started_event()
+            self.on_started()
             logger.debug("handle started callbacks... done.")
             self.instruments.clear()
             with contextlib.ExitStack() as stack:
@@ -176,7 +188,7 @@ class Measurement:
             self.failed_event(exc)
         finally:
             logger.debug("handle finished callbacks...")
-            self.finished_event()
+            self.on_finished()
             logger.debug("handle finished callbacks... done.")
             self.instruments.clear()
             self.set_fsm_state(FSMState.IDLE)
@@ -186,8 +198,10 @@ class Measurement:
 class RangeMeasurement(Measurement):
     def __init__(self, state: State) -> None:
         super().__init__(state)
-        self.it_reading_event: EventHandler = EventHandler()
         self.it_change_voltage_ready_event: EventHandler = EventHandler()
+
+    def on_it_reading(self, reading) -> None:
+        ...
 
     # Interlock check
 
@@ -785,7 +799,7 @@ class RangeMeasurement(Measurement):
                 with self.it_reading_lock:
                     self.it_reading_queue.append(reading)
 
-            self.it_reading_event(reading)
+            self.on_it_reading(reading)
 
             self.update_event(
                 {

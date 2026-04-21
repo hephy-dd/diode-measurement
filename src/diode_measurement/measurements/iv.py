@@ -4,7 +4,7 @@ import time
 
 from comet.estimate import Estimate
 
-from ..core.measurement import ReadingType, State, EventHandler, RangeMeasurement
+from ..core.measurement import ReadingType, RangeMeasurement
 
 __all__ = ["IVMeasurement"]
 
@@ -12,9 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 class IVMeasurement(RangeMeasurement):
-    def __init__(self, state: State) -> None:
-        super().__init__(state)
-        self.iv_reading_event: EventHandler = EventHandler()
+    def on_iv_reading(self, reading) -> None:
+        for writer in self.writers:
+            writer.write_iv_row(reading)
+
+    def on_it_reading(self, reading) -> None:
+        for writer in self.writers:
+            writer.write_it_row(reading)
 
     def acquire_reading_data(self, voltage=None) -> ReadingType:
         smu = self.instruments.get("smu")
@@ -55,7 +59,7 @@ class IVMeasurement(RangeMeasurement):
                 "dmm_temperature": reading.get("t_dmm"),
             }
         )
-        self.iv_reading_event(reading)
+        self.on_iv_reading(reading)
 
     def acquire_continuous_reading(self) -> None:
         t = time.time()
@@ -65,18 +69,14 @@ class IVMeasurement(RangeMeasurement):
 
         self.update_progress(0, 0, 0)
 
-        def handle_reading(reading: ReadingType) -> None:
-            """Handle a single reading, update UI and write to files."""
-            logger.info(reading)
-            self.it_reading_event(reading)
-
         voltage = self.get_source_voltage()
 
         while not self.state.stop_requested:
             dt = time.time() - t
 
             reading: ReadingType = self.acquire_reading_data(voltage=voltage)
-            handle_reading(reading)
+            logger.info(reading)
+            self.on_it_reading(reading)
 
             # TODO
             if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
