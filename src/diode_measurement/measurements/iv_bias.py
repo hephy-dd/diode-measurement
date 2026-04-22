@@ -66,7 +66,7 @@ class IVBiasMeasurement(RangeMeasurement):
         self.on_iv_reading(reading)
 
     def acquire_continuous_reading(self) -> None:
-        t: float = time.time()
+        t: float = time.monotonic()
         interval: float = 1.0
 
         estimate: Estimate = Estimate(1)
@@ -76,7 +76,7 @@ class IVBiasMeasurement(RangeMeasurement):
         voltage = self.get_source_voltage()
 
         while not self.state.stop_requested:
-            dt: float = time.time() - t
+            dt: float = time.monotonic() - t
 
             reading: ReadingType = self.acquire_reading_data(voltage=voltage)
             logger.info(reading)
@@ -112,7 +112,7 @@ class IVBiasMeasurement(RangeMeasurement):
                     }
                 )
 
-                t = time.time()
+                t = time.monotonic()
 
             if self.state.stop_requested:
                 break

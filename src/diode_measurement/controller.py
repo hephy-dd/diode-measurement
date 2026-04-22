@@ -6,7 +6,7 @@ import time
 import queue
 from dataclasses import dataclass
 from datetime import datetime
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets, QtStateMachine
@@ -58,8 +58,8 @@ from .utils import format_metric
 from .utils import get_bool, get_int, get_float, get_str, get_dict
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
-from .settings import MeasurementSpec, MEASUREMENT_SPECS
-from .state import State, FSMState
+from .settings import MeasurementParameters, MEASUREMENT_SPECS
+from .state import ChangeVoltageParameters, State, FSMState
 
 __all__ = ["Controller"]
 
@@ -117,7 +117,7 @@ class Controller(QtCore.QObject):
         self.state: State = State()
         self.cache: Cache = Cache()
 
-        self.measurement_specs: list[MeasurementSpec] = MEASUREMENT_SPECS  # TODO
+        self.measurement_specs: list[MeasurementParameters] = MEASUREMENT_SPECS  # TODO
 
         # Controller
         self.iv_plots_controller = IVPlotsController(self)
@@ -651,10 +651,11 @@ class Controller(QtCore.QObject):
 
                 # Meta
                 general_widget.measurement_combo_box.setCurrentIndex(-1)
-                if meta.get("measurement_type"):
+                measurement_type = meta.get("measurement_type")
+                if measurement_type:
                     for index in range(general_widget.measurement_combo_box.count()):
                         spec = general_widget.measurement_combo_box.itemData(index)
-                        if spec.type == meta.get("measurement_type"):
+                        if spec.type == measurement_type:
                             general_widget.measurement_combo_box.setCurrentIndex(index)
                             break
                 if meta.get("sample"):
@@ -677,10 +678,10 @@ class Controller(QtCore.QObject):
                     )
 
                 # Data
-                if meta.get("measurement_type") in ["iv", "iv_bias"]:
+                if measurement_type in ["iv", "iv_bias"]:
                     self.iv_plots_controller.on_load_iv_readings(data)
                     self.iv_plots_controller.on_load_it_readings(continuous_data)
-                if meta.get("measurement_type") in ["cv"]:
+                if measurement_type in ["cv"]:
                     self.cv_plots_controller.load_cv_readings(data)
                     self.cv_plots_controller.load_cv2_readings(data)
             finally:
@@ -788,7 +789,7 @@ class Controller(QtCore.QObject):
             logger.error("Invalid measurement spec index: %d", index)
             return
 
-        spec: MeasurementSpec = self.measurement_specs[index]
+        spec: MeasurementParameters = self.measurement_specs[index]
 
         if spec.type == "iv":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
@@ -1110,17 +1111,13 @@ class Controller(QtCore.QObject):
             self.failed.emit(exc)
             self.aborted.emit()
 
-    def request_change_voltage(
-        self, end_voltage: float, step_voltage: float, waiting_time: float
-    ) -> None:
+    def request_change_voltage(self, parameters: ChangeVoltageParameters) -> None:
         state = self.snapshot().state
         if state != FSMState.CONTINUOUS:
             raise RuntimeError(
                 f"Cannot change voltage in state '{state.value}'. Expected 'continuous'."
             )
-        self.change_voltage_controller.request_change_voltage(
-            end_voltage, step_voltage, waiting_time
-        )
+        self.change_voltage_controller.request_change_voltage(parameters)
 
     def on_lcr_perform_correction(self) -> None:
         role = self.main_window.find_role("lcr")
@@ -1214,7 +1211,7 @@ class IVPlotsController(QtCore.QObject):
         if len(readings):
             self.iv_plot_widget.fit()
 
-    def append_iv_reading(self, reading: dict, fit: bool = True) -> None:
+    def append_iv_reading(self, reading: Mapping[str, Any], fit: bool = True) -> None:
         voltage: float = reading.get("voltage", math.nan)
         i_smu: float = reading.get("i_smu", math.nan)
         i_smu2: float = reading.get("i_smu2", math.nan)
@@ -1231,7 +1228,7 @@ class IVPlotsController(QtCore.QObject):
         if fit:
             self.iv_plot_widget.fit()
 
-    def on_load_iv_readings(self, readings: list[dict]) -> None:
+    def on_load_iv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         smu_points: list[QtCore.QPointF] = []
         smu2_points: list[QtCore.QPointF] = []
         elm_points: list[QtCore.QPointF] = []
@@ -1281,7 +1278,7 @@ class IVPlotsController(QtCore.QObject):
         if len(readings):
             self.it_plot_widget.fit()
 
-    def append_it_reading(self, reading: dict, fit: bool = True) -> None:
+    def append_it_reading(self, reading: Mapping[str, Any], fit: bool = True) -> None:
         timestamp: float = reading.get("timestamp", math.nan)
         i_smu: float = reading.get("i_smu", math.nan)
         i_smu2: float = reading.get("i_smu2", math.nan)
@@ -1298,7 +1295,7 @@ class IVPlotsController(QtCore.QObject):
         if fit:
             self.it_plot_widget.fit()
 
-    def on_load_it_readings(self, readings: list[dict]) -> None:
+    def on_load_it_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         smu_points: list[QtCore.QPointF] = []
         smu2_points: list[QtCore.QPointF] = []
         elm_points: list[QtCore.QPointF] = []
@@ -1382,7 +1379,7 @@ class CVPlotsController(QtCore.QObject):
         if len(readings):
             self.cv_plot_widget.fit()
 
-    def append_cv_reading(self, reading: dict, fit: bool = True) -> None:
+    def append_cv_reading(self, reading: Mapping[str, Any], fit: bool = True) -> None:
         voltage: float = reading.get("voltage", math.nan)
         c_lcr: float = reading.get("c_lcr", math.nan)
         c2_lcr: float = reading.get("c2_lcr", math.nan)
@@ -1391,7 +1388,7 @@ class CVPlotsController(QtCore.QObject):
         if math.isfinite(voltage) and math.isfinite(c2_lcr):
             self.cv2_plot_widget.append("lcr", voltage, c2_lcr)
 
-    def load_cv_readings(self, readings: list[dict]) -> None:
+    def load_cv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         lcr_points: list[QtCore.QPointF] = []
         widget = self.cv_plot_widget
         widget.clear()
@@ -1405,7 +1402,7 @@ class CVPlotsController(QtCore.QObject):
         widget.replace_series("lcr", lcr_points)
         widget.fit()
 
-    def load_cv2_readings(self, readings: list[dict]) -> None:
+    def load_cv2_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         lcr2_points: list[QtCore.QPointF] = []
         widget = self.cv2_plot_widget
         widget.clear()
@@ -1422,16 +1419,16 @@ class CVPlotsController(QtCore.QObject):
 
 class ChangeVoltageController(QtCore.QObject):
     def __init__(
-        self, main_window, state: State, parent: Optional[QtCore.QObject] = None
+        self, main_window, context: State, parent: Optional[QtCore.QObject] = None
     ) -> None:
         super().__init__(parent)
         self.main_window = main_window
-        self.state: State = state
+        self.context: State = context
         # Connect signals
         self.main_window.prepare_change_voltage.connect(self.on_prepare_change_voltage)
 
     def source_voltage(self) -> float:
-        source_voltage = self.state.source_voltage
+        source_voltage = self.context.source_voltage
         if source_voltage is not None:
             return source_voltage
         return self.main_window.general_widget.end_voltage()
@@ -1444,29 +1441,22 @@ class ChangeVoltageController(QtCore.QObject):
         dialog.set_step_voltage(general_widget.step_voltage())
         dialog.set_waiting_time(general_widget.waiting_time())
         if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            self.request_change_voltage(
-                dialog.end_voltage(), dialog.step_voltage(), dialog.waiting_time()
+            parameters = ChangeVoltageParameters(
+                end_voltage=dialog.end_voltage(),
+                step_voltage=dialog.step_voltage(),
+                waiting_time=dialog.waiting_time(),
             )
+            self.request_change_voltage(parameters)
 
-    def request_change_voltage(
-        self, end_voltage: float, step_voltage: float, waiting_time: float
-    ) -> None:
+    def request_change_voltage(self, parameters: ChangeVoltageParameters) -> None:
         if self.main_window.is_change_voltage_enabled():
             logger.info(
-                "updated change_voltage_continuous: end_voltage=%s, step_voltage=%s, waiting_time=%s",
-                format_metric(end_voltage, "V"),
-                format_metric(step_voltage, "V"),
-                format_metric(waiting_time, "s"),
+                "request change voltage: end_voltage=%s, step_voltage=%s, waiting_time=%s",
+                format_metric(parameters.end_voltage, "V"),
+                format_metric(parameters.step_voltage, "V"),
+                format_metric(parameters.waiting_time, "s"),
             )
-            self.state.update(
-                {
-                    "change_voltage_continuous": {
-                        "end_voltage": end_voltage,
-                        "step_voltage": step_voltage,
-                        "waiting_time": waiting_time,
-                    }
-                }
-            )
+            self.context.request_change_voltage(parameters)
             self.main_window.set_change_voltage_enabled(False)
 
     @QtCore.Slot()

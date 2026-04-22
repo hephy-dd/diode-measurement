@@ -1,4 +1,5 @@
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -22,17 +23,17 @@ class K2700(BaseDriver):
         message = message.strip().strip('"')
         return InstrumentError(code, message)
 
-    def configure(self, options: dict) -> None: ...
+    def configure(self, options: Mapping[str, Any]) -> None: ...
 
     def measure_temperature(self) -> float:
         self._write(":FORM:ELEM READ")  # select reading as return value
         return float(self._query(":FETC?"))
 
     @handle_exception
-    def _write(self, message):
+    def _write(self, message: str) -> None:
         self.resource.write(message)
         self.resource.query("*OPC?")
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()

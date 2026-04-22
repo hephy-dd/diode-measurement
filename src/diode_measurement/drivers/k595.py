@@ -1,12 +1,13 @@
 import math
 import time
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Final, Optional
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.driver import Resource, BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K595"]
 
-ERROR_MESSAGES = {
+ERROR_MESSAGES: Final[dict[int, str]] = {
     0: "IDDC",
     1: "IDDCO",
     2: "No Remote",
@@ -19,6 +20,10 @@ ERROR_MESSAGES = {
 
 class K595(BaseDriver):
     WRITE_DELAY = 0.250
+
+    def __init__(self, resource: Resource) -> None:
+        super().__init__(resource)
+        self._write_timestamp: float = 0.0
 
     def identify(self) -> str:
         return self._query("U0X")[:3]
@@ -38,7 +43,7 @@ class K595(BaseDriver):
                 return InstrumentError(code, message)
         return None
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         self._write("T0X")
         self._write("V0X")
 
@@ -78,16 +83,14 @@ class K595(BaseDriver):
         return float(self._query("X").split(",")[0]), math.nan
 
     @handle_exception
-    def _write(self, message):
-        if not hasattr(self, "_write_timestamp"):
-            self._write_timestamp = 0
+    def _write(self, message: str) -> None:
         offset = self._write_timestamp + abs(type(self).WRITE_DELAY)
         interval = max(0.025, abs(type(self).WRITE_DELAY / 100.0))
-        while time.time() < offset:
+        while time.monotonic() < offset:
             time.sleep(interval)
         self.resource.write(message)
-        self._write_timestamp = time.time()
+        self._write_timestamp = time.monotonic()
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()

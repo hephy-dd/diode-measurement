@@ -1,4 +1,5 @@
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -31,7 +32,7 @@ class K2400(BaseDriver):
         except Exception as exc:
             raise RuntimeError(f"Failed to parse error message: {result!r}") from exc
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         beeper_state = options.get("beeper.state", False)
         self.set_system_beeper_state(beeper_state)
 
@@ -115,10 +116,10 @@ class K2400(BaseDriver):
         self._write(f":SENS:CURR:NPLC {nplc:E}")
 
     @handle_exception
-    def _write(self, message):
+    def _write(self, message: str) -> None:
         self.resource.write(message)
         self.resource.query("*OPC?")
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()

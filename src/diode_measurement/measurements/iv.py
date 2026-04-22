@@ -62,7 +62,7 @@ class IVMeasurement(RangeMeasurement):
         self.on_iv_reading(reading)
 
     def acquire_continuous_reading(self) -> None:
-        t = time.time()
+        t = time.monotonic()
         interval = 1.0
 
         estimate = Estimate(1)
@@ -72,7 +72,7 @@ class IVMeasurement(RangeMeasurement):
         voltage = self.get_source_voltage()
 
         while not self.state.stop_requested:
-            dt = time.time() - t
+            dt = time.monotonic() - t
 
             reading: ReadingType = self.acquire_reading_data(voltage=voltage)
             logger.info(reading)
@@ -102,7 +102,7 @@ class IVMeasurement(RangeMeasurement):
                     }
                 )
 
-                t = time.time()
+                t = time.monotonic()
 
             if self.state.stop_requested:
                 break

@@ -131,8 +131,8 @@ class Resource:
 
 
 class AutoReconnectResource(Resource):
-    retry_attempts = 3
-    retry_delay = 1.0
+    retry_attempts: int = 3
+    retry_delay: float = 1.0
 
     def _reconnect_retry(self, target: Callable, *args) -> Any:
         for attempt in range(self.retry_attempts + 1):

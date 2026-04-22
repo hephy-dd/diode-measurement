@@ -1,6 +1,6 @@
 import csv
 import math
-
+from collections.abc import Iterable
 from typing import Any, Optional, TextIO
 
 __all__ = ["Writer"]
@@ -49,11 +49,11 @@ class Writer:
         value = format(value).strip()
         self._writer.writerow([f"{key}: {value}"])
 
-    def write_table_header(self, columns: list) -> None:
+    def write_table_header(self, columns: Iterable[str]) -> None:
         self._writer.writerow([])
         self._writer.writerow(columns)
 
-    def write_table_row(self, columns: list) -> None:
+    def write_table_row(self, columns: Iterable[str]) -> None:
         self._writer.writerow(columns)
 
     def write_meta(self, data: dict) -> None:

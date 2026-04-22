@@ -1,5 +1,6 @@
 import time
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 import pyvisa.errors
 
@@ -63,7 +64,7 @@ class K4215(BaseDriver):
         # Fallback: return the raw response with error code -1
         return InstrumentError(-1, response.strip())
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         """Configure the CVU for measurements options."""
         # Set CVU mode (0 = user mode)
         self._write(":CVU:MODE 0")
@@ -191,15 +192,15 @@ class K4215(BaseDriver):
             self._write(":CVU:CABLE:COMP:MEASCUSTOM")
         self._write(f":CVU:CABLE:COMP:LOAD {length:.1f}, {load}")
 
-    def _fetch(self, timeout=15.0, interval=0.250) -> str:
+    def _fetch(self, timeout: float = 15.0, interval: float = 0.250) -> str:
         """Fetch measurement data with proper synchronization.
 
         For KXCI CVU measurements, this method implements proper timing
         and synchronization to ensure reliable measurements.
         """
-        threshold = time.time() + timeout
+        threshold = time.monotonic() + timeout
         interval = min(timeout, interval)
-        while time.time() < threshold:
+        while time.monotonic() < threshold:
             try:
                 return self._query(":CVU:MEASZ?")
             except Exception as exc:
@@ -287,11 +288,11 @@ class K4215(BaseDriver):
             raise ValueError("Frequency must be between 1kHz and 10MHz")
         self._write(f":CVU:FREQ {int(frequency)}")
 
-    def _write(self, message):
+    def _write(self, message: str) -> None:
         self.resource.write(message)
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()
 
     def set_voltage_level(self, level: float) -> None:

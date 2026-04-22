@@ -18,7 +18,7 @@ from .events import EventHandler
 from .resource import Resource, AutoReconnectResource
 from .timers import IntervalTimer
 
-__all__ = ["MeasurementSpec", "Measurement", "RangeMeasurement"]
+__all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ ReadingType = dict[str, Any]
 
 
 @dataclass
-class MeasurementSpec:
+class MeasurementParameters:
     id: str
     type: str
     title: str
@@ -311,30 +311,29 @@ class RangeMeasurement(Measurement):
         if waiting_time < interval:
             time.sleep(waiting_time)
         else:
-            now: float = time.time()
+            now: float = time.monotonic()
             threshold: float = now + waiting_time
             while now < threshold:
                 if self.state.stop_requested:
                     self.update_message("Stopping...")
                     break
-                if self.state.change_voltage_continuous:
+                if self.state.is_change_voltage_continuous:
                     break
                 remaining: float = round(threshold - now)
                 self.update_estimate_message_continuous(
                     f"Next reading in {remaining:d} sec...", estimate
                 )
                 time.sleep(interval)
-                now = time.time()
+                now = time.monotonic()
 
     def apply_change_voltage(self):
-        params = self.state.change_voltage_continuous
-        if params is not None:
-            self.state.pop_change_voltage_continuous()  # TODO
+        parameters = self.state.pop_change_voltage_continuous()
+        if parameters is not None:
             self.set_fsm_state(FSMState.RAMPING)
             self.ramp_to_continuous(
-                params.get("end_voltage"),
-                params.get("step_voltage"),
-                params.get("waiting_time"),
+                end_voltage=parameters.end_voltage,
+                step_voltage=parameters.step_voltage,
+                waiting_time=parameters.waiting_time,
             )
             if not self.state.stop_requested:  # hack
                 self.set_fsm_state(FSMState.CONTINUOUS)
@@ -636,12 +635,12 @@ class RangeMeasurement(Measurement):
         self.update_message("Waiting for voltage settled...")
         self.update_progress(0, 0, 0)
 
-        t = time.time()
+        t = time.monotonic()
 
         while abs(read_source_voltage()) > threshold:
             time.sleep(1.0)
 
-            dt = time.time() - t
+            dt = time.monotonic() - t
             if dt > 60.0:
                 raise RuntimeError(
                     f"Timeout while waiting for voltage to settle < {threshold} V, source output still enabled."

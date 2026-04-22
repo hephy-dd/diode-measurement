@@ -1,5 +1,6 @@
 import time
-from typing import Optional
+from collections.abc import Iterable, Mapping
+from typing import Any, Optional
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -24,7 +25,7 @@ class K6514(BaseDriver):
         message = message.strip().strip('"')
         return InstrumentError(code, message)
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         self.set_format_elements(["READ"])
         self.set_sense_function("CURR")
 
@@ -73,15 +74,15 @@ class K6514(BaseDriver):
     def compliance_tripped(self) -> bool:
         return False
 
-    def measure_i(self, timeout=10.0, interval=0.250):
+    def measure_i(self, timeout: float = 10.0, interval: float = 0.250) -> float:
         # Request operation complete
         self._write("*CLS")
         self._write_nowait("*OPC")
         # Initiate measurement
         self._write_nowait(":INIT")
-        threshold = time.time() + timeout
+        threshold = time.monotonic() + timeout
         interval = min(timeout, interval)
-        while time.time() < threshold:
+        while time.monotonic() < threshold:
             # Read event status
             if int(self._query("*ESR?")) & 0x1:
                 try:
@@ -95,7 +96,7 @@ class K6514(BaseDriver):
     def measure_iv(self) -> tuple[float, float]:
         return self.measure_i(), float("nan")  # TODO
 
-    def set_format_elements(self, elements: list[str]) -> None:
+    def set_format_elements(self, elements: Iterable[str]) -> None:
         value = ",".join(elements)
         self._write(f":FORM:ELEM {value}")
 
@@ -130,14 +131,14 @@ class K6514(BaseDriver):
         self._write(f":SYST:ZCH {enabled:d}")
 
     @handle_exception
-    def _write(self, message):
+    def _write(self, message: str) -> None:
         self.resource.write(message)
         self.resource.query("*OPC?")
 
     @handle_exception
-    def _write_nowait(self, message):
+    def _write_nowait(self, message: str):
         self.resource.write(message)
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()

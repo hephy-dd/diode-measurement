@@ -1,4 +1,5 @@
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -23,7 +24,7 @@ class K2657A(BaseDriver):
         message = message.strip().strip('"')
         return InstrumentError(code, message)
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         beeper_enable = options.get("beeper.enable", False)
         self.set_beeper_enable(beeper_enable)
 
@@ -100,13 +101,13 @@ class K2657A(BaseDriver):
         self._write(f"display.smua.measure.func = display.MEASURE_{function}")
 
     @handle_exception
-    def _write(self, message):
+    def _write(self, message: str) -> None:
         self.resource.write(message)
         self.resource.query("*OPC?")
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()
 
-    def _print(self, message):
+    def _print(self, message: str):
         return self._query(f"print({message})")

@@ -1,4 +1,5 @@
 import threading
+from dataclasses import dataclass
 from collections.abc import Iterator
 from enum import Enum
 from typing import Any, Optional
@@ -14,12 +15,24 @@ class FSMState(str, Enum):
     STOPPING = "stopping"
 
 
+@dataclass
+class ChangeVoltageParameters:
+    end_voltage: float
+    step_voltage: float
+    waiting_time: float
+
+
 class State:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._state: dict[str, Any] = {}
         self.abort_event = threading.Event()
         self.tcu_poll_interval: float = 5.0
+        self._change_voltage_parameters: Optional[ChangeVoltageParameters] = None
+
+    @property
+    def stop_requested(self) -> bool:
+        return self.abort_event.is_set()
 
     @property
     def measurement_type(self) -> str:
@@ -35,11 +48,6 @@ class State:
     def sample(self) -> str:
         with self._lock:
             return self._state.get("sample", "")
-
-    @property
-    def stop_requested(self) -> bool:
-        with self._lock:
-            return self.abort_event.is_set()
 
     @property
     def auto_reconnect(self) -> bool:
@@ -112,13 +120,23 @@ class State:
             return self._state.get("bias_source_role")
 
     @property
-    def change_voltage_continuous(self) -> Optional[float]:
+    def is_change_voltage_continuous(self) -> bool:
         with self._lock:
-            return self._state.get("change_voltage_continuous")
+            return self._change_voltage_parameters is not None
 
-    def pop_change_voltage_continuous(self) -> Optional[float]:
+    def pop_change_voltage_continuous(self) -> Optional[ChangeVoltageParameters]:
         with self._lock:
-            return self._state.pop("change_voltage_continuous", None)
+            parameters = self._change_voltage_parameters
+            self._change_voltage_parameters = None
+            return parameters
+
+    def request_change_voltage(self, parameters: ChangeVoltageParameters) -> None:
+        with self._lock:
+            self._change_voltage_parameters = ChangeVoltageParameters(
+                end_voltage=parameters.end_voltage,
+                step_voltage=parameters.step_voltage,
+                waiting_time=parameters.waiting_time,
+            )
 
     def find_role(self, name: str) -> dict:
         with self._lock:

@@ -1,12 +1,13 @@
 import time
 import logging
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Final, Optional
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.driver import Resource, BaseDriver, InstrumentError, handle_exception
 
 __all__ = ["K237"]
 
-ERROR_MESSAGES = {
+ERROR_MESSAGES: Final[dict[int, str]] = {
     0: "Trigger Overrun",
     1: "IDDC",
     2: "IDDCO",
@@ -41,6 +42,10 @@ logger = logging.getLogger(__name__)
 class K237(BaseDriver):
     WRITE_DELAY = 0.250
 
+    def __init__(self, resource: Resource) -> None:
+        super().__init__(resource)
+        self._write_timestamp: float = 0.0
+
     def identify(self) -> str:
         return self._query("U0X")
 
@@ -59,7 +64,7 @@ class K237(BaseDriver):
                 return InstrumentError(code, message)
         return None
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         self._write("F0,0X")  # function VOLT
         self._write("B0,0,0X")  # bias to auto
         filter_mode = options.get("filter.mode", 0)
@@ -100,22 +105,20 @@ class K237(BaseDriver):
         return i, v
 
     @handle_exception
-    def _write(self, message):
-        if not hasattr(self, "_write_timestamp"):
-            self._write_timestamp = 0
+    def _write(self, message: str) -> None:
         offset = self._write_timestamp + abs(type(self).WRITE_DELAY)
         interval = 0.025
-        while time.time() < offset:
+        while time.monotonic() < offset:
             time.sleep(interval)
         self.resource.write(message)
-        self._write_timestamp = time.time()
+        self._write_timestamp = time.monotonic()
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         result = self.resource.query(message)
         return result.strip()
 
-    def _voltage_range(self, level):
+    def _voltage_range(self, level: float) -> int:
         level = abs(level)
         if level <= 1.1:
             return 1

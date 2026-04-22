@@ -1,5 +1,6 @@
 import time
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -24,7 +25,7 @@ class A4284A(BaseDriver):
         message = message.strip().strip('"')
         return InstrumentError(code, message)
 
-    def configure(self, options: dict) -> None:
+    def configure(self, options: Mapping[str, Any]) -> None:
         self._write(":INIT:CONT OFF")
         self._write(":TRIG:SOUR BUS")
 
@@ -121,27 +122,27 @@ class A4284A(BaseDriver):
         self._write(f":AMPL:ALC {enabled:d}")
 
     @handle_exception
-    def _write(self, message):
+    def _write(self, message: str) -> None:
         self.resource.write(message)
         self.resource.query("*OPC?")
 
     @handle_exception
-    def _write_nowait(self, message):
+    def _write_nowait(self, message: str):
         self.resource.write(message)
 
     @handle_exception
-    def _query(self, message):
+    def _query(self, message: str) -> str:
         return self.resource.query(message).strip()
 
-    def _fetch(self, timeout=10.0, interval=0.250) -> str:
+    def _fetch(self, timeout: float = 10.0, interval: float = 0.250) -> str:
         # Request operation complete
         self._write("*CLS")
         self._write_nowait("*OPC")
         # Initiate measurement
         self._write_nowait(":TRIG:IMM")
-        threshold = time.time() + timeout
+        threshold = time.monotonic() + timeout
         interval = min(timeout, interval)
-        while time.time() < threshold:
+        while time.monotonic() < threshold:
             # Read event status
             if int(self._query("*ESR?")) & 0x1:
                 try:

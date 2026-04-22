@@ -1,10 +1,10 @@
-from .core.measurement import MeasurementSpec
+from .core.measurement import MeasurementParameters
 
 __all__ = ["MEASUREMENT_SPECS"]
 
 
-MEASUREMENT_SPECS: list[MeasurementSpec] = [
-    MeasurementSpec(
+MEASUREMENT_SPECS: list[MeasurementParameters] = [
+    MeasurementParameters(
         id="iv",
         type="iv",
         title="IV",
@@ -19,7 +19,7 @@ MEASUREMENT_SPECS: list[MeasurementSpec] = [
         current_compliance_unit="uA",
         is_continuous=True,
     ),
-    MeasurementSpec(
+    MeasurementParameters(
         id="iv_bias",
         type="iv_bias",
         title="IV Bias",
@@ -35,7 +35,7 @@ MEASUREMENT_SPECS: list[MeasurementSpec] = [
         current_compliance_unit="uA",
         is_continuous=True,
     ),
-    MeasurementSpec(
+    MeasurementParameters(
         id="cv_diode",
         type="cv",
         title="CV Diode",
@@ -49,7 +49,7 @@ MEASUREMENT_SPECS: list[MeasurementSpec] = [
         voltage_unit="V",
         current_compliance_unit="uA",
     ),
-    MeasurementSpec(
+    MeasurementParameters(
         id="cv_mos",
         type="cv",
         title="CV MOS",

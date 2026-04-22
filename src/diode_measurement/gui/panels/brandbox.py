@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Optional
 
 from PySide6 import QtWidgets
@@ -57,7 +58,7 @@ class BrandBoxPanel(InstrumentPanel):
                 channels.append(channel)
         return channels
 
-    def set_closed_channels(self, channels: list[str]) -> None:
+    def set_closed_channels(self, channels: Iterable[str]) -> None:
         selected = set(channels)
         for channel, check_box in self.channel_check_boxes.items():
             check_box.setChecked(channel in selected)
