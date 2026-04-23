@@ -3,10 +3,10 @@ import math
 import os
 import threading
 import time
-import queue
 from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Iterable, Mapping
+from queue import Queue, Empty
 from typing import Any, Optional
 
 from PySide6 import QtCore, QtWidgets, QtStateMachine
@@ -14,7 +14,7 @@ from PySide6 import QtCore, QtWidgets, QtStateMachine
 from comet.utils import safe_filename
 
 from .core.cache import Cache
-from .core.measurement import ReadingType, Measurement
+from .core.measurement import Measurement
 from .core.resource import parse_resource
 
 # Source meter units
@@ -59,7 +59,7 @@ from .utils import get_bool, get_int, get_float, get_str, get_dict
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
 from .settings import MeasurementParameters, MEASUREMENT_SPECS
-from .state import ChangeVoltageParameters, State, FSMState
+from .state import FSMState, ChangeVoltageParameters, IVReading, CVReading, State
 
 __all__ = ["Controller"]
 
@@ -107,7 +107,7 @@ class Controller(QtCore.QObject):
         super().__init__(parent)
 
         self._shutdown_event = threading.Event()
-        self._background_inbox: queue.Queue[Job] = queue.Queue()
+        self._background_inbox: Queue[Job] = Queue()
         self._background_thread = threading.Thread(target=self._handle_background_jobs)
 
         self.main_window = main_window
@@ -120,8 +120,8 @@ class Controller(QtCore.QObject):
         self.measurement_specs: list[MeasurementParameters] = MEASUREMENT_SPECS  # TODO
 
         # Controller
-        self.iv_plots_controller = IVPlotsController(self)
-        self.cv_plots_controller = CVPlotsController(self)
+        self.iv_plots_controller = IVPlotsController(self.state, self)
+        self.cv_plots_controller = CVPlotsController(self.state, self)
 
         self.change_voltage_controller = ChangeVoltageController(
             self.main_window, self.state, self
@@ -284,7 +284,7 @@ class Controller(QtCore.QObject):
             try:
                 try:
                     job = self._background_inbox.get(timeout=0.25)
-                except queue.Empty:
+                except Empty:
                     ...
                 else:
                     try:
@@ -981,19 +981,6 @@ class Controller(QtCore.QObject):
         filename = safe_filename(f"{sample}-{timestamp}.txt")
         return os.path.join(path, filename)
 
-    def connect_iv_plots(self, measurement) -> None:
-        measurement.iv_reading_queue = self.iv_plots_controller.iv_reading_queue
-        measurement.iv_reading_lock = self.iv_plots_controller.iv_reading_lock
-        measurement.it_reading_queue = self.iv_plots_controller.it_reading_queue
-        measurement.it_reading_lock = self.iv_plots_controller.it_reading_lock
-        measurement.it_change_voltage_ready_event.subscribe(
-            self.change_voltage_ready.emit
-        )
-
-    def connect_cv_plots(self, measurement) -> None:
-        measurement.cv_reading_queue = self.cv_plots_controller.cv_reading_queue
-        measurement.cv_reading_lock = self.cv_plots_controller.cv_reading_lock
-
     def configure(self, params: Mapping[str, Any]) -> None:
         general_widget = self.main_window.general_widget
         for key, value in params.items():
@@ -1028,21 +1015,21 @@ class Controller(QtCore.QObject):
     def request_stop(self) -> None:
         self.aborted.emit()
 
-    def create_measurement(self) -> Measurement:
-        measurement_type = self.state.measurement_type
+    def create_measurement(self, state: State) -> Measurement:
+        measurement_type = state.measurement_type
         measurement_cls = MEASUREMENTS.get(measurement_type)
         if measurement_cls is None:
             raise ValueError(f"No such measurement type: {measurement_type}")
-        measurement = measurement_cls(self.state)
+
+        measurement = measurement_cls(state)
+
+        # TODO
+        if measurement_cls in (IVMeasurement, IVBiasMeasurement):
+            measurement.it_change_voltage_ready_event.subscribe(
+                self.change_voltage_ready.emit
+            )
 
         measurement.update_event.subscribe(self.update.emit)
-
-        if isinstance(measurement, IVMeasurement):
-            self.connect_iv_plots(measurement)
-        elif isinstance(measurement, IVBiasMeasurement):
-            self.connect_iv_plots(measurement)
-        elif isinstance(measurement, CVMeasurement):
-            self.connect_cv_plots(measurement)
 
         # Prepare role drivers
         for role in self.main_window.roles():
@@ -1080,7 +1067,7 @@ class Controller(QtCore.QObject):
             self.state.update({"filename": filename})
 
             # Create and run measurement
-            measurement = self.create_measurement()
+            measurement = self.create_measurement(self.state)
 
             options: dict[str, Any] = {}
 
@@ -1150,8 +1137,9 @@ class Controller(QtCore.QObject):
 
 
 class IVPlotsController(QtCore.QObject):
-    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(self, state: State, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
+        self.state = state
 
         self.iv_plot_widget = IVPlotWidget()
         self.it_plot_widget = ItPlotWidget()
@@ -1164,18 +1152,13 @@ class IVPlotsController(QtCore.QObject):
         self.iv_layout.setStretch(1, 1)
         self.iv_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.iv_reading_queue: list[ReadingType] = []
-        self.iv_reading_lock = threading.RLock()
-        self.it_reading_queue: list[ReadingType] = []
-        self.it_reading_lock = threading.RLock()
+        self.max_flush_readings: int = 1000
 
         self.update_timer = QtCore.QTimer()
         self.update_timer.timeout.connect(self.on_flush_iv_readings)
         self.update_timer.timeout.connect(self.on_flush_it_readings)
 
     def clear(self):
-        self.iv_reading_queue.clear()
-        self.it_reading_queue.clear()
         self.iv_plot_widget.clear()
         self.iv_plot_widget.reset()
         self.it_plot_widget.clear()
@@ -1202,21 +1185,24 @@ class IVPlotsController(QtCore.QObject):
     def set_continuous(self, enabled):
         self.it_plot_widget.setVisible(enabled)
 
+    @QtCore.Slot()
     def on_flush_iv_readings(self) -> None:
-        with self.iv_reading_lock:
-            readings = self.iv_reading_queue.copy()
-            self.iv_reading_queue.clear()
-        for reading in readings:
-            self.append_iv_reading(reading, fit=False)
-        if len(readings):
+        n_readings = 0
+        for _ in range(self.max_flush_readings):
+            reading = self.state.next_iv_reading()
+            if reading is None:
+                break
+            self.append_iv_reading(reading)
+            n_readings += 1
+        if n_readings:
             self.iv_plot_widget.fit()
 
-    def append_iv_reading(self, reading: Mapping[str, Any], fit: bool = True) -> None:
-        voltage: float = reading.get("voltage", math.nan)
-        i_smu: float = reading.get("i_smu", math.nan)
-        i_smu2: float = reading.get("i_smu2", math.nan)
-        i_elm: float = reading.get("i_elm", math.nan)
-        i_elm2: float = reading.get("i_elm2", math.nan)
+    def append_iv_reading(self, reading: IVReading, fit: bool = True) -> None:
+        voltage: float = reading.voltage
+        i_smu: float = reading.i_smu
+        i_smu2: float = reading.i_smu2
+        i_elm: float = reading.i_elm
+        i_elm2: float = reading.i_elm2
         if math.isfinite(voltage) and math.isfinite(i_smu):
             self.iv_plot_widget.append("smu", voltage, i_smu)
         if math.isfinite(voltage) and math.isfinite(i_smu2):
@@ -1225,8 +1211,6 @@ class IVPlotsController(QtCore.QObject):
             self.iv_plot_widget.append("elm", voltage, i_elm)
         if math.isfinite(voltage) and math.isfinite(i_elm2):
             self.iv_plot_widget.append("elm2", voltage, i_elm2)
-        if fit:
-            self.iv_plot_widget.fit()
 
     def on_load_iv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         smu_points: list[QtCore.QPointF] = []
@@ -1269,21 +1253,24 @@ class IVPlotsController(QtCore.QObject):
             parent.on_toggle_elm2(bool(len(elm2_points)))
         widget.fit()
 
+    @QtCore.Slot()
     def on_flush_it_readings(self) -> None:
-        with self.it_reading_lock:
-            readings = self.it_reading_queue.copy()
-            self.it_reading_queue.clear()
-        for reading in readings:
-            self.append_it_reading(reading, fit=False)
-        if len(readings):
+        n_readings = 0
+        for _ in range(self.max_flush_readings):
+            reading = self.state.next_it_reading()
+            if reading is None:
+                break
+            self.append_it_reading(reading)
+            n_readings += 1
+        if n_readings:
             self.it_plot_widget.fit()
 
-    def append_it_reading(self, reading: Mapping[str, Any], fit: bool = True) -> None:
-        timestamp: float = reading.get("timestamp", math.nan)
-        i_smu: float = reading.get("i_smu", math.nan)
-        i_smu2: float = reading.get("i_smu2", math.nan)
-        i_elm: float = reading.get("i_elm", math.nan)
-        i_elm2: float = reading.get("i_elm2", math.nan)
+    def append_it_reading(self, reading: IVReading) -> None:
+        timestamp: float = reading.timestamp
+        i_smu: float = reading.i_smu
+        i_smu2: float = reading.i_smu2
+        i_elm: float = reading.i_elm
+        i_elm2: float = reading.i_elm2
         if math.isfinite(timestamp) and math.isfinite(i_smu):
             self.it_plot_widget.append("smu", timestamp, i_smu)
         if math.isfinite(timestamp) and math.isfinite(i_smu2):
@@ -1292,8 +1279,6 @@ class IVPlotsController(QtCore.QObject):
             self.it_plot_widget.append("elm", timestamp, i_elm)
         if math.isfinite(timestamp) and math.isfinite(i_elm2):
             self.it_plot_widget.append("elm2", timestamp, i_elm2)
-        if fit:
-            self.it_plot_widget.fit()
 
     def on_load_it_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         smu_points: list[QtCore.QPointF] = []
@@ -1332,8 +1317,9 @@ class IVPlotsController(QtCore.QObject):
 
 
 class CVPlotsController(QtCore.QObject):
-    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(self, state: State, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
+        self.state = state
 
         self.cv_plot_widget = CVPlotWidget()
         self.cv2_plot_widget = CV2PlotWidget()
@@ -1345,14 +1331,12 @@ class CVPlotsController(QtCore.QObject):
         self.cv_layout.setStretch(1, 1)
         self.cv_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.cv_reading_queue: list[ReadingType] = []
-        self.cv_reading_lock = threading.RLock()
+        self.max_flush_readings: int = 1000
 
         self.update_timer = QtCore.QTimer()
         self.update_timer.timeout.connect(self.flush_cv_readings)
 
     def clear(self) -> None:
-        self.cv_reading_queue.clear()
         self.cv_plot_widget.clear()
         self.cv_plot_widget.reset()
         self.cv2_plot_widget.clear()
@@ -1370,19 +1354,22 @@ class CVPlotsController(QtCore.QObject):
 
     def set_continuous(self, enabled): ...
 
+    @QtCore.Slot()
     def flush_cv_readings(self) -> None:
-        with self.cv_reading_lock:
-            readings = self.cv_reading_queue.copy()
-            self.cv_reading_queue.clear()
-        for reading in readings:
-            self.append_cv_reading(reading, fit=False)
-        if len(readings):
+        n_readings = 0
+        for _ in range(self.max_flush_readings):
+            reading = self.state.next_cv_reading()
+            if reading is None:
+                break
+            self.append_cv_reading(reading)
+            n_readings += 1
+        if n_readings:
             self.cv_plot_widget.fit()
 
-    def append_cv_reading(self, reading: Mapping[str, Any], fit: bool = True) -> None:
-        voltage: float = reading.get("voltage", math.nan)
-        c_lcr: float = reading.get("c_lcr", math.nan)
-        c2_lcr: float = reading.get("c2_lcr", math.nan)
+    def append_cv_reading(self, reading: CVReading) -> None:
+        voltage = reading.voltage
+        c_lcr = reading.c_lcr
+        c2_lcr = reading.c2_lcr
         if math.isfinite(voltage) and math.isfinite(c_lcr):
             self.cv_plot_widget.append("lcr", voltage, c_lcr)
         if math.isfinite(voltage) and math.isfinite(c2_lcr):

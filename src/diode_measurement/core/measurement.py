@@ -9,7 +9,7 @@ from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..drivers import driver_factory
-from ..state import State, FSMState
+from ..state import State, FSMState, IVReading
 from ..writer import Writer
 
 from .actor import Actor
@@ -21,8 +21,6 @@ from .timers import IntervalTimer
 __all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
 
 logger = logging.getLogger(__name__)
-
-ReadingType = dict[str, Any]
 
 
 @dataclass
@@ -534,7 +532,7 @@ class RangeMeasurement(Measurement):
 
             self.apply_waiting_time()
 
-            self.acquire_reading()
+            self.acquire_reading(voltage)
 
             self.check_current_compliance()
             self.update_current_compliance()
@@ -648,12 +646,14 @@ class RangeMeasurement(Measurement):
 
         self.update_message("")
 
-    def acquire_reading(self) -> None: ...
+    def acquire_reading(self, source_voltage: float) -> None:
+        raise NotImplementedError
 
-    def acquire_reading_data(self) -> ReadingType:
-        return {}
+    def acquire_reading_data(self, source_voltage: float) -> IVReading:
+        raise NotImplementedError
 
-    def acquire_continuous_reading(self) -> None: ...
+    def acquire_continuous_reading(self) -> None:
+        raise NotImplementedError
 
     def ramp_to_begin(self) -> None:
         source_voltage = self.get_source_voltage()
@@ -790,24 +790,19 @@ class RangeMeasurement(Measurement):
 
             time.sleep(waiting_time)
 
-            reading = self.acquire_reading_data()
+            reading: IVReading = self.acquire_reading_data(voltage)
             logger.info(reading)
-
-            # TODO
-            if hasattr(self, "it_reading_lock") and hasattr(self, "it_reading_queue"):
-                with self.it_reading_lock:
-                    self.it_reading_queue.append(reading)
 
             self.on_it_reading(reading)
 
             self.update_event(
                 {
-                    "smu_voltage": reading.get("v_smu"),
-                    "smu_current": reading.get("i_smu"),
-                    "smu2_voltage": reading.get("v_smu2"),
-                    "smu2_current": reading.get("i_smu2"),
-                    "elm_current": reading.get("i_elm"),
-                    "elm2_current": reading.get("i_elm2"),
+                    "smu_voltage": reading.v_smu,
+                    "smu_current": reading.i_smu,
+                    "smu2_voltage": reading.v_smu2,
+                    "smu2_current": reading.i_smu2,
+                    "elm_current": reading.i_elm,
+                    "elm2_current": reading.i_elm2,
                 }
             )
 
