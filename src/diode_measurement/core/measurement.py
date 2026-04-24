@@ -2,19 +2,18 @@ import contextlib
 import logging
 import time
 from dataclasses import dataclass
-from collections.abc import Callable
-from typing import Any, Optional
+from collections.abc import Mapping
+from typing import Any, Optional, Type
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..drivers import driver_factory
-from ..state import State, FSMState, IVReading
+from ..state import State, EventBus, FSMState, IVReading
 from ..writer import Writer
 
 from .actor import Actor
 from .driver import TCU
-from .events import EventHandler
 from .resource import Resource, AutoReconnectResource
 from .timers import IntervalTimer
 
@@ -28,8 +27,9 @@ class MeasurementParameters:
     id: str
     type: str
     title: str
-    instruments: list[str]
-    default_instruments: list[str]
+    measurement_cls: Type["Measurement"]
+    supported_roles: list[str]
+    default_roles: list[str]
     default_begin_voltage: float
     default_end_voltage: float
     default_step_voltage: float
@@ -39,11 +39,11 @@ class MeasurementParameters:
     current_compliance_unit: str
     default_bias_voltage: float = 0.0
     default_waiting_time_continuous: float = 0.0
-    is_continuous: bool = False
+    provides_continuous: bool = False
 
 
 class TCUActor(Actor):
-    def __init__(self, tcu: TCU, event_bus: Callable[[dict[str, Any]], None], abort_event) -> None:
+    def __init__(self, tcu: TCU, event_bus: EventBus, abort_event) -> None:
         super().__init__(abort_event=abort_event)
         self.tcu = tcu
         self.event_bus = event_bus
@@ -60,13 +60,13 @@ class TCUActor(Actor):
         except Exception:
             logging.exception("Failed to read TCU temperature")
         else:
-            self.event_bus({"tcu_temperature": temperature})
+            self.event_bus.submit("update", {"tcu_temperature": temperature})
         try:
             state = self.tcu.get_state()
         except Exception:
             logging.exception("Failed to read TCU state")
         else:
-            self.event_bus({"tcu_state": state})
+            self.event_bus.submit("update", {"tcu_state": state})
 
     def on_message(self, message: Any) -> Any:
         return message()
@@ -87,9 +87,6 @@ class Measurement:
         self.state: State = state
         self.instruments: dict = {}
         self._instruments: dict = {}
-        self.failed_event: EventHandler = EventHandler()
-        self.warning_event: EventHandler = EventHandler()
-        self.update_event: EventHandler = EventHandler()
 
         self.tcu_actor: Optional[TCUActor] = None
 
@@ -140,8 +137,11 @@ class Measurement:
         if error is not None:
             raise RuntimeError(f"Instrument Error: {error.code}: {error.message}")
 
+    def submit_update(self, data: Mapping[str, Any]) -> None:
+        self.state.event_bus.submit("update", data)
+
     def set_fsm_state(self, state: FSMState) -> None:
-        self.update_event({"fsm_state": state})
+        self.submit_update({"fsm_state": state})
 
     def initialize(self) -> None: ...
 
@@ -175,7 +175,7 @@ class Measurement:
                     logger.debug("measure... done.")
                 except Exception as exc:
                     logger.exception(exc)
-                    self.failed_event(exc)
+                    self.state.event_bus.submit("failed", exc)
                 finally:
                     logger.debug("finalize...")
                     self.set_fsm_state(FSMState.STOPPING)
@@ -183,7 +183,7 @@ class Measurement:
                     logger.debug("finalize... done.")
         except Exception as exc:
             logger.exception(exc)
-            self.failed_event(exc)
+            self.state.event_bus.submit("failed", exc)
         finally:
             logger.debug("handle finished callbacks...")
             self.on_finished()
@@ -194,10 +194,6 @@ class Measurement:
 
 
 class RangeMeasurement(Measurement):
-    def __init__(self, state: State) -> None:
-        super().__init__(state)
-        self.it_change_voltage_ready_event: EventHandler = EventHandler()
-
     def on_it_reading(self, reading) -> None:
         ...
 
@@ -217,7 +213,7 @@ class RangeMeasurement(Measurement):
     def set_source_output_state(self, state: bool) -> None:
         logger.info("Source output state: %s", state)
         self.source_instrument.set_output_enabled(state)  # type: ignore
-        self.update_event({"source_output_state": state})
+        self.submit_update({"source_output_state": state})
         self.state.update({"source_output_state": state})
 
     def get_source_voltage(self) -> float:
@@ -226,7 +222,7 @@ class RangeMeasurement(Measurement):
     def set_source_voltage(self, voltage: float) -> None:
         logger.info("Source voltage level: %gV", voltage)
         self.source_instrument.set_voltage_level(voltage)  # type: ignore
-        self.update_event({"source_voltage": voltage})
+        self.submit_update({"source_voltage": voltage})
         self.state.update({"source_voltage": voltage})
 
     def set_source_voltage_range(self, voltage: float) -> None:
@@ -241,7 +237,7 @@ class RangeMeasurement(Measurement):
     def set_bias_source_output_state(self, state: bool) -> None:
         logger.info("Bias source output state: %s", state)
         self.bias_source_instrument.set_output_enabled(state)  # type: ignore
-        self.update_event({"bias_source_output_state": state})
+        self.submit_update({"bias_source_output_state": state})
         self.state.update({"bias_source_output_state": state})
 
     def get_bias_source_voltage(self) -> float:
@@ -250,7 +246,7 @@ class RangeMeasurement(Measurement):
     def set_bias_source_voltage(self, voltage: float) -> None:
         logger.info("Bias source voltage level: %gV", voltage)
         self.bias_source_instrument.set_voltage_level(voltage)  # type: ignore
-        self.update_event({"bias_source_voltage": voltage})
+        self.submit_update({"bias_source_voltage": voltage})
         self.state.update({"bias_source_voltage": voltage})
 
     def set_bias_source_voltage_range(self, voltage: float) -> None:
@@ -335,15 +331,15 @@ class RangeMeasurement(Measurement):
             )
             if not self.state.stop_requested:  # hack
                 self.set_fsm_state(FSMState.CONTINUOUS)
-        self.it_change_voltage_ready_event()
+            self.state.event_bus.submit("change_voltage_done")
 
     def update_message(self, message: str) -> None:
         """Emit update message event."""
-        self.update_event({"message": message})
+        self.submit_update({"message": message})
 
     def update_progress(self, begin: int, end: int, step: int) -> None:
         """Emit update progress event."""
-        self.update_event({"progress": (begin, end, step)})
+        self.submit_update({"progress": (begin, end, step)})
 
     def update_estimate_message(self, message: str, estimate: Estimate) -> None:
         """Emit update message event for ramp iterations."""
@@ -455,7 +451,7 @@ class RangeMeasurement(Measurement):
         if tcu is not None:
             self.tcu_actor = TCUActor(
                 tcu=tcu,
-                event_bus=self.update_event,
+                event_bus=self.state.event_bus,
                 abort_event=self.state.abort_event,
             )
 
@@ -580,7 +576,7 @@ class RangeMeasurement(Measurement):
             if self.tcu_actor is not None:
                 self.tcu_actor.stop()
 
-            self.update_event(
+            self.submit_update(
                 {
                     "source_voltage": None,
                     "bias_source_voltage": None,
@@ -681,7 +677,7 @@ class RangeMeasurement(Measurement):
 
     def ramp_to_zero(self) -> None:
         source_voltage = self.get_source_voltage()
-        self.update_event(
+        self.submit_update(
             {
                 "smu_voltage": None,
                 "smu_current": None,
@@ -742,7 +738,7 @@ class RangeMeasurement(Measurement):
         end_voltage: float = 0.0
         step_voltage: float = 5.0
         waiting_time: float = 0.250
-        self.update_event(
+        self.submit_update(
             {
                 "smu_voltage": None,
                 "smu_current": None,
@@ -795,7 +791,7 @@ class RangeMeasurement(Measurement):
 
             self.on_it_reading(reading)
 
-            self.update_event(
+            self.submit_update(
                 {
                     "smu_voltage": reading.v_smu,
                     "smu_current": reading.i_smu,

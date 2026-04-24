@@ -50,26 +50,18 @@ from .gui.widgets import show_exception
 from .gui.dialogs import ChangeVoltageDialog
 from .gui.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
 
-from .measurements import IVMeasurement, IVBiasMeasurement, CVMeasurement
-
 from .reader import Reader
 
 from .utils import format_metric
 from .utils import get_bool, get_int, get_float, get_str, get_dict
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
-from .settings import MeasurementParameters, MEASUREMENT_SPECS
+from .settings import MeasurementParameters, measurement_registry
 from .state import FSMState, ChangeVoltageParameters, IVReading, CVReading, State
 
 __all__ = ["Controller"]
 
 logger = logging.getLogger(__name__)
-
-MEASUREMENTS: dict = {
-    "iv": IVMeasurement,
-    "iv_bias": IVBiasMeasurement,
-    "cv": CVMeasurement,
-}
 
 
 @dataclass
@@ -91,7 +83,7 @@ class Snapshot:
 class Controller(QtCore.QObject):
     started = QtCore.Signal()
     aborted = QtCore.Signal()
-    update = QtCore.Signal(dict)
+    updated = QtCore.Signal(dict)
     failed = QtCore.Signal(Exception)
     finished = QtCore.Signal()
 
@@ -115,9 +107,13 @@ class Controller(QtCore.QObject):
         self.is_exception_dialog_active: bool = False
 
         self.state: State = State()
+        self.state.event_bus.register_callback("change_voltage_done", self.change_voltage_ready.emit)
+        self.state.event_bus.register_callback("update", self.updated.emit)
+        self.state.event_bus.register_callback("failed", self.failed.emit)
+
         self.cache: Cache = Cache()
 
-        self.measurement_specs: list[MeasurementParameters] = MEASUREMENT_SPECS  # TODO
+        self.measurement_registry: list[MeasurementParameters] = measurement_registry
 
         # Controller
         self.iv_plots_controller = IVPlotsController(self.state, self)
@@ -129,6 +125,7 @@ class Controller(QtCore.QObject):
         self.change_voltage_ready.connect(
             self.change_voltage_controller.on_change_voltage_ready
         )
+        self.updated.connect(self.on_update)
         self.failed.connect(self.handle_exception)
 
         # Source meter unit
@@ -195,7 +192,7 @@ class Controller(QtCore.QObject):
 
         general_widget = main_window.general_widget
 
-        for spec in self.measurement_specs:
+        for spec in self.measurement_registry:
             general_widget.add_measurement(spec)
 
         general_widget.measurement_combo_box.currentIndexChanged.connect(
@@ -216,8 +213,6 @@ class Controller(QtCore.QObject):
         )
 
         self.on_measurement_changed(0)
-
-        self.update.connect(self.on_update)
 
         general_widget.instruments_changed.connect(self.on_instruments_changed)
 
@@ -386,29 +381,29 @@ class Controller(QtCore.QObject):
             )
             config.update({"options": role.current_config()})
 
-        if general_widget.is_role_enabled("smu"):
+        if general_widget.is_role_checked("smu"):
             state["source_role"] = "smu"
-        elif general_widget.is_role_enabled("elm"):
+        elif general_widget.is_role_checked("elm"):
             state["source_role"] = "elm"
-        elif general_widget.is_role_enabled("lcr"):
+        elif general_widget.is_role_checked("lcr"):
             state["source_role"] = "lcr"
 
-        if general_widget.is_role_enabled("smu2"):
+        if general_widget.is_role_checked("smu2"):
             state["bias_source_role"] = "smu2"
 
-        roles.setdefault("smu", {}).update({"enabled": general_widget.is_role_enabled("smu")})
+        roles.setdefault("smu", {}).update({"enabled": general_widget.is_role_checked("smu")})
         roles.setdefault("smu2", {}).update(
-            {"enabled": general_widget.is_role_enabled("smu2")}
+            {"enabled": general_widget.is_role_checked("smu2")}
         )
-        roles.setdefault("elm", {}).update({"enabled": general_widget.is_role_enabled("elm")})
+        roles.setdefault("elm", {}).update({"enabled": general_widget.is_role_checked("elm")})
         roles.setdefault("elm2", {}).update(
-            {"enabled": general_widget.is_role_enabled("elm2")}
+            {"enabled": general_widget.is_role_checked("elm2")}
         )
-        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_role_enabled("lcr")})
-        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_role_enabled("dmm")})
-        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_role_enabled("tcu")})
+        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_role_checked("lcr")})
+        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_role_checked("dmm")})
+        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_role_checked("tcu")})
         roles.setdefault("switch", {}).update(
-            {"enabled": general_widget.is_role_enabled("switch")}
+            {"enabled": general_widget.is_role_checked("switch")}
         )
 
         for key, value in state.items():
@@ -456,28 +451,28 @@ class Controller(QtCore.QObject):
         general_widget.measurement_combo_box.setCurrentIndex(index)
 
         enabled = get_bool(settings.value("smu/enabled"), False)
-        general_widget.set_role_enabled("smu", enabled)
+        general_widget.set_role_checked("smu", enabled)
 
         enabled = get_bool(settings.value("smu2/enabled"), False)
-        general_widget.set_role_enabled("smu2", enabled)
+        general_widget.set_role_checked("smu2", enabled)
 
         enabled = get_bool(settings.value("elm/enabled"), False)
-        general_widget.set_role_enabled("elm", enabled)
+        general_widget.set_role_checked("elm", enabled)
 
         enabled = get_bool(settings.value("elm2/enabled"), False)
-        general_widget.set_role_enabled("elm2", enabled)
+        general_widget.set_role_checked("elm2", enabled)
 
         enabled = get_bool(settings.value("lcr/enabled"), False)
-        general_widget.set_role_enabled("lcr", enabled)
+        general_widget.set_role_checked("lcr", enabled)
 
         enabled = get_bool(settings.value("dmm/enabled"), False)
-        general_widget.set_role_enabled("dmm", enabled)
+        general_widget.set_role_checked("dmm", enabled)
 
         enabled = get_bool(settings.value("tcu/enabled"), False)
-        general_widget.set_role_enabled("tcu", enabled)
+        general_widget.set_role_checked("tcu", enabled)
 
         enabled = get_bool(settings.value("switch/enabled"), False)
-        general_widget.set_role_enabled("switch", enabled)
+        general_widget.set_role_checked("switch", enabled)
 
         output_enabled = get_bool(settings.value("outputEnabled"), False)
         general_widget.set_output_enabled(output_enabled)
@@ -551,28 +546,28 @@ class Controller(QtCore.QObject):
         measurement_index = general_widget.measurement_combo_box.currentIndex()
         settings.setValue("measurement/index", measurement_index)
 
-        enabled = general_widget.is_role_enabled("smu")
+        enabled = general_widget.is_role_checked("smu")
         settings.setValue("smu/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("smu2")
+        enabled = general_widget.is_role_checked("smu2")
         settings.setValue("smu2/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("elm")
+        enabled = general_widget.is_role_checked("elm")
         settings.setValue("elm/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("elm2")
+        enabled = general_widget.is_role_checked("elm2")
         settings.setValue("elm2/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("lcr")
+        enabled = general_widget.is_role_checked("lcr")
         settings.setValue("lcr/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("dmm")
+        enabled = general_widget.is_role_checked("dmm")
         settings.setValue("dmm/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("tcu")
+        enabled = general_widget.is_role_checked("tcu")
         settings.setValue("tcu/enabled", enabled)
 
-        enabled = general_widget.is_role_enabled("switch")
+        enabled = general_widget.is_role_checked("switch")
         settings.setValue("switch/enabled", enabled)
 
         output_enabled = general_widget.is_output_enabled()
@@ -785,74 +780,64 @@ class Controller(QtCore.QObject):
 
     @QtCore.Slot(int)
     def on_measurement_changed(self, index: int) -> None:
-        if index >= len(self.measurement_specs):
+        if index >= len(self.measurement_registry):
             logger.error("Invalid measurement spec index: %d", index)
             return
 
-        spec: MeasurementParameters = self.measurement_specs[index]
+        spec: MeasurementParameters = self.measurement_registry[index]
 
         if spec.type == "iv":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
-            self.main_window.continuous_action.setEnabled(True)
+            self.main_window.continuous_action.setEnabled(spec.provides_continuous)
             self.main_window.general_widget.bias_group_box.setEnabled(False)
             self.main_window.general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
         elif spec.type == "iv_bias":
             self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
-            self.main_window.continuous_action.setEnabled(True)
+            self.main_window.continuous_action.setEnabled(spec.provides_continuous)
             self.main_window.general_widget.bias_group_box.setEnabled(True)
             self.main_window.general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
         elif spec.type == "cv":
             self.main_window.set_data_widget(self.cv_plots_controller.data_widget)
-            self.main_window.continuous_action.setEnabled(False)
+            self.main_window.continuous_action.setEnabled(spec.provides_continuous)
             self.main_window.general_widget.bias_group_box.setEnabled(False)
             self.main_window.general_widget.continuous_group_box.setEnabled(False)
         self.update_continuous_option()
 
-        enabled = "smu" in spec.instruments
-        self.main_window.general_widget.set_role_active("smu", enabled)
-        self.main_window.smu_group_box.setEnabled(enabled)
-        self.main_window.smu_group_box.setVisible(enabled)
+        enabled = "smu" in spec.supported_roles
+        self.main_window.set_role_enabled("smu", enabled)
 
-        enabled = "smu2" in spec.instruments
-        self.main_window.general_widget.set_role_active("smu2", enabled)
-        self.main_window.smu2_group_box.setEnabled(enabled)
-        self.main_window.smu2_group_box.setVisible(enabled)
+        enabled = "smu2" in spec.supported_roles
+        self.main_window.set_role_enabled("smu2", enabled)
 
-        enabled = "elm" in spec.instruments
-        self.main_window.general_widget.set_role_active("elm", enabled)
-        self.main_window.elm_group_box.setEnabled(enabled)
-        self.main_window.elm_group_box.setVisible(enabled)
+        enabled = "elm" in spec.supported_roles
+        self.main_window.set_role_enabled("elm", enabled)
 
-        enabled = "elm2" in spec.instruments
-        self.main_window.general_widget.set_role_active("elm2", enabled)
-        self.main_window.elm2_group_box.setEnabled(enabled)
-        self.main_window.elm2_group_box.setVisible(enabled)
+        enabled = "elm2" in spec.supported_roles
+        self.main_window.set_role_enabled("elm2", enabled)
 
-        enabled = "lcr" in spec.instruments
-        self.main_window.general_widget.set_role_active("lcr", enabled)
-        self.main_window.lcr_group_box.setEnabled(enabled)
-        self.main_window.lcr_group_box.setVisible(enabled)
+        enabled = "lcr" in spec.supported_roles
+        self.main_window.set_role_enabled("lcr", enabled)
 
         general_widget = self.main_window.general_widget
 
-        enabled = "smu" in spec.default_instruments
-        general_widget.set_role_enabled("smu", enabled)
+        enabled = "smu" in spec.default_roles
+        general_widget.set_role_checked("smu", enabled)
 
-        enabled = "smu2" in spec.default_instruments
-        general_widget.set_role_enabled("smu2", enabled)
+        enabled = "smu2" in spec.default_roles
+        general_widget.set_role_checked("smu2", enabled)
 
-        enabled = "elm" in spec.default_instruments
-        general_widget.set_role_enabled("elm", enabled)
+        enabled = "elm" in spec.default_roles
+        general_widget.set_role_checked("elm", enabled)
 
-        enabled = "elm2" in spec.default_instruments
-        general_widget.set_role_enabled("elm2", enabled)
+        enabled = "elm2" in spec.default_roles
+        general_widget.set_role_checked("elm2", enabled)
 
-        enabled = "lcr" in spec.default_instruments
-        general_widget.set_role_enabled("lcr", enabled)
+        enabled = "lcr" in spec.default_roles
+        general_widget.set_role_checked("lcr", enabled)
 
         general_widget.set_voltage_unit(spec.voltage_unit)
         general_widget.set_begin_voltage(spec.default_begin_voltage)
@@ -873,19 +858,19 @@ class Controller(QtCore.QObject):
         # HACK Not all instruments support compliance!
         # TODO Implement instrument capabilities to lock not supported inputs
         #
-        if general_widget.is_role_enabled("smu"):
+        if general_widget.is_role_checked("smu"):
             ...
-        elif general_widget.is_role_enabled("elm"):
+        elif general_widget.is_role_checked("elm"):
             role = self.main_window.find_role("elm")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_role_enabled("elm2"):
+        elif general_widget.is_role_checked("elm2"):
             role = self.main_window.find_role("elm2")
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_role_enabled("lcr"):
+        elif general_widget.is_role_checked("lcr"):
             role = self.main_window.find_role("lcr")
             if role and role.resource_widget.model() in [
                 "K595",
@@ -969,7 +954,7 @@ class Controller(QtCore.QObject):
         measurement = self.main_window.general_widget.current_measurement()
         enabled = False
         if measurement is not None:
-            enabled = measurement.is_continuous
+            enabled = measurement.provides_continuous
         self.main_window.continuous_check_box.setEnabled(enabled)
 
     def create_filename(self) -> str:
@@ -1017,27 +1002,17 @@ class Controller(QtCore.QObject):
 
     def create_measurement(self, state: State) -> Measurement:
         measurement_type = state.measurement_type
-        measurement_cls = MEASUREMENTS.get(measurement_type)
-        if measurement_cls is None:
-            raise ValueError(f"No such measurement type: {measurement_type}")
+        for spec in self.measurement_registry:  # TODO
+            if spec.type == measurement_type:
+                measurement = spec.measurement_cls(state)
 
-        measurement = measurement_cls(state)
+                # Prepare role drivers
+                for role in self.main_window.roles():
+                    measurement.register_instrument(role.name())
 
-        # TODO
-        if measurement_cls in (IVMeasurement, IVBiasMeasurement):
-            measurement.it_change_voltage_ready_event.subscribe(
-                self.change_voltage_ready.emit
-            )
+                return measurement
 
-        measurement.update_event.subscribe(self.update.emit)
-
-        # Prepare role drivers
-        for role in self.main_window.roles():
-            measurement.register_instrument(role.name())
-
-        measurement.failed_event.subscribe(self.failed.emit)
-
-        return measurement
+        raise ValueError(f"No such measurement type: {measurement_type}")
 
     @QtCore.Slot()
     def on_start_measurement(self) -> None:

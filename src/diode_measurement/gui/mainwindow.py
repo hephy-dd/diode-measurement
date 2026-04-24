@@ -168,6 +168,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tcu_group_box = QtWidgets.QGroupBox()
         self.tcu_group_box.setTitle("TCU Status")
 
+        self.status_group_boxes: dict[str, QtWidgets.QGroupBox] = {}
+        self.status_group_boxes["smu"] = self.smu_group_box
+        self.status_group_boxes["smu2"] = self.smu2_group_box
+        self.status_group_boxes["elm"] = self.elm_group_box
+        self.status_group_boxes["elm2"] = self.elm2_group_box
+        self.status_group_boxes["lcr"] = self.lcr_group_box
+        self.status_group_boxes["dmm"] = self.dmm_group_box
+        self.status_group_boxes["tcu"] = self.tcu_group_box
+
         self.smuVoltageLineEdit = QtWidgets.QLineEdit("---")
         self.smuVoltageLineEdit.setReadOnly(True)
         self.smuVoltageLineEdit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
@@ -434,6 +443,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def roles(self) -> list[RoleWidget]:
         return list(self.roleWidgets.values())
+
+    def set_role_enabled(self, role: str, enabled: bool) -> None:
+        self.general_widget.set_role_enabled(role, enabled)
+        status = self.status_group_boxes.get(role)
+        if status is not None:
+            status.setEnabled(enabled)
 
     def clear(self) -> None:
         """Clear displayed data in plots and inputs."""

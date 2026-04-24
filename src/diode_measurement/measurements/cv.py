@@ -41,7 +41,7 @@ class CVMeasurement(RangeMeasurement):
 
     def acquire_reading(self, source_voltage: float) -> None:
         reading: CVReading = self.acquire_cv_reading_data(source_voltage)
-        self.update_event(
+        self.submit_update(
             {
                 "smu_voltage": reading.v_smu,
                 "smu_current": reading.i_smu,

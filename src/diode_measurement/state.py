@@ -1,9 +1,10 @@
+import logging
 import threading
 from dataclasses import dataclass
 from collections.abc import Iterator
 from enum import Enum
 from queue import Queue, Empty
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 __all__ = ["State"]
 
@@ -50,6 +51,21 @@ class CVReading(Reading):
     r_lcr: float
 
 
+class EventBus:
+    def __init__(self) -> None:
+        self._event_registry: dict[str, list[Callable]] = {}
+
+    def register_callback(self, event_name: str, event_callback: Callable) -> None:
+        self._event_registry.setdefault(event_name, []).append(event_callback)
+
+    def submit(self, event_name: str, *args) -> None:
+        for event_callback in self._event_registry.get(event_name, [])[:]:
+            try:
+                event_callback(*args)
+            except Exception:
+                logging.exception("Failed to submit event: %r", event_name)
+
+
 class State:
     def __init__(self) -> None:
         self._lock = threading.RLock()
@@ -60,6 +76,7 @@ class State:
         self._iv_reading_queue: Queue[IVReading] = Queue()
         self._it_reading_queue: Queue[IVReading] = Queue()
         self._cv_reading_queue: Queue[CVReading] = Queue()
+        self.event_bus: EventBus = EventBus()
 
     @property
     def stop_requested(self) -> bool:

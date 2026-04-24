@@ -1,15 +1,17 @@
 from .core.measurement import MeasurementParameters
+from .measurements import IVMeasurement, IVBiasMeasurement, CVMeasurement
 
-__all__ = ["MEASUREMENT_SPECS"]
+__all__ = ["measurement_registry"]
 
 
-MEASUREMENT_SPECS: list[MeasurementParameters] = [
+measurement_registry: list[MeasurementParameters] = [
     MeasurementParameters(
         id="iv",
         type="iv",
         title="IV",
-        instruments=["smu", "elm", "elm2"],
-        default_instruments=["smu"],
+        measurement_cls=IVMeasurement,
+        supported_roles=["smu", "elm", "elm2"],
+        default_roles=["smu"],
         default_begin_voltage=0.0,
         default_end_voltage=-300.0,
         default_step_voltage=5.0,
@@ -17,14 +19,15 @@ MEASUREMENT_SPECS: list[MeasurementParameters] = [
         default_current_compliance=10.0e-6,
         voltage_unit="V",
         current_compliance_unit="uA",
-        is_continuous=True,
+        provides_continuous=True,
     ),
     MeasurementParameters(
         id="iv_bias",
         type="iv_bias",
         title="IV Bias",
-        instruments=["smu", "smu2", "elm", "elm2"],
-        default_instruments=["smu", "smu2"],
+        measurement_cls=IVBiasMeasurement,
+        supported_roles=["smu", "smu2", "elm", "elm2"],
+        default_roles=["smu", "smu2"],
         default_begin_voltage=0.0,
         default_end_voltage=-300.0,
         default_step_voltage=5.0,
@@ -33,14 +36,15 @@ MEASUREMENT_SPECS: list[MeasurementParameters] = [
         default_current_compliance=10.0e-6,
         voltage_unit="V",
         current_compliance_unit="uA",
-        is_continuous=True,
+        provides_continuous=True,
     ),
     MeasurementParameters(
         id="cv_diode",
         type="cv",
         title="CV Diode",
-        instruments=["smu", "lcr"],
-        default_instruments=["smu", "lcr"],
+        measurement_cls=CVMeasurement,
+        supported_roles=["smu", "lcr"],
+        default_roles=["smu", "lcr"],
         default_begin_voltage=0.0,
         default_end_voltage=50.0,
         default_step_voltage=1.0,
@@ -53,8 +57,9 @@ MEASUREMENT_SPECS: list[MeasurementParameters] = [
         id="cv_mos",
         type="cv",
         title="CV MOS",
-        instruments=["lcr"],
-        default_instruments=["lcr"],
+        measurement_cls=CVMeasurement,
+        supported_roles=["lcr"],
+        default_roles=["lcr"],
         default_begin_voltage=-10.0,
         default_end_voltage=10.0,
         default_step_voltage=1.0,

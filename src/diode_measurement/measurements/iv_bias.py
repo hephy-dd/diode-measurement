@@ -49,7 +49,7 @@ class IVBiasMeasurement(RangeMeasurement):
     def acquire_reading(self, source_voltage: float) -> None:
         reading: IVReading = self.acquire_reading_data(source_voltage)
         logger.info(reading)
-        self.update_event(
+        self.submit_update(
             {
                 "smu_voltage": reading.v_smu,
                 "smu_current": reading.i_smu,
@@ -92,7 +92,7 @@ class IVBiasMeasurement(RangeMeasurement):
 
                 voltage = self.get_source_voltage()
 
-                self.update_event(
+                self.submit_update(
                     {
                         "smu_voltge": reading.v_smu,
                         "smu_current": reading.i_smu,
