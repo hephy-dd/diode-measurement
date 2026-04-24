@@ -53,7 +53,9 @@ def test_driver_k2470(res):
     res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
     assert d.measure_i() == 0.00421
     assert res.buffer == [
+        ":TRAC:CLE \"defbuffer1\"",
         ":TRAC:TRIG \"defbuffer1\"",
+        ":INIT",
         "*OPC?",
         ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
     ]
@@ -61,7 +63,9 @@ def test_driver_k2470(res):
     res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
     assert d.measure_v() == 42.1
     assert res.buffer == [
+        ":TRAC:CLE \"defbuffer1\"",
         ":TRAC:TRIG \"defbuffer1\"",
+        ":INIT",
         "*OPC?",
         ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
     ]
@@ -69,7 +73,9 @@ def test_driver_k2470(res):
     res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
     assert d.measure_iv() == (0.00421, 42.1)
     assert res.buffer == [
+        ":TRAC:CLE \"defbuffer1\"",
         ":TRAC:TRIG \"defbuffer1\"",
+        ":INIT",
         "*OPC?",
         ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
     ]
