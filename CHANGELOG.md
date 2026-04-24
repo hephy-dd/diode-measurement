@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.2] - 2026-04-24
+
+### Fixes
+
+- Add missing INIT command when reading from Keithley 2470, preventing frozen readings (#157).
+
 ## [0.25.1] - 2026-04-21
 
 ### Fixed
@@ -535,7 +541,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.25.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.25.2...HEAD
+[0.25.2]: https://github.com/hephy-dd/diode-measurement/compare/0.25.1...0.25.2
 [0.25.1]: https://github.com/hephy-dd/diode-measurement/compare/0.25.0...0.25.1
 [0.25.0]: https://github.com/hephy-dd/diode-measurement/compare/0.24.3...0.25.0
 [0.24.3]: https://github.com/hephy-dd/diode-measurement/compare/0.24.2...0.24.3
