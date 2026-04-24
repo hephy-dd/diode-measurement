@@ -77,8 +77,13 @@ class K2470(BaseDriver):
         return v
 
     def measure_iv(self) -> tuple[float, float]:
-        self._write(':TRAC:TRIG "defbuffer1"')
-        result = self._query(':TRAC:DATA? 1, 1, "defbuffer1", SOUR, READ')
+        """Measure I and V at once using a trace buffer."""
+        resource = self.resource
+        resource.write(":TRAC:CLE \"defbuffer1\"")
+        resource.write(":TRAC:TRIG \"defbuffer1\"")
+        resource.write(":INIT")
+        resource.query("*OPC?")  # NOTE: depends on timeout
+        result = resource.query(":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ")
         try:
             source, reading = result.split(",", 1)
             return float(reading), float(source)
