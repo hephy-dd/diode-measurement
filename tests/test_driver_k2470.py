@@ -50,35 +50,17 @@ def test_driver_k2470(res):
     assert d.compliance_tripped() is True
     assert res.buffer == [":SOUR:VOLT:ILIM:LEV:TRIP?"]
 
-    res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
+    res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_i() == 0.00421
-    assert res.buffer == [
-        ":TRAC:CLE \"defbuffer1\"",
-        ":TRAC:TRIG \"defbuffer1\"",
-        ":INIT",
-        "*OPC?",
-        ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
-    ]
+    assert res.buffer == [":READ? \"defbuffer1\", SOUR, READ",]
 
-    res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
+    res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_v() == 42.1
-    assert res.buffer == [
-        ":TRAC:CLE \"defbuffer1\"",
-        ":TRAC:TRIG \"defbuffer1\"",
-        ":INIT",
-        "*OPC?",
-        ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
-    ]
+    assert res.buffer == [":READ? \"defbuffer1\", SOUR, READ",]
 
-    res.buffer = ["1", "+4.210000E+01,+4.210000E-03"]
+    res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_iv() == (0.00421, 42.1)
-    assert res.buffer == [
-        ":TRAC:CLE \"defbuffer1\"",
-        ":TRAC:TRIG \"defbuffer1\"",
-        ":INIT",
-        "*OPC?",
-        ":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ",
-    ]
+    assert res.buffer == [":READ? \"defbuffer1\", SOUR, READ",]
 
     res.buffer = ["1"]
     assert d.set_route_terminals("REAR") is None

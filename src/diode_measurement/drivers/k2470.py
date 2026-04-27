@@ -78,18 +78,13 @@ class K2470(BaseDriver):
         return v
 
     def measure_iv(self) -> tuple[float, float]:
-        """Measure I and V at once using a trace buffer."""
-        resource = self.resource
-        resource.write(":TRAC:CLE \"defbuffer1\"")
-        resource.write(":TRAC:TRIG \"defbuffer1\"")
-        resource.write(":INIT")
-        resource.query("*OPC?")  # NOTE: depends on timeout
-        result = resource.query(":TRAC:DATA? 1, 1, \"defbuffer1\", SOUR, READ")
+        """Measure I and V at once using READ?."""
+        result = self.resource.query(":READ? \"defbuffer1\", SOUR, READ")
         try:
             source, reading = result.split(",", 1)
             return float(reading), float(source)
         except Exception as exc:
-            raise ValueError(f"Unexpected instrument response: {result!r}") from exc
+            raise ValueError(f"Unexpected instrument response for READ?: {result!r}") from exc
 
     def set_route_terminals(self, terminal: str) -> None:
         self._write(f":ROUT:TERM {terminal}")
