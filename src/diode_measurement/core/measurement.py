@@ -617,27 +617,29 @@ class RangeMeasurement(Measurement):
             logger.info("Switch: opened ALL channels")
 
     def assure_discharge(self) -> None:
-        # wait until capacitors discared before output disable
+        """Wait until capacitors discared before output disable."""
+
+        discharge_timeout: float = self.state.discharge_timeout
+        discharge_threshold: float = abs(self.state.discharge_threshold)
+
         def read_source_voltage():
             if isinstance(self.source_instrument, VoltageMeasurable):
                 return self.source_instrument.measure_v()
             logger.warning("Source instrument does not provide voltage readings.")
             return 0.0
 
-        threshold: float = 0.5  # Volt
-
         self.update_message("Waiting for voltage settled...")
         self.update_progress(0, 0, 0)
 
-        t = time.monotonic()
+        start = time.monotonic()
 
-        while abs(read_source_voltage()) > threshold:
+        while abs(read_source_voltage()) > discharge_threshold:
             time.sleep(1.0)
 
-            dt = time.monotonic() - t
-            if dt > 60.0:
-                raise RuntimeError(
-                    f"Timeout while waiting for voltage to settle < {threshold} V, source output still enabled."
+            delta = time.monotonic() - start
+            if delta > discharge_timeout:
+                raise TimeoutError(
+                    f"Timeout while waiting for voltage to settle < {discharge_threshold} V, source output still enabled."
                 )
 
         self.update_message("")
