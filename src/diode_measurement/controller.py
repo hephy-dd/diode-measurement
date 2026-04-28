@@ -1062,18 +1062,17 @@ class Controller(QtCore.QObject):
             # Create and run measurement
             measurement = self.create_measurement(self.state)
 
-            options: dict[str, Any] = {}
-
             settings = QtCore.QSettings()
-            timestamp_format = settings.value("writer/timestampFormat", ".6f", str)
-            valueFormat = settings.value("writer/valueFormat", "+.3E", str)
+            timestamp_format = get_str(settings.value("writer/timestampFormat"), ".6f")
+            value_format = get_str(settings.value("writer/valueFormat"), "+.3E")
 
-            options.update(
-                {
-                    "timestamp_format": timestamp_format,
-                    "value_format": valueFormat,
-                }
-            )
+            # discharge guard
+            discharge_timeout = get_float(settings.value("misc/discharge_timeout"), 60.0)
+            discharge_threshold = get_float(settings.value("misc/discharge_threshold"), 0.5)
+            self.state.update({
+                "discharge_timeout": discharge_timeout,
+                "discharge_threshold": discharge_threshold,
+            })
 
             self.main_window.clear()
             self.iv_plots_controller.clear()
@@ -1082,7 +1081,10 @@ class Controller(QtCore.QObject):
             self.cv_plots_controller.update_timer.start(500)
 
             job = MeasurementJob(
-                measurement, options, has_finished=self.measurement_finished.emit
+                measurement,
+                timestamp_format=timestamp_format,
+                value_format=value_format,
+                has_finished=self.measurement_finished.emit,
             )
             self.submit_background_job(job)
 

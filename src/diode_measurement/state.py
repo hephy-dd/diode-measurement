@@ -168,6 +168,16 @@ class State:
             return self._state.get("bias_source_role")
 
     @property
+    def discharge_timeout(self) -> float:
+        with self._lock:
+            return self._state.get("discharge_timeout", 60.0)
+
+    @property
+    def discharge_threshold(self) -> float:
+        with self._lock:
+            return self._state.get("discharge_threshold", 0.5)
+
+    @property
     def is_change_voltage_continuous(self) -> bool:
         with self._lock:
             return self._change_voltage_parameters is not None
