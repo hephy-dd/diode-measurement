@@ -105,17 +105,19 @@ class Measurement:
 
     def register_instrument(self, name: str) -> None:
         role = self.state.find_role(name)
-        if not role.get("enabled"):
+        if role is None:
+            raise KeyError(f"No such instrument: {name!r}")
+        if not role.enabled:
             return None
-        model = role.get("model", "")
-        resource_name = role.get("resource_name", "")
+        model = role.model
+        resource_name = role.resource_name
         if not resource_name.strip():
             raise ValueError(
                 f"Empty resource name not allowed for {name.upper()} ({model})."
             )
-        visa_library = role.get("visa_library", "@py")
-        termination = role.get("termination", "\n")
-        timeout = role.get("timeout", 0) * 1000  # in millisecs
+        visa_library = role.visa_library
+        termination = role.termination
+        timeout = role.timeout * 1000  # in millisecs
         cls = driver_factory(model)
         if not cls:
             logger.warning("No such driver: %s", model)
@@ -416,7 +418,7 @@ class RangeMeasurement(Measurement):
         # Reset (optional)
         for key, instrument in self.instruments.items():
             role = self.state.find_role(key)
-            if role and role.get("reset_instrument"):
+            if role and role.reset_instrument:
                 logger.info("Reset %s...", key.upper())
                 instrument.reset()
                 logger.info("Reset %s... done.", key.upper())
@@ -430,11 +432,12 @@ class RangeMeasurement(Measurement):
         # Configure
         for key, instrument in self.instruments.items():
             logger.info("Configure %s...", key.upper())
-            options = self.state.find_role(key).get("options", {})
-            for name, value in options.items():
-                logger.info("%s: %r", name, value)
-            instrument.configure(options)
-            self.check_error_state(instrument)
+            role = self.state.find_role(key)
+            if role is not None:
+                for name, value in role.options.items():
+                    logger.info("%s: %r", name, value)
+                instrument.configure(role.options)
+                self.check_error_state(instrument)
             logger.info("Configure %s... done.", key.upper())
 
         # Compliance

@@ -1,6 +1,6 @@
 import logging
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections.abc import Iterator
 from enum import Enum
 from queue import Queue, Empty
@@ -51,17 +51,47 @@ class CVReading(Reading):
     r_lcr: float
 
 
+@dataclass
+class Role:
+    enabled: bool
+    model: str
+    resource_name: str
+    visa_library: str
+    termination: str
+    timeout: float
+    reset_instrument: bool
+    options: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Role":
+        return cls(
+            enabled=data.get("enabled", False),
+            model=data.get("model", ""),
+            resource_name=data.get("resource_name", ""),
+            visa_library=data.get("visa_library", "@py"),
+            termination=data.get("termination", "\n"),
+            timeout=float(data.get("timeout", 4.0)),
+            reset_instrument=data.get("reset_instrument", False),
+            options=dict(data.get("options", {})),
+        )
+
+
 class EventBus:
     def __init__(self) -> None:
+        self._lock = threading.RLock()
         self._event_registry: dict[str, list[Callable]] = {}
 
     def register_callback(self, event_name: str, event_callback: Callable) -> None:
-        self._event_registry.setdefault(event_name, []).append(event_callback)
+        with self._lock:
+            self._event_registry.setdefault(event_name, []).append(event_callback)
 
     def submit(self, event_name: str, *args) -> None:
-        for event_callback in self._event_registry.get(event_name, [])[:]:
+        with self._lock:
+            callbacks = tuple(self._event_registry.get(event_name, ()))
+
+        for callback in callbacks:
             try:
-                event_callback(*args)
+                callback(*args)
             except Exception:
                 logging.exception("Failed to submit event: %r", event_name)
 
@@ -196,9 +226,12 @@ class State:
                 waiting_time=parameters.waiting_time,
             )
 
-    def find_role(self, name: str) -> dict:
+    def find_role(self, name: str) -> Optional[Role]:
         with self._lock:
-            return self._state.get("roles", {}).get(name, {})
+            role_data = self._state.get("roles", {}).get(name)
+            if role_data is None:
+                return None
+            return Role.from_dict(dict(role_data))
 
     def update(self, data: dict[str, Any]) -> None:
         with self._lock:
@@ -208,14 +241,26 @@ class State:
         with self._lock:
             return self._state.get(key, default)
 
-    def __iter__(self) -> Iterator:
+    def items(self) -> tuple[tuple[str, Any], ...]:
         with self._lock:
-            return iter(self._state.items())
+            return tuple(self._state.items())
+
+    def __iter__(self) -> Iterator:
+        return iter(self._state.items())
 
     def clear_queues(self) -> None:
-        self._iv_reading_queue = Queue()
-        self._it_reading_queue = Queue()
-        self._cv_reading_queue = Queue()
+        with self._lock:
+            self._drain_queue(self._iv_reading_queue)
+            self._drain_queue(self._it_reading_queue)
+            self._drain_queue(self._cv_reading_queue)
+
+    @staticmethod
+    def _drain_queue(queue: Queue) -> None:
+        while True:
+            try:
+                queue.get_nowait()
+            except Empty:
+                break
 
     def append_iv_reading(self, reading: IVReading) -> None:
         self._iv_reading_queue.put_nowait(reading)
