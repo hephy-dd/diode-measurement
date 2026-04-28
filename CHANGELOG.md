@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `pyright` to the `tox` workflow for consistent static type checking in local development and CI (#160).
+
+## Changed
+
+- Added missing type hints across the codebase.
+- Replaced `time.time()` with `time.monotonic()` for reliable elapsed-time measurement.
+
+### Fixed
+
+- Resolved all reported Pyright type errors across the codebase to ensure clean type-checking (#160).
+
 ## [0.25.3] - 2026-04-27
 
 ### Fixes
