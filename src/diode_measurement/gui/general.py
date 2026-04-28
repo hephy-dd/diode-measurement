@@ -287,7 +287,7 @@ class GeneralWidget(QtWidgets.QWidget):
             if role not in self.role_check_boxes:
                 logging.warning("set_measurement_roles(): no such role: %r", role)
         for role in self.role_check_boxes:
-            self.set_role_enabled(role, role in roles)
+            self.set_role_checked(role, role in roles)
 
     def is_output_enabled(self):
         return self.output_group_box.isChecked()
