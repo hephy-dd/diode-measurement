@@ -13,7 +13,7 @@ from ..state import State, EventBus, FSMState, IVReading
 from ..writer import Writer
 
 from .actor import Actor
-from .driver import TCU
+from .driver import TCU, VoltageMeasurable
 from .resource import Resource, AutoReconnectResource
 from .timers import IntervalTimer
 
@@ -619,7 +619,7 @@ class RangeMeasurement(Measurement):
     def assure_discharge(self) -> None:
         # wait until capacitors discared before output disable
         def read_source_voltage():
-            if hasattr(self.source_instrument, "measure_v"):
+            if isinstance(self.source_instrument, VoltageMeasurable):
                 return self.source_instrument.measure_v()
             logger.warning("Source instrument does not provide voltage readings.")
             return 0.0

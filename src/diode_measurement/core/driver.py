@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Iterable, Mapping
-from typing import Any, Optional, Protocol
+from typing import Any, Optional, Protocol, runtime_checkable
 
 from comet.driver.generic import InstrumentError
 
@@ -74,3 +74,8 @@ class SwitchingMatrix(Driver, Protocol):
     def open_channels(self, channels: Iterable[str]) -> None: ...
     def open_all_channels(self) -> None: ...
     def closed_channels(self) -> list[str]: ...
+
+
+@runtime_checkable
+class VoltageMeasurable(Protocol):
+    def measure_v(self) -> float: ...

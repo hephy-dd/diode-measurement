@@ -27,7 +27,7 @@ class DynamicValueAxis(QtCharts.QValueAxis):
         axis.rangeChanged.connect(self.setRange)
         axis.hide()
 
-    def setRange(self, minimum: float, maximum: float) -> None:
+    def setRange(self, minimum: float, maximum: float) -> None:  # pyright: ignore
         # Get best matching scale/prefix
         base = max(abs(minimum), abs(maximum))
         scale, prefix, _ = auto_scale(base)

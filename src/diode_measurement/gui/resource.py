@@ -2,7 +2,7 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from ..core.resource import open_resource
+from ..core.resource import open_resource, Resource
 from ..drivers import driver_factory
 
 __all__ = ["ResourceWidget"]
@@ -121,7 +121,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
     def on_model_text_changed(self, text: str) -> None:
         self.model_changed.emit(text)
 
-    def open_resource(self):
+    def open_resource(self) -> Resource:
         return open_resource(self.resource_name(), self.termination(), self.timeout())
 
     def read_identity(self) -> str:

@@ -637,8 +637,7 @@ class Controller(QtCore.QObject):
             self.iv_plots_controller.clear()
             self.cv_plots_controller.clear()
             try:
-                # Open in binary mode!
-                with open(filename, "rb") as fp:
+                with open(filename, "r", newline="") as fp:
                     reader = Reader(fp)
                     meta = reader.read_meta()
                     data = reader.read_data()
@@ -653,24 +652,27 @@ class Controller(QtCore.QObject):
                         if spec.type == measurement_type:
                             general_widget.measurement_combo_box.setCurrentIndex(index)
                             break
-                if meta.get("sample"):
-                    general_widget.set_sample_name(meta.get("sample"))
-                if meta.get("voltage_begin"):
-                    general_widget.set_begin_voltage(meta.get("voltage_begin"))
-                if meta.get("voltage_end"):
-                    general_widget.set_end_voltage(meta.get("voltage_end"))
-                if meta.get("voltage_step"):
-                    general_widget.set_step_voltage(meta.get("voltage_step"))
-                if meta.get("waiting_time"):
-                    general_widget.set_waiting_time(meta.get("waiting_time"))
-                if meta.get("waiting_time_continuous"):
-                    general_widget.set_waiting_time_continuous(
-                        meta.get("waiting_time_continuous")
-                    )
-                if meta.get("current_compliance"):
-                    general_widget.set_current_compliance(
-                        meta.get("current_compliance")
-                    )
+
+                if (sample := meta.get("sample")) is not None:
+                    general_widget.set_sample_name(sample)
+
+                if (voltage_begin := meta.get("voltage_begin")) is not None:
+                    general_widget.set_begin_voltage(voltage_begin)
+
+                if (voltage_end := meta.get("voltage_end")) is not None:
+                    general_widget.set_end_voltage(voltage_end)
+
+                if (voltage_step := meta.get("voltage_step")) is not None:
+                    general_widget.set_step_voltage(voltage_step)
+
+                if (waiting_time := meta.get("waiting_time")) is not None:
+                    general_widget.set_waiting_time(waiting_time)
+
+                if (waiting_time_continuous := meta.get("waiting_time_continuous")) is not None:
+                    general_widget.set_waiting_time_continuous(waiting_time_continuous)
+
+                if (current_compliance := meta.get("current_compliance")) is not None:
+                    general_widget.set_current_compliance(current_compliance)
 
                 # Data
                 if measurement_type in ["iv", "iv_bias"]:
@@ -715,55 +717,71 @@ class Controller(QtCore.QObject):
     @QtCore.Slot(dict)
     def on_update(self, data: Mapping[str, Any]) -> None:
         cache = {}
-        if "fsm_state" in data:
-            cache.update({"fsm_state": data["fsm_state"]})
-        if "source_voltage" in data:
-            self.main_window.updateSourceVoltage(data["source_voltage"])
-            cache.update({"source_voltage": data["source_voltage"]})
-        if "bias_source_voltage" in data:
-            self.main_window.updateBiasSourceVoltage(data["bias_source_voltage"])
-            cache.update({"bias_source_voltage": data["bias_source_voltage"]})
-        if "smu_voltage" in data:
-            self.main_window.updateSMUVoltage(data["smu_voltage"])
-            cache.update({"smu_voltage": data["smu_voltage"]})
-        if "smu_current" in data:
-            self.main_window.updateSMUCurrent(data["smu_current"])
-            cache.update({"smu_current": data["smu_current"]})
-        if "smu2_voltage" in data:
-            self.main_window.updateSMU2Voltage(data["smu2_voltage"])
-            cache.update({"smu2_voltage": data["smu2_voltage"]})
-        if "smu2_current" in data:
-            self.main_window.updateSMU2Current(data["smu2_current"])
-            cache.update({"smu2_current": data["smu2_current"]})
-        if "elm_current" in data:
-            self.main_window.updateELMCurrent(data["elm_current"])
-            cache.update({"elm_current": data["elm_current"]})
-        if "elm2_current" in data:
-            self.main_window.updateELM2Current(data["elm2_current"])
-            cache.update({"elm2_current": data["elm2_current"]})
-        if "lcr_capacity" in data:
-            self.main_window.updateLCRCapacity(data["lcr_capacity"])
-            cache.update({"lcr_capacity": data["lcr_capacity"]})
-        if "dmm_temperature" in data:
-            self.main_window.updateDMMTemperature(data["dmm_temperature"])
-            cache.update({"dmm_temperature": data["dmm_temperature"]})
-        if "tcu_temperature" in data:
-            self.main_window.updateTCUTemperature(data["tcu_temperature"])
-            cache.update({"tcu_temperature": data["tcu_temperature"]})
-        if "tcu_state" in data:
-            self.main_window.updateTCUState(data["tcu_state"])
-            cache.update({"tcu_state": data["tcu_state"]})
-        if "source_output_state" in data:
-            self.main_window.updateSourceOutputState(data["source_output_state"])
-        if "bias_source_output_state" in data:
-            self.main_window.updateBiasSourceOutputState(
-                data["bias_source_output_state"]
-            )
-        if "message" in data:
-            self.main_window.set_message(data["message"])
-        if "progress" in data:
-            minimum, maximum, value = data["progress"]
+
+        if (fsm_state := data.get("fsm_state")) is not None:
+            cache.update({"fsm_state": fsm_state})
+
+        if (source_voltage := data.get("source_voltage")) is not None:
+            self.main_window.updateSourceVoltage(source_voltage)
+            cache.update({"source_voltage": source_voltage})
+
+        if (bias_source_voltage := data.get("bias_source_voltage")) is not None:
+            self.main_window.updateBiasSourceVoltage(bias_source_voltage)
+            cache.update({"bias_source_voltage": bias_source_voltage})
+
+        if (smu_voltage := data.get("smu_voltage")) is not None:
+            self.main_window.updateSMUVoltage(smu_voltage)
+            cache.update({"smu_voltage": smu_voltage})
+
+        if (smu_current := data.get("smu_current")) is not None:
+            self.main_window.updateSMUCurrent(smu_current)
+            cache.update({"smu_current": smu_current})
+
+        if (smu2_voltage := data.get("smu2_voltage")) is not None:
+            self.main_window.updateSMU2Voltage(smu2_voltage)
+            cache.update({"smu2_voltage": smu2_voltage})
+
+        if (smu2_current := data.get("smu2_current")) is not None:
+            self.main_window.updateSMU2Current(smu2_current)
+            cache.update({"smu2_current": smu2_current})
+
+        if (elm_current := data.get("elm_current")) is not None:
+            self.main_window.updateELMCurrent(elm_current)
+            cache.update({"elm_current": elm_current})
+
+        if (elm2_current := data.get("elm2_current")) is not None:
+            self.main_window.updateELM2Current(elm2_current)
+            cache.update({"elm2_current": elm2_current})
+
+        if (lcr_capacity := data.get("lcr_capacity")) is not None:
+            self.main_window.updateLCRCapacity(lcr_capacity)
+            cache.update({"lcr_capacity": lcr_capacity})
+
+        if (dmm_temperature := data.get("dmm_temperature")) is not None:
+            self.main_window.updateDMMTemperature(dmm_temperature)
+            cache.update({"dmm_temperature": dmm_temperature})
+
+        if (tcu_temperature := data.get("tcu_temperature")) is not None:
+            self.main_window.updateTCUTemperature(tcu_temperature)
+            cache.update({"tcu_temperature": tcu_temperature})
+
+        if (tcu_state := data.get("tcu_state")) is not None:
+            self.main_window.updateTCUState(tcu_state)
+            cache.update({"tcu_state": tcu_state})
+
+        if (source_output_state := data.get("source_output_state")) is not None:
+            self.main_window.updateSourceOutputState(source_output_state)
+
+        if (bias_source_output_state := data.get("bias_source_output_state")) is not None:
+            self.main_window.updateBiasSourceOutputState(bias_source_output_state)
+
+        if (message := data.get("message")) is not None:
+            self.main_window.set_message(message)
+
+        if (progress := data.get("progress")) is not None:
+            minimum, maximum, value = progress
             self.main_window.set_progress(minimum, maximum, value)
+
         with self.cache:
             self.cache.update(cache)
 

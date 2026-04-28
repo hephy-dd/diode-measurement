@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any, Optional
 
 import pyvisa
+from pyvisa.resources import MessageBasedResource
 
 __all__ = [
     "parse_resource",
@@ -40,15 +41,14 @@ def parse_resource(resource_name: str) -> tuple[str, str]:
     return resource_name, visa_library
 
 
-def open_resource(resource_name: str, termination: str, timeout: float) -> pyvisa.Resource:
+def open_resource(resource_name: str, termination: str, timeout: float) -> "Resource":
     resource_name, visa_library = parse_resource(resource_name)
-    timeout_millisecs = timeout * 1e3
-    rm = pyvisa.ResourceManager(visa_library)
-    return rm.open_resource(
+    return Resource(
         resource_name=resource_name,
+        visa_library=visa_library,
         read_termination=termination,
         write_termination=termination,
-        timeout=timeout_millisecs,
+        timeout=timeout,
     )
 
 
@@ -56,7 +56,7 @@ class ResourceError(Exception): ...
 
 
 class Resource:
-    def __init__(self, resource_name: str, visa_library: str, **options):
+    def __init__(self, resource_name: str, visa_library: str, **options) -> None:
         self.resource_name = resource_name
         self.visa_library = visa_library
         self.options = {
@@ -71,9 +71,13 @@ class Resource:
     def __enter__(self):
         try:
             self._rm = pyvisa.ResourceManager(self.visa_library)
-            self._resource = self._rm.open_resource(
+            resource = self._rm.open_resource(
                 resource_name=self.resource_name, **self.options
             )
+            if not isinstance(resource, MessageBasedResource):
+                resource.close()
+                raise TypeError(f"Expected MessageBasedResource, got {type(resource).__name__}")
+            self._resource = resource
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         return self
