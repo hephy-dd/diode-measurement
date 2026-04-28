@@ -1,6 +1,7 @@
 import csv
 import logging
 import re
+from typing import Any, Iterator, TextIO
 
 from comet.utils import ureg
 
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 __all__ = ["Reader"]
 
 
-def read_block(fp):
+def read_block(fp: TextIO) -> Iterator[str]:
     """Return a continuous block of lines, stopping at an empty line."""
     for line in fp:
         if isinstance(line, bytes):
@@ -21,12 +22,14 @@ def read_block(fp):
 
 
 class Reader:
-    def __init__(self, fp):
-        self.fp = fp
+    delimiter: str = "\t"
 
-    def read_meta(self):
-        reader = csv.reader(read_block(self.fp))
-        meta = {}
+    def __init__(self, fp: TextIO) -> None:
+        self._fp = fp
+
+    def read_meta(self) -> dict[str, Any]:
+        reader = csv.reader(read_block(self._fp))
+        meta: dict[str, Any] = {}
         for row in reader:
             if not row:
                 break
@@ -43,15 +46,20 @@ class Reader:
             meta[key] = value
         return meta
 
-    def read_data(self):
-        reader = csv.reader(read_block(self.fp), delimiter="\t")
-        for row in reader:
-            header = [key.split("[")[0].strip() for key in row]
-            break
-        data = []
+    def read_data(self) -> list[dict[str, float]]:
+        reader = csv.reader(read_block(self._fp), delimiter=self.delimiter)
+        header_row = next(reader, None)
+
+        if not header_row:
+            return []
+
+        header = [key.split("[")[0].strip() for key in header_row]
+
+        data: list[dict[str, float]] = []
         for row in reader:
             if not row:
                 break
             values = (float(value) for value in row)
             data.append(dict(zip(header, values)))
+
         return data
