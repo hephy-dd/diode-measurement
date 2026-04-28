@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `pyright` to the `tox` workflow for consistent static type checking in local development and CI (#160).
+- Added configurable voltage discharge timeout and threshold settings to the Preferences dialog (#161).
 
 ## Changed
 
