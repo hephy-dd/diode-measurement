@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-04-29
+
 ### Added
 
 - Added `pyright` to the `tox` workflow for consistent static type checking in local development and CI (#160).
 - Added configurable voltage discharge timeout and threshold settings to the Preferences dialog (#161).
+- Added `sample` parameter to JSON-RPC `start` method (#162).
 
 ## Changed
 
 - Added missing type hints across the codebase.
 - Replaced `time.time()` with `time.monotonic()` for reliable elapsed-time measurement.
+- Refactored plot widgets for improved maintainability.
 
 ### Fixed
 
@@ -561,7 +565,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.25.3...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.26.0...HEAD
+[0.26.0]: https://github.com/hephy-dd/diode-measurement/compare/0.25.3...0.26.0
 [0.25.3]: https://github.com/hephy-dd/diode-measurement/compare/0.25.2...0.25.3
 [0.25.2]: https://github.com/hephy-dd/diode-measurement/compare/0.25.1...0.25.2
 [0.25.1]: https://github.com/hephy-dd/diode-measurement/compare/0.25.0...0.25.1

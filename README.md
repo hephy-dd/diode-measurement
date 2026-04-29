@@ -2,87 +2,94 @@
 
 IV/CV measurements for silicon sensors.
 
-## Run
+## Overview
 
-On Windows download a pre-built executable from the release section and run it.
+Diode Measurement is a tool for performing IV (current-voltage) and CV (capacitance-voltage) measurements on silicon sensors using a range of supported laboratory instruments.
 
-## Install
-
-Install using pip in a virtual environment.
-
-```bash
-pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.25.3.tar.gz
-```
-
-## Build Executable
-
-Building a Windows executable using PyInstaller.
-
-```bash
-# Create build environment
-python3 -m venv build_env
-. build_env/Scripts/activate
-
-# Install dependencies
-pip install --upgrade pip
-pip install -e .
-pip install -r .pyinstaller/requirements.txt
-
-# Build executable
-pyinstaller ./.pyinstaller/windows_app.spec
-```
-
-An executable will be created in `dist/diode-measurement-{version}.exe`
+It provides a unified interface for configuring instruments, running measurements, and collecting data across multiple hardware setups.
 
 ## Supported Instruments
 
-Source Meter Units
+### Source Meter Units (SMU)
 
 - Keithley 237
 - Keithley 2410
 - Keithley 2470
 - Keithley 2657A
 
-Electro Meter
+### Electrometers
 
 - Keithley 6514
 - Keithley 6517B
 
-LCR Meter
+### LCR Meters
 
 - Agilent 4284A
 - Keithley 595
 - Keithley 4215-CVU
 - Keysight E4980A
 
-DMM (Temperature)
+### Digital Multimeter (Temperature)
 
 - Keithley 2700
 
-TCU (Temperature Control Unit)
+### Temperature Control Unit (TCU)
 
 - ERS AC3 Fusion (Thermal Chuck)
 
-Switching Matrix
+### Switching Matrix
 
 - HEPHY BrandBox (HV Switch)
 - Keithley 707B
 - Keithley 708B
 
-## Setup
+## Installation
 
-To interface instruments using a GPIB interface the NI-VISA drivers need to be
-installed. Interfacing instruments using TCPIP, USB or Serial port is supported
-out of the box by using PyVISA-py, pyusb and pyserial.
+### Windows
 
-The instrument resource name inputs accept follwing formats:
+Pre-built Windows executables are available in the GitHub Releases section.
 
-|Format|Example|Result|
-|:-----|:------|:-----|
-|&lt;n&gt;|16|GPIB::16::INSTR|
-|&lt;ip&gt;:&lt;port&gt;|0.0.0.0:1080|TCPIP::0.0.0.0::1080::SOCKET|
-|&lt;host&gt;:&lt;port&gt;|localhost:1080|TCPIP::localhost::1080::SOCKET|
-|&lt;visa&gt;|GPIB1::16::INSTR|GPIB1::16::INSTR|
+### Python Installation
+
+Install the package inside a virtual environment using `pip`:
+
+```bash
+pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.26.0.tar.gz
+```
+
+## Run
+
+After installation, start the application with:
+
+```bash
+diode-measurement
+```
+
+## Local Development
+
+To run the project locally, we recommend using Astral’s [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone https://github.com/hephy-dd/diode-measurement.git -b 0.26.0
+cd diode-measurement
+uv venv
+uv run diode-measurement
+```
+
+## Instrument Setup
+
+## Resource Name Formats
+
+Instrument resource name inputs accept the following formats:
+
+| Format          | Example            | Resolved Resource                |
+| :-------------- | :----------------- | :------------------------------- |
+| `<n>`           | `16`               | `GPIB::16::INSTR`                |
+| `<ip>:<port>`   | `0.0.0.0:1080`     | `TCPIP::0.0.0.0::1080::SOCKET`   |
+| `<host>:<port>` | `localhost:1080`   | `TCPIP::localhost::1080::SOCKET` |
+| `<visa>`        | `GPIB1::16::INSTR` | `GPIB1::16::INSTR`               |
+
+This allows both simplified and explicit VISA resource definitions depending on your setup.
 
 ## Data formats
 
@@ -198,16 +205,17 @@ Start notification starts a new measurement.
 
 Optional parameters are:
 
-- `continuous` (Boolean)
-- `auto_reconnect` (Boolean)
+- `continuous` (bool)
+- `auto_reconnect` (bool)
 - `measurement_type` (one of `iv`, `iv_bias`, `cv_diode`, `cv_mos`)
 - `measurement_instruments` (list of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
-- `begin_voltage` (Volt)
-- `end_voltage` (Volt)
-- `step_voltage` (Volt),
-- `waiting_time` (seconds)
-- `compliance` (Ampere)
-- `waiting_time_continuous` (seconds).
+- `sample` (str)
+- `begin_voltage` (float, Volt)
+- `end_voltage` (float, Volt)
+- `step_voltage` (float, Volt)
+- `waiting_time` (float, seconds)
+- `compliance` (float, Ampere)
+- `waiting_time_continuous` (float, seconds)
 
 **Note:** specified values are applied to the user interface before starting a measurement.
 
@@ -237,12 +245,12 @@ Change voltage notification applies only during continuous It measurement.
 
 Required parameters are:
 
-- `end_voltage` (Volt)
+- `end_voltage` (float, Volt)
 
 Optional parameters are:
 
-- `step_voltage` (Volt, default is `1.0`)
-- `waiting_time` (seconds, default is `1.0`)
+- `step_voltage` (float, Volt, default is `1.0`)
+- `waiting_time` (float, seconds, default is `1.0`)
 
 ```json
 {
@@ -336,8 +344,8 @@ Update current instrument options using method `instrument.update`.
 
 Required parameters are:
 
-- `instrument` (one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
-- `options` (specific to selected instrument model)
+- `instrument` (str, one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+- `options` (dict, specific to selected instrument model)
 
 ```json
 {
