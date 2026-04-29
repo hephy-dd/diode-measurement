@@ -2,7 +2,7 @@ import json
 import socket
 from typing import Any
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 class DiodeMeasurementError(Exception):
@@ -82,6 +82,7 @@ class DiodeMeasurementClient:
         auto_reconnect: bool | None = None,
         measurement_type: str | None = None,
         measurement_instruments: list[str] | None = None,
+        sample: str | None = None,
         begin_voltage: float | None = None,
         end_voltage: float | None = None,
         step_voltage: float | None = None,
@@ -99,6 +100,8 @@ class DiodeMeasurementClient:
             params["measurement_type"] = measurement_type
         if measurement_instruments is not None:
             params["measurement_instruments"] = measurement_instruments
+        if sample is not None:
+            params["sample"] = sample
         if begin_voltage is not None:
             params["begin_voltage"] = begin_voltage
         if end_voltage is not None:

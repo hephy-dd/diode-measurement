@@ -1011,6 +1011,8 @@ class Controller(QtCore.QObject):
                 general_widget.set_current_measurement(value)
             elif key == "measurement_roles":
                 general_widget.set_measurement_roles(value)
+            elif key == "sample":
+                general_widget.set_sample_name(value)
             elif key == "end_voltage":
                 general_widget.set_end_voltage(value)
             elif key == "begin_voltage":

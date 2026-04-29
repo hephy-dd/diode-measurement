@@ -21,6 +21,7 @@ client.instrument_update("smu", options)
 # Start a measurement
 print("Starting measurement...")
 client.start(
+    sample="DIODE_002",
     measurement_type="iv",
     measurement_instruments=["smu"],
     continuous=True,
