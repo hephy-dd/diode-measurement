@@ -650,7 +650,7 @@ class RangeMeasurement(Measurement):
         raise NotImplementedError
 
     def acquire_continuous_reading(self) -> None:
-        raise NotImplementedError
+        ...
 
     def ramp_to_begin(self) -> None:
         source_voltage = self.get_source_voltage()
