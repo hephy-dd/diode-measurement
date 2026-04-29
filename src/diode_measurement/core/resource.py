@@ -1,15 +1,16 @@
 import logging
 import re
 import time
+from dataclasses import dataclass
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import pyvisa
 from pyvisa.resources import MessageBasedResource
 
 __all__ = [
     "parse_resource",
-    "open_resource",
+    "ResourceConfig",
     "ResourceError",
     "Resource",
     "AutoReconnectResource",
@@ -41,38 +42,32 @@ def parse_resource(resource_name: str) -> tuple[str, str]:
     return resource_name, visa_library
 
 
-def open_resource(resource_name: str, termination: str, timeout: float) -> "Resource":
-    resource_name, visa_library = parse_resource(resource_name)
-    return Resource(
-        resource_name=resource_name,
-        visa_library=visa_library,
-        read_termination=termination,
-        write_termination=termination,
-        timeout=timeout,
-    )
+@dataclass
+class ResourceConfig:
+    resource_name: str
+    visa_library: str
+    termination: str = "\n"
+    timeout: float = 4.0
 
 
 class ResourceError(Exception): ...
 
 
 class Resource:
-    def __init__(self, resource_name: str, visa_library: str, **options) -> None:
-        self.resource_name = resource_name
-        self.visa_library = visa_library
-        self.options = {
-            "read_termination": "\r\n",
-            "write_termination": "\r\n",
-            "timeout": 8000,
-        }
-        self.options.update(options)
+    def __init__(self, resource_config: ResourceConfig) -> None:
+        self._resource_config = resource_config
         self._rm: Optional[pyvisa.ResourceManager] = None
         self._resource: Optional[pyvisa.resources.MessageBasedResource] = None
 
-    def __enter__(self):
+    def __enter__(self) -> "Resource":
         try:
-            self._rm = pyvisa.ResourceManager(self.visa_library)
+            resource_config = self._resource_config
+            self._rm = pyvisa.ResourceManager(resource_config.visa_library)
             resource = self._rm.open_resource(
-                resource_name=self.resource_name, **self.options
+                resource_name=resource_config.resource_name,
+                read_termination=resource_config.termination,
+                write_termination=resource_config.termination,
+                timeout=resource_config.timeout * 1e3,  # millisecs
             )
             if not isinstance(resource, MessageBasedResource):
                 resource.close()
@@ -82,7 +77,7 @@ class Resource:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc) -> Literal[False]:
         try:
             if self._resource is not None:
                 self._resource.close()
@@ -102,6 +97,10 @@ class Resource:
         if self._resource is None:
             raise RuntimeError("no open resource")
         return self._resource
+
+    @property
+    def resource_name(self) -> str:
+        return self._resource_config.resource_name
 
     def query(self, message: str) -> str:
         try:

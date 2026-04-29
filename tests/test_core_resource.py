@@ -1,4 +1,4 @@
-from diode_measurement.core.resource import parse_resource, Resource
+from diode_measurement.core.resource import parse_resource, ResourceConfig, Resource
 
 
 def test_parse_resource():
@@ -9,24 +9,15 @@ def test_parse_resource():
     assert parse_resource("TCPIP::192.168.0.1::1080::SOCKET") == ("TCPIP::192.168.0.1::1080::SOCKET", "@py")
 
 
+def test_resource_config():
+    cfg = ResourceConfig("ASRL5::INSTR", "@py", termination="\n", timeout=2.0)
+    assert cfg.resource_name == "ASRL5::INSTR"
+    assert cfg.visa_library == "@py"
+    assert cfg.termination == "\n"
+    assert cfg.timeout == 2.0
+
 def test_resource():
-    res = Resource("TCPIP::localhost:8080::SOCKET", "@sim")
+    cfg = ResourceConfig("TCPIP::localhost:8080::SOCKET", "@sim")
+    res = Resource(cfg)
+    assert res._resource_config == cfg
     assert res.resource_name == "TCPIP::localhost:8080::SOCKET"
-    assert res.visa_library == "@sim"
-    assert res.options == {
-        "read_termination": "\r\n",
-        "write_termination": "\r\n",
-        "timeout": 8000
-    }
-
-
-def test_resource_options():
-    res = Resource("GPIB::8::INSTR", "", read_termination="\n", timeout=2000, foo=42)
-    assert res.resource_name == "GPIB::8::INSTR"
-    assert res.visa_library == ""
-    assert res.options == {
-        "read_termination": "\n",
-        "write_termination": "\r\n",
-        "timeout": 2000,
-        "foo": 42,
-    }

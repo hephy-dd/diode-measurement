@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from collections.abc import Callable
 from typing import Optional, Protocol
 
-from .core.resource import parse_resource, Resource
+from .core.resource import ResourceConfig, Resource
 
 from .measurements import Measurement
 
@@ -60,9 +60,7 @@ class MeasurementJob:
 
 @dataclass
 class K4215PerformCorrectionJob:
-    resource_name: str
-    termination: str
-    timeout: float
+    resource_config: ResourceConfig
     cable_length: float
     open_correction: bool
     short_correction: bool
@@ -89,10 +87,7 @@ class K4215PerformCorrectionJob:
                     time.sleep(interval)
             raise TimeoutError("Timeout expired before cable correction completed.")
 
-        resource_name, visa_library = parse_resource(self.resource_name)
-        options = dict(termination=self.termination, timeout=self.timeout * 1e3)
-
-        with Resource(resource_name, visa_library, **options) as res:
+        with Resource(self.resource_config) as res:
             instr = K4215(res)
 
             if self.open_correction:

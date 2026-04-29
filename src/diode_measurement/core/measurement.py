@@ -14,7 +14,7 @@ from ..writer import Writer
 
 from .actor import Actor
 from .driver import TCU, VoltageMeasurable
-from .resource import Resource, AutoReconnectResource
+from .resource import ResourceConfig, Resource, AutoReconnectResource
 from .timers import IntervalTimer
 
 __all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
@@ -110,29 +110,25 @@ class Measurement:
         if not role.enabled:
             return None
         model = role.model
-        resource_name = role.resource_name
-        if not resource_name.strip():
+        if not role.resource_name.strip():
             raise ValueError(
                 f"Empty resource name not allowed for {name.upper()} ({model})."
             )
-        visa_library = role.visa_library
-        termination = role.termination
-        timeout = role.timeout * 1000  # in millisecs
-        cls = driver_factory(model)
-        if not cls:
+        driver_cls = driver_factory(model)
+        if not driver_cls:
             logger.warning("No such driver: %s", model)
             return None
         # If auto reconnect use experimental class AutoReconnectResource
         auto_reconnect = self.state.auto_reconnect
         resource_cls = AutoReconnectResource if auto_reconnect else Resource
-        resource = resource_cls(
-            resource_name=resource_name,
-            visa_library=visa_library,
-            read_termination=termination,
-            write_termination=termination,
-            timeout=timeout,
+        resource_config = ResourceConfig(
+            resource_name=role.resource_name,
+            visa_library=role.visa_library,
+            termination=role.termination,
+            timeout=role.timeout,
         )
-        self._instruments[name] = cls, resource
+        resource = resource_cls(resource_config)
+        self._instruments[name] = driver_cls, resource
 
     def check_error_state(self, context) -> None:
         error = context.next_error()
