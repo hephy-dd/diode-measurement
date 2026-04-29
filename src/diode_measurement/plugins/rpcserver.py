@@ -170,6 +170,7 @@ class RPCHandler:
         auto_reconnect: Optional[bool] = None,
         measurement_type: Optional[str] = None,
         measurement_instruments: Optional[list[str]] = None,
+        sample: Optional[str] = None,
         begin_voltage: Optional[float] = None,
         end_voltage: Optional[float] = None,
         step_voltage: Optional[float] = None,
@@ -186,6 +187,8 @@ class RPCHandler:
             parameters["measurement_type"] = measurement_type
         if measurement_instruments is not None:
             parameters["measurement_roles"] = measurement_instruments
+        if sample is not None:
+            parameters["sample"] = sample
         if begin_voltage is not None:
             parameters["begin_voltage"] = begin_voltage
         if end_voltage is not None:
