@@ -1,11 +1,10 @@
 import logging
-import math
 import os
 import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from queue import Queue, Empty
 from typing import Any, Optional
 
@@ -15,7 +14,7 @@ from comet.utils import safe_filename
 
 from .core.cache import Cache
 from .core.measurement import Measurement
-from .core.resource import parse_resource
+from .core.resource import parse_resource, ResourceConfig
 
 # Source meter units
 from .gui.panels import K237Panel
@@ -48,7 +47,7 @@ from .gui.panels import K708BPanel
 from .gui.mainwindow import MainWindow
 from .gui.widgets import show_exception
 from .gui.dialogs import ChangeVoltageDialog
-from .gui.plots import CV2PlotWidget, CVPlotWidget, ItPlotWidget, IVPlotWidget
+from .gui.plots import IVPlotsDataWidget, CVPlotsDataWidget
 
 from .reader import Reader
 
@@ -57,7 +56,7 @@ from .utils import get_bool, get_int, get_float, get_str, get_dict
 
 from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
 from .settings import MeasurementParameters, measurement_registry
-from .state import FSMState, ChangeVoltageParameters, IVReading, CVReading, State
+from .state import FSMState, ChangeVoltageParameters, State
 
 __all__ = ["Controller"]
 
@@ -115,9 +114,15 @@ class Controller(QtCore.QObject):
 
         self.measurement_registry: list[MeasurementParameters] = measurement_registry
 
-        # Controller
-        self.iv_plots_controller = IVPlotsController(self.state, self)
-        self.cv_plots_controller = CVPlotsController(self.state, self)
+        # Plots
+        iv_reading_queue = self.state.create_iv_reading_queue()
+        it_reading_queue = self.state.create_iv_reading_queue()
+        cv_reading_queue = self.state.create_cv_reading_queue()
+
+        self.iv_plots_data_windget = IVPlotsDataWidget(iv_reading_queue, it_reading_queue)
+        self.iv_plots_data_windget.start(500)
+        self.cv_plots_data_windget = CVPlotsDataWidget(cv_reading_queue)
+        self.cv_plots_data_windget.start(500)
 
         self.change_voltage_controller = ChangeVoltageController(
             self.main_window, self.state, self
@@ -418,6 +423,8 @@ class Controller(QtCore.QObject):
 
     def shutdown(self) -> None:
         self._shutdown_event.set()
+        self.iv_plots_data_windget.stop()
+        self.cv_plots_data_windget.stop()
         self.state_machine.stop()
         if self._background_thread.is_alive():
             self._background_thread.join(timeout=10.0)
@@ -634,8 +641,8 @@ class Controller(QtCore.QObject):
             logger.info("Importing measurement file: %s", filename)
             self.main_window.setEnabled(False)
             self.main_window.clear()
-            self.iv_plots_controller.clear()
-            self.cv_plots_controller.clear()
+            self.iv_plots_data_windget.clear()
+            self.cv_plots_data_windget.clear()
             try:
                 with open(filename, "r", newline="") as fp:
                     reader = Reader(fp)
@@ -675,12 +682,23 @@ class Controller(QtCore.QObject):
                     general_widget.set_current_compliance(current_compliance)
 
                 # Data
-                if measurement_type in ["iv", "iv_bias"]:
-                    self.iv_plots_controller.on_load_iv_readings(data)
-                    self.iv_plots_controller.on_load_it_readings(continuous_data)
-                if measurement_type in ["cv"]:
-                    self.cv_plots_controller.load_cv_readings(data)
-                    self.cv_plots_controller.load_cv2_readings(data)
+                if measurement_type == "iv":
+                    self.iv_plots_data_windget.on_load_iv_readings(data)
+                    self.iv_plots_data_windget.on_load_it_readings(continuous_data)
+                    self.on_toggle_smu(True)
+                    self.on_toggle_smu2(False)
+                    self.on_toggle_elm(bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
+                    self.on_toggle_elm2(bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
+                if measurement_type == "iv_bias":
+                    self.iv_plots_data_windget.on_load_iv_readings(data)
+                    self.iv_plots_data_windget.on_load_it_readings(continuous_data)
+                    self.on_toggle_smu(True)
+                    self.on_toggle_smu2(True)
+                    self.on_toggle_elm(bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
+                    self.on_toggle_elm2(bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
+                if measurement_type == "cv":
+                    self.cv_plots_data_windget.load_cv_readings(data)
+                    self.cv_plots_data_windget.load_cv2_readings(data)
             finally:
                 self.main_window.setEnabled(True)
 
@@ -694,8 +712,6 @@ class Controller(QtCore.QObject):
         self.update_continuous_option()
         with self.cache:
             self.cache.clear()
-        self.iv_plots_controller.update_timer.stop()
-        self.cv_plots_controller.update_timer.stop()
 
     def set_running_state(self) -> None:
         self.main_window.set_running_state()
@@ -788,8 +804,8 @@ class Controller(QtCore.QObject):
     @QtCore.Slot(bool)
     def on_continuous_toggled(self, checked: bool) -> None:
         self.main_window.set_continuous(checked)
-        self.iv_plots_controller.set_continuous(checked)
-        self.cv_plots_controller.set_continuous(checked)
+        self.iv_plots_data_windget.set_continuous(checked)
+        self.cv_plots_data_windget.set_continuous(checked)
         self.main_window.general_widget.continuous_group_box.setEnabled(checked)
 
     @QtCore.Slot(int)
@@ -805,21 +821,21 @@ class Controller(QtCore.QObject):
         spec: MeasurementParameters = self.measurement_registry[index]
 
         if spec.type == "iv":
-            self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
+            self.main_window.set_data_widget(self.iv_plots_data_windget)
             self.main_window.continuous_action.setEnabled(spec.provides_continuous)
             self.main_window.general_widget.bias_group_box.setEnabled(False)
             self.main_window.general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
         elif spec.type == "iv_bias":
-            self.main_window.set_data_widget(self.iv_plots_controller.data_widget)
+            self.main_window.set_data_widget(self.iv_plots_data_windget)
             self.main_window.continuous_action.setEnabled(spec.provides_continuous)
             self.main_window.general_widget.bias_group_box.setEnabled(True)
             self.main_window.general_widget.continuous_group_box.setEnabled(
                 self.main_window.is_continuous()
             )
         elif spec.type == "cv":
-            self.main_window.set_data_widget(self.cv_plots_controller.data_widget)
+            self.main_window.set_data_widget(self.cv_plots_data_windget)
             self.main_window.continuous_action.setEnabled(spec.provides_continuous)
             self.main_window.general_widget.bias_group_box.setEnabled(False)
             self.main_window.general_widget.continuous_group_box.setEnabled(False)
@@ -899,49 +915,49 @@ class Controller(QtCore.QObject):
                 general_widget.set_current_compliance_locked(True)
 
     @QtCore.Slot(bool)
-    def on_toggle_smu(self, state: bool) -> None:
-        self.iv_plots_controller.toggle_smu_series(state)
-        self.cv_plots_controller.toggle_smu_series(state)
-        self.main_window.smu_group_box.setEnabled(state)
-        self.main_window.smu_group_box.setVisible(state)
+    def on_toggle_smu(self, enabled: bool) -> None:
+        self.iv_plots_data_windget.set_series_visible("smu", enabled)
+        self.cv_plots_data_windget.set_series_visible("smu", enabled)
+        self.main_window.smu_group_box.setEnabled(enabled)
+        self.main_window.smu_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
-    def on_toggle_smu2(self, state: bool) -> None:
-        self.iv_plots_controller.toggle_smu2_series(state)
-        self.cv_plots_controller.toggle_smu2_series(state)
-        self.main_window.smu2_group_box.setEnabled(state)
-        self.main_window.smu2_group_box.setVisible(state)
+    def on_toggle_smu2(self, enabled: bool) -> None:
+        self.iv_plots_data_windget.set_series_visible("smu2", enabled)
+        self.cv_plots_data_windget.set_series_visible("smu2", enabled)
+        self.main_window.smu2_group_box.setEnabled(enabled)
+        self.main_window.smu2_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
-    def on_toggle_elm(self, state: bool) -> None:
-        self.iv_plots_controller.toggle_elm_series(state)
-        self.cv_plots_controller.toggle_elm_series(state)
-        self.main_window.elm_group_box.setEnabled(state)
-        self.main_window.elm_group_box.setVisible(state)
+    def on_toggle_elm(self, enabled: bool) -> None:
+        self.iv_plots_data_windget.set_series_visible("elm", enabled)
+        self.cv_plots_data_windget.set_series_visible("elm", enabled)
+        self.main_window.elm_group_box.setEnabled(enabled)
+        self.main_window.elm_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
-    def on_toggle_elm2(self, state: bool) -> None:
-        self.iv_plots_controller.toggle_elm2_series(state)
-        self.cv_plots_controller.toggle_elm2_series(state)
-        self.main_window.elm2_group_box.setEnabled(state)
-        self.main_window.elm2_group_box.setVisible(state)
+    def on_toggle_elm2(self, enabled: bool) -> None:
+        self.iv_plots_data_windget.set_series_visible("elm2", enabled)
+        self.cv_plots_data_windget.set_series_visible("elm2", enabled)
+        self.main_window.elm2_group_box.setEnabled(enabled)
+        self.main_window.elm2_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
-    def on_toggle_lcr(self, state: bool) -> None:
-        self.iv_plots_controller.toggle_lcr_series(state)
-        self.cv_plots_controller.toggle_lcr_series(state)
-        self.main_window.lcr_group_box.setEnabled(state)
-        self.main_window.lcr_group_box.setVisible(state)
+    def on_toggle_lcr(self, enabled: bool) -> None:
+        self.iv_plots_data_windget.set_series_visible("lcr", enabled)
+        self.cv_plots_data_windget.set_series_visible("lcr", enabled)
+        self.main_window.lcr_group_box.setEnabled(enabled)
+        self.main_window.lcr_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
-    def on_toggle_dmm(self, state: bool) -> None:
-        self.main_window.dmm_group_box.setEnabled(state)
-        self.main_window.dmm_group_box.setVisible(state)
+    def on_toggle_dmm(self, enabled: bool) -> None:
+        self.main_window.dmm_group_box.setEnabled(enabled)
+        self.main_window.dmm_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
-    def on_toggle_tcu(self, state: bool) -> None:
-        self.main_window.tcu_group_box.setEnabled(state)
-        self.main_window.tcu_group_box.setVisible(state)
+    def on_toggle_tcu(self, enabled: bool) -> None:
+        self.main_window.tcu_group_box.setEnabled(enabled)
+        self.main_window.tcu_group_box.setVisible(enabled)
 
     @QtCore.Slot(bool)
     def on_toggle_switch(self, state: bool) -> None: ...
@@ -1075,10 +1091,8 @@ class Controller(QtCore.QObject):
             })
 
             self.main_window.clear()
-            self.iv_plots_controller.clear()
-            self.cv_plots_controller.clear()
-            self.iv_plots_controller.update_timer.start(500)
-            self.cv_plots_controller.update_timer.start(500)
+            self.iv_plots_data_windget.clear()
+            self.cv_plots_data_windget.clear()
 
             job = MeasurementJob(
                 measurement,
@@ -1115,11 +1129,18 @@ class Controller(QtCore.QObject):
             if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
                 return
             self.main_window.control_tab_widget.setEnabled(False)
+
+            resource_name, visa_library = parse_resource(role.resource_name())
+            resource_config = ResourceConfig(
+                resource_name=resource_name,
+                visa_library=visa_library,
+                termination=role.termination(),
+                timeout=role.timeout(),
+            )
+
             self.submit_background_job(
                 K4215PerformCorrectionJob(
-                    resource_name=role.resource_name(),
-                    termination=role.termination(),
-                    timeout=role.timeout(),
+                    resource_config=resource_config,
                     cable_length=config.get("correction.length"),
                     open_correction=dialog.is_open_correction(),
                     short_correction=dialog.is_short_correction(),
@@ -1129,274 +1150,6 @@ class Controller(QtCore.QObject):
                     message=self.message_changed.emit,
                 )
             )
-
-
-class IVPlotsController(QtCore.QObject):
-    def __init__(self, state: State, parent: Optional[QtCore.QObject] = None) -> None:
-        super().__init__(parent)
-        self.state = state
-
-        self.iv_plot_widget = IVPlotWidget()
-        self.it_plot_widget = ItPlotWidget()
-        self.it_plot_widget.setVisible(False)
-        self.data_widget = QtWidgets.QWidget()
-        self.iv_layout = QtWidgets.QHBoxLayout(self.data_widget)
-        self.iv_layout.addWidget(self.iv_plot_widget)
-        self.iv_layout.addWidget(self.it_plot_widget)
-        self.iv_layout.setStretch(0, 1)
-        self.iv_layout.setStretch(1, 1)
-        self.iv_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.max_flush_readings: int = 1000
-
-        self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.on_flush_iv_readings)
-        self.update_timer.timeout.connect(self.on_flush_it_readings)
-
-    def clear(self):
-        self.iv_plot_widget.clear()
-        self.iv_plot_widget.reset()
-        self.it_plot_widget.clear()
-        self.it_plot_widget.reset()
-
-    def toggle_smu_series(self, state):
-        self.iv_plot_widget.smu_series.setVisible(state)
-        self.it_plot_widget.smu_series.setVisible(state)
-
-    def toggle_smu2_series(self, state):
-        self.iv_plot_widget.smu2_series.setVisible(state)
-        self.it_plot_widget.smu2_series.setVisible(state)
-
-    def toggle_elm_series(self, state):
-        self.iv_plot_widget.elm_series.setVisible(state)
-        self.it_plot_widget.elm_series.setVisible(state)
-
-    def toggle_elm2_series(self, state):
-        self.iv_plot_widget.elm2_series.setVisible(state)
-        self.it_plot_widget.elm2_series.setVisible(state)
-
-    def toggle_lcr_series(self, state): ...
-
-    def set_continuous(self, enabled):
-        self.it_plot_widget.setVisible(enabled)
-
-    @QtCore.Slot()
-    def on_flush_iv_readings(self) -> None:
-        n_readings = 0
-        for _ in range(self.max_flush_readings):
-            reading = self.state.next_iv_reading()
-            if reading is None:
-                break
-            self.append_iv_reading(reading)
-            n_readings += 1
-        if n_readings:
-            self.iv_plot_widget.fit()
-
-    def append_iv_reading(self, reading: IVReading, fit: bool = True) -> None:
-        voltage: float = reading.voltage
-        i_smu: float = reading.i_smu
-        i_smu2: float = reading.i_smu2
-        i_elm: float = reading.i_elm
-        i_elm2: float = reading.i_elm2
-        if math.isfinite(voltage) and math.isfinite(i_smu):
-            self.iv_plot_widget.append("smu", voltage, i_smu)
-        if math.isfinite(voltage) and math.isfinite(i_smu2):
-            self.iv_plot_widget.append("smu2", voltage, i_smu2)
-        if math.isfinite(voltage) and math.isfinite(i_elm):
-            self.iv_plot_widget.append("elm", voltage, i_elm)
-        if math.isfinite(voltage) and math.isfinite(i_elm2):
-            self.iv_plot_widget.append("elm2", voltage, i_elm2)
-
-    def on_load_iv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
-        smu_points: list[QtCore.QPointF] = []
-        smu2_points: list[QtCore.QPointF] = []
-        elm_points: list[QtCore.QPointF] = []
-        elm2_points: list[QtCore.QPointF] = []
-        widget = self.iv_plot_widget
-        widget.clear()
-        for reading in readings:
-            voltage: float = reading.get("voltage", math.nan)
-            i_smu: float = reading.get("i_smu", math.nan)
-            i_smu2: float = reading.get("i_smu2", math.nan)
-            i_elm: float = reading.get("i_elm", math.nan)
-            i_elm2: float = reading.get("i_elm2", math.nan)
-            if math.isfinite(voltage) and math.isfinite(i_smu):
-                smu_points.append(QtCore.QPointF(voltage, i_smu))
-                widget.i_limits.append(i_smu)
-                widget.v_limits.append(voltage)
-            if math.isfinite(voltage) and math.isfinite(i_smu2):
-                smu2_points.append(QtCore.QPointF(voltage, i_smu2))
-                widget.i_limits.append(i_smu2)
-                widget.v_limits.append(voltage)
-            if math.isfinite(voltage) and math.isfinite(i_elm):
-                elm_points.append(QtCore.QPointF(voltage, i_elm))
-                widget.i_limits.append(i_elm)
-                widget.v_limits.append(voltage)
-            if math.isfinite(voltage) and math.isfinite(i_elm2):
-                elm2_points.append(QtCore.QPointF(voltage, i_elm2))
-                widget.i_limits.append(i_elm2)
-                widget.v_limits.append(voltage)
-        widget.replace_series("smu", smu_points)
-        widget.replace_series("smu2", smu2_points)
-        widget.replace_series("elm", elm_points)
-        widget.replace_series("elm2", elm2_points)
-        parent = self.parent()  # TODO!
-        if isinstance(parent, Controller):
-            parent.on_toggle_smu(True)
-            parent.on_toggle_smu2(bool(len(smu2_points)))
-            parent.on_toggle_elm(bool(len(elm_points)))
-            parent.on_toggle_elm2(bool(len(elm2_points)))
-        widget.fit()
-
-    @QtCore.Slot()
-    def on_flush_it_readings(self) -> None:
-        n_readings = 0
-        for _ in range(self.max_flush_readings):
-            reading = self.state.next_it_reading()
-            if reading is None:
-                break
-            self.append_it_reading(reading)
-            n_readings += 1
-        if n_readings:
-            self.it_plot_widget.fit()
-
-    def append_it_reading(self, reading: IVReading) -> None:
-        timestamp: float = reading.timestamp
-        i_smu: float = reading.i_smu
-        i_smu2: float = reading.i_smu2
-        i_elm: float = reading.i_elm
-        i_elm2: float = reading.i_elm2
-        if math.isfinite(timestamp) and math.isfinite(i_smu):
-            self.it_plot_widget.append("smu", timestamp, i_smu)
-        if math.isfinite(timestamp) and math.isfinite(i_smu2):
-            self.it_plot_widget.append("smu2", timestamp, i_smu2)
-        if math.isfinite(timestamp) and math.isfinite(i_elm):
-            self.it_plot_widget.append("elm", timestamp, i_elm)
-        if math.isfinite(timestamp) and math.isfinite(i_elm2):
-            self.it_plot_widget.append("elm2", timestamp, i_elm2)
-
-    def on_load_it_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
-        smu_points: list[QtCore.QPointF] = []
-        smu2_points: list[QtCore.QPointF] = []
-        elm_points: list[QtCore.QPointF] = []
-        elm2_points: list[QtCore.QPointF] = []
-        widget = self.it_plot_widget
-        widget.clear()
-        for reading in readings:
-            timestamp: float = reading.get("timestamp", math.nan)
-            i_smu: float = reading.get("i_smu", math.nan)
-            i_smu2: float = reading.get("i_smu2", math.nan)
-            i_elm: float = reading.get("i_elm", math.nan)
-            i_elm2: float = reading.get("i_elm2", math.nan)
-            if math.isfinite(timestamp) and math.isfinite(i_smu):
-                smu_points.append(QtCore.QPointF(timestamp * 1e3, i_smu))
-                widget.i_limits.append(i_smu)
-                widget.t_limits.append(timestamp)
-            if math.isfinite(timestamp) and math.isfinite(i_smu2):
-                smu2_points.append(QtCore.QPointF(timestamp * 1e3, i_smu2))
-                widget.i_limits.append(i_smu2)
-                widget.t_limits.append(timestamp)
-            if math.isfinite(timestamp) and math.isfinite(i_elm):
-                elm_points.append(QtCore.QPointF(timestamp * 1e3, i_elm))
-                widget.i_limits.append(i_elm)
-                widget.t_limits.append(timestamp)
-            if math.isfinite(timestamp) and math.isfinite(i_elm2):
-                elm2_points.append(QtCore.QPointF(timestamp * 1e3, i_elm2))
-                widget.i_limits.append(i_elm2)
-                widget.t_limits.append(timestamp)
-        widget.replace_series("smu", smu_points)
-        widget.replace_series("smu2", smu2_points)
-        widget.replace_series("elm", elm_points)
-        widget.replace_series("elm2", elm2_points)
-        widget.fit()
-
-
-class CVPlotsController(QtCore.QObject):
-    def __init__(self, state: State, parent: Optional[QtCore.QObject] = None) -> None:
-        super().__init__(parent)
-        self.state = state
-
-        self.cv_plot_widget = CVPlotWidget()
-        self.cv2_plot_widget = CV2PlotWidget()
-        self.data_widget = QtWidgets.QWidget()
-        self.cv_layout = QtWidgets.QHBoxLayout(self.data_widget)
-        self.cv_layout.addWidget(self.cv_plot_widget)
-        self.cv_layout.addWidget(self.cv2_plot_widget)
-        self.cv_layout.setStretch(0, 1)
-        self.cv_layout.setStretch(1, 1)
-        self.cv_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.max_flush_readings: int = 1000
-
-        self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.flush_cv_readings)
-
-    def clear(self) -> None:
-        self.cv_plot_widget.clear()
-        self.cv_plot_widget.reset()
-        self.cv2_plot_widget.clear()
-        self.cv2_plot_widget.reset()
-
-    def toggle_smu_series(self, state): ...
-
-    def toggle_smu2_series(self, state): ...
-
-    def toggle_elm_series(self, state): ...
-
-    def toggle_elm2_series(self, state): ...
-
-    def toggle_lcr_series(self, state): ...
-
-    def set_continuous(self, enabled): ...
-
-    @QtCore.Slot()
-    def flush_cv_readings(self) -> None:
-        n_readings = 0
-        for _ in range(self.max_flush_readings):
-            reading = self.state.next_cv_reading()
-            if reading is None:
-                break
-            self.append_cv_reading(reading)
-            n_readings += 1
-        if n_readings:
-            self.cv_plot_widget.fit()
-
-    def append_cv_reading(self, reading: CVReading) -> None:
-        voltage = reading.voltage
-        c_lcr = reading.c_lcr
-        c2_lcr = reading.c2_lcr
-        if math.isfinite(voltage) and math.isfinite(c_lcr):
-            self.cv_plot_widget.append("lcr", voltage, c_lcr)
-        if math.isfinite(voltage) and math.isfinite(c2_lcr):
-            self.cv2_plot_widget.append("lcr", voltage, c2_lcr)
-
-    def load_cv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
-        lcr_points: list[QtCore.QPointF] = []
-        widget = self.cv_plot_widget
-        widget.clear()
-        for reading in readings:
-            voltage: float = reading.get("voltage", math.nan)
-            c_lcr: float = reading.get("c_lcr", math.nan)
-            if math.isfinite(voltage) and math.isfinite(c_lcr):
-                lcr_points.append(QtCore.QPointF(voltage, c_lcr))
-                widget.c_limits.append(c_lcr)
-                widget.v_limits.append(voltage)
-        widget.replace_series("lcr", lcr_points)
-        widget.fit()
-
-    def load_cv2_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
-        lcr2_points: list[QtCore.QPointF] = []
-        widget = self.cv2_plot_widget
-        widget.clear()
-        for reading in readings:
-            voltage: float = reading.get("voltage", math.nan)
-            c2_lcr: float = reading.get("c2_lcr", math.nan)
-            if math.isfinite(voltage) and math.isfinite(c2_lcr):
-                lcr2_points.append(QtCore.QPointF(voltage, c2_lcr))
-                widget.c_limits.append(c2_lcr)
-                widget.v_limits.append(voltage)
-        widget.replace_series("lcr", lcr2_points)
-        widget.fit()
 
 
 class ChangeVoltageController(QtCore.QObject):

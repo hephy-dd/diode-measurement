@@ -1,7 +1,8 @@
 import csv
 import logging
 import re
-from typing import Any, Iterator, TextIO
+from collections.abc import Iterator
+from typing import Any, TextIO
 
 from comet.utils import ureg
 

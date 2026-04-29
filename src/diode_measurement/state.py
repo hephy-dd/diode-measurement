@@ -3,7 +3,7 @@ import threading
 from dataclasses import dataclass, field
 from collections.abc import Iterator
 from enum import Enum
-from queue import Queue, Empty
+from queue import Queue
 from typing import Any, Callable, Optional
 
 __all__ = ["State"]
@@ -103,9 +103,9 @@ class State:
         self.abort_event = threading.Event()
         self.tcu_poll_interval: float = 5.0
         self._change_voltage_parameters: Optional[ChangeVoltageParameters] = None
-        self._iv_reading_queue: Queue[IVReading] = Queue()
-        self._it_reading_queue: Queue[IVReading] = Queue()
-        self._cv_reading_queue: Queue[CVReading] = Queue()
+        self._iv_reading_queues: list[Queue[IVReading]] = []
+        self._it_reading_queues: list[Queue[IVReading]] = []
+        self._cv_reading_queues: list[Queue[CVReading]] = []
         self.event_bus: EventBus = EventBus()
 
     @property
@@ -248,43 +248,32 @@ class State:
     def __iter__(self) -> Iterator:
         return iter(self._state.items())
 
-    def clear_queues(self) -> None:
+    def create_iv_reading_queue(self) -> Queue[IVReading]:
         with self._lock:
-            self._drain_queue(self._iv_reading_queue)
-            self._drain_queue(self._it_reading_queue)
-            self._drain_queue(self._cv_reading_queue)
+            queue: Queue[IVReading] = Queue()
+            self._iv_reading_queues.append(queue)
+            return queue
 
-    @staticmethod
-    def _drain_queue(queue: Queue) -> None:
-        while True:
-            try:
-                queue.get_nowait()
-            except Empty:
-                break
+    def create_it_reading_queue(self) -> Queue[IVReading]:
+        with self._lock:
+            queue: Queue[IVReading] = Queue()
+            self._it_reading_queues.append(queue)
+            return queue
+
+    def create_cv_reading_queue(self) -> Queue[CVReading]:
+        with self._lock:
+            queue: Queue[CVReading] = Queue()
+            self._cv_reading_queues.append(queue)
+            return queue
 
     def append_iv_reading(self, reading: IVReading) -> None:
-        self._iv_reading_queue.put_nowait(reading)
-
-    def next_iv_reading(self) -> Optional[IVReading]:
-        try:
-            return self._iv_reading_queue.get_nowait()
-        except Empty:
-            return None
+        for queue in self._iv_reading_queues:
+            queue.put_nowait(reading)
 
     def append_it_reading(self, reading: IVReading) -> None:
-        self._it_reading_queue.put_nowait(reading)
-
-    def next_it_reading(self) -> Optional[IVReading]:
-        try:
-            return self._it_reading_queue.get_nowait()
-        except Empty:
-            return None
+        for queue in self._it_reading_queues:
+            queue.put_nowait(reading)
 
     def append_cv_reading(self, reading: CVReading) -> None:
-        self._cv_reading_queue.put_nowait(reading)
-
-    def next_cv_reading(self) -> Optional[CVReading]:
-        try:
-            return self._cv_reading_queue.get_nowait()
-        except Empty:
-            return None
+        for queue in self._cv_reading_queues:
+            queue.put_nowait(reading)
