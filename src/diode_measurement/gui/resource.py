@@ -7,6 +7,20 @@ from ..drivers import driver_factory
 
 __all__ = ["ResourceWidget"]
 
+BAUD_RATES: list[int] = [
+    1200,
+    2400,
+    4800,
+    9600,
+    19200,
+    38400,
+    57600,
+    115200,
+    230400,
+    460800,
+    921600,
+]
+
 
 class ResourceWidget(QtWidgets.QGroupBox):
     model_changed = QtCore.Signal(str)
@@ -27,13 +41,21 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.resource_line_edit.setStatusTip(
             "Instrument resource GPIB number, IP and port or any valid VISA resource name."
         )
+        self.resource_line_edit.textChanged.connect(
+            self.on_update_baud_rate_visibility
+        )
+
+        self.baud_rate_label = QtWidgets.QLabel("Baud Rate", self)
+
+        self.baud_rate_combo_box = QtWidgets.QComboBox(self)
+        self.baud_rate_combo_box.setStatusTip("Baud rate for serial connections.")
+        for baud_rate in BAUD_RATES:
+            self.baud_rate_combo_box.addItem(str(baud_rate), baud_rate)
 
         self.termination_label = QtWidgets.QLabel("Termination", self)
 
         self.termination_combo_box = QtWidgets.QComboBox(self)
-        self.termination_combo_box.setStatusTip(
-            "Read and write termination characters."
-        )
+        self.termination_combo_box.setStatusTip("Read and write termination characters.")
         self.termination_combo_box.addItem("CR+LF", "\r\n")
         self.termination_combo_box.addItem("CR", "\r")
         self.termination_combo_box.addItem("LF", "\n")
@@ -51,31 +73,44 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.test_connection_button.setText("&Test")
         self.test_connection_button.setStatusTip("Test instrument connection.")
         self.test_connection_button.setMaximumWidth(48)
-        self.test_connection_button.clicked.connect(self.test_conntection)
+        self.test_connection_button.clicked.connect(self.on_test_conntection)
 
         self.reset_instrument_check_box = QtWidgets.QCheckBox(self)
         self.reset_instrument_check_box.setText("Reset Instrument")
         self.reset_instrument_check_box.setStatusTip("Reset instrument on start measurement")
 
         layout = QtWidgets.QGridLayout(self)
+
         layout.addWidget(self.model_label, 0, 0, 1, 3)
         layout.addWidget(self.model_combo_box, 1, 0, 1, 3)
+
         layout.addWidget(self.resource_label, 2, 0, 1, 3)
         layout.addWidget(self.resource_line_edit, 3, 0, 1, 3)
-        layout.addWidget(self.termination_label, 4, 0, 1, 1)
-        layout.addWidget(self.timeout_label, 4, 1, 1, 1)
-        layout.addWidget(self.termination_combo_box, 5, 0, 1, 1)
-        layout.addWidget(self.timeout_spin_box, 5, 1, 1, 1)
-        layout.addWidget(self.test_connection_button, 5, 2, 1, 1)
-        layout.addWidget(self.reset_instrument_check_box, 6, 0, 1, 3)
-        layout.setRowStretch(7, 1)
+
+        layout.addWidget(self.baud_rate_label, 4, 0, 1, 3)
+        layout.addWidget(self.baud_rate_combo_box, 5, 0, 1, 3)
+
+        layout.addWidget(self.termination_label, 6, 0, 1, 1)
+        layout.addWidget(self.timeout_label, 6, 1, 1, 1)
+
+        layout.addWidget(self.termination_combo_box, 7, 0, 1, 1)
+        layout.addWidget(self.timeout_spin_box, 7, 1, 1, 1)
+        layout.addWidget(self.test_connection_button, 7, 2, 1, 1)
+
+        layout.addWidget(self.reset_instrument_check_box, 8, 0, 1, 3)
+
+        layout.setRowStretch(9, 1)
+
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 1)
         layout.setColumnStretch(2, 0)
 
+        self.on_update_baud_rate_visibility()
+
     def set_locked(self, state: bool) -> None:
         self.model_combo_box.setEnabled(not state)
         self.resource_line_edit.setEnabled(not state)
+        self.baud_rate_combo_box.setEnabled(not state)
         self.termination_combo_box.setEnabled(not state)
         self.timeout_spin_box.setEnabled(not state)
         self.test_connection_button.setEnabled(not state)
@@ -111,6 +146,13 @@ class ResourceWidget(QtWidgets.QGroupBox):
     def set_timeout(self, timeout: float) -> None:
         self.timeout_spin_box.setValue(timeout)
 
+    def baud_rate(self) -> int:
+        return self.baud_rate_combo_box.currentData()
+
+    def set_baud_rate(self, baud_rate: int) -> None:
+        index = self.baud_rate_combo_box.findData(baud_rate)
+        self.baud_rate_combo_box.setCurrentIndex(max(0, index))
+
     def is_reset_instrument(self) -> bool:
         return self.reset_instrument_check_box.isChecked()
 
@@ -137,7 +179,17 @@ class ResourceWidget(QtWidgets.QGroupBox):
             return instr.identify()
 
     @QtCore.Slot()
-    def test_conntection(self) -> None:
+    def on_update_baud_rate_visibility(self) -> None:
+        text = self.resource_line_edit.text().strip().upper()
+        is_serial = (
+            text.startswith("ASRL")
+            or text.startswith("COM")
+        )
+        self.baud_rate_label.setEnabled(is_serial)
+        self.baud_rate_combo_box.setEnabled(is_serial)
+
+    @QtCore.Slot()
+    def on_test_conntection(self) -> None:
         try:
             identity = self.read_identity()
         except Exception as exc:

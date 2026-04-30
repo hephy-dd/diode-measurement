@@ -23,19 +23,24 @@ def parse_resource(resource_name: str) -> tuple[str, str]:
     """Create valid VISA resource name for short descriptors."""
     resource_name = resource_name.strip()
 
-    m = re.match(r"^(\d+)$", resource_name)
-    if m:
+    if m := re.match(r"^(\d+)$", resource_name):
         resource_name = f"GPIB0::{m.group(1)}::INSTR"
 
-    m = re.match(r"^(\d+\.\d+\.\d+\.\d+)\:(\d+)$", resource_name)
-    if m:
+    if m := re.match(r"^COM(\d+)$", resource_name):
+        resource_name = f"ASRL{m.group(1)}::INSTR"
+
+    if m := re.match(r"^ASRL(\d+)$", resource_name):
+        resource_name = f"ASRL{m.group(1)}::INSTR"
+
+    if m := re.match(r"^(\d+\.\d+\.\d+\.\d+)\:(\d+)$", resource_name):
         resource_name = f"TCPIP0::{m.group(1)}::{m.group(2)}::SOCKET"
 
-    m = re.match(r"^(\w+)\:(\d+)$", resource_name)
-    if m:
+    if m := re.match(r"^(\w+)\:(\d+)$", resource_name):
         resource_name = f"TCPIP0::{m.group(1)}::{m.group(2)}::SOCKET"
 
     visa_library = ""
+    if resource_name.startswith("ASRL"):
+        visa_library = "@py"
     if resource_name.startswith("TCPIP"):
         visa_library = "@py"
 
@@ -45,9 +50,10 @@ def parse_resource(resource_name: str) -> tuple[str, str]:
 @dataclass
 class ResourceConfig:
     resource_name: str
-    visa_library: str
+    visa_library: str = "@py"
     termination: str = "\n"
     timeout: float = 4.0
+    baud_rate: int = 9_600
 
 
 class ResourceError(Exception): ...
@@ -63,12 +69,17 @@ class Resource:
         try:
             resource_config = self._resource_config
             self._rm = pyvisa.ResourceManager(resource_config.visa_library)
+
             resource = self._rm.open_resource(
                 resource_name=resource_config.resource_name,
                 read_termination=resource_config.termination,
                 write_termination=resource_config.termination,
-                timeout=resource_config.timeout * 1e3,  # millisecs
+                timeout=resource_config.timeout * 1_000,  # millisecs
             )
+
+            if hasattr(resource, "baud_rate"):
+                resource.baud_rate = resource_config.baud_rate  # type: ignore
+
             if not isinstance(resource, MessageBasedResource):
                 resource.close()
                 raise TypeError(f"Expected MessageBasedResource, got {type(resource).__name__}")
