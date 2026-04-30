@@ -116,7 +116,7 @@ class Controller(QtCore.QObject):
 
         # Plots
         iv_reading_queue = self.state.create_iv_reading_queue()
-        it_reading_queue = self.state.create_iv_reading_queue()
+        it_reading_queue = self.state.create_it_reading_queue()
         cv_reading_queue = self.state.create_cv_reading_queue()
 
         self.iv_plots_data_windget = IVPlotsDataWidget(iv_reading_queue, it_reading_queue)
