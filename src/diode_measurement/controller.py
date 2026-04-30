@@ -381,6 +381,7 @@ class Controller(QtCore.QObject):
                     "model": role.resource_widget.model(),
                     "termination": role.resource_widget.termination(),
                     "timeout": role.resource_widget.timeout(),
+                    "baud_rate": role.resource_widget.baud_rate(),
                     "reset_instrument": role.resource_widget.is_reset_instrument(),
                 }
             )
@@ -525,6 +526,7 @@ class Controller(QtCore.QObject):
             role.set_resource_name(get_str(settings.value("resource"), ""))
             role.set_termination(get_str(settings.value("termination"), ""))
             role.set_timeout(get_float(settings.value("timeout"), 4.0))
+            role.set_baud_rate(get_int(settings.value("baud_rate"), 9_600))
             role.set_reset_instrument(get_bool(settings.value("reset_instrument"), False))
             role.set_resources(get_dict(settings.value("resources"), {}))
             role.set_configs(get_dict(settings.value("configs"), {}))
@@ -621,6 +623,7 @@ class Controller(QtCore.QObject):
             settings.setValue("resource", role.resource_name())
             settings.setValue("termination", role.termination())
             settings.setValue("timeout", role.timeout())
+            settings.setValue("baud_rate", role.baud_rate())
             settings.setValue("reset_instrument", role.is_reset_instrument())
             settings.setValue("resources", role.resources())
             settings.setValue("configs", role.configs())
@@ -1138,6 +1141,7 @@ class Controller(QtCore.QObject):
                 visa_library=visa_library,
                 termination=role.termination(),
                 timeout=role.timeout(),
+                baud_rate=role.baud_rate(),
             )
 
             self.submit_background_job(

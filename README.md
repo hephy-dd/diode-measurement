@@ -88,6 +88,7 @@ Instrument resource name inputs accept the following formats:
 | `<ip>:<port>`   | `0.0.0.0:1080`     | `TCPIP::0.0.0.0::1080::SOCKET`   |
 | `<host>:<port>` | `localhost:1080`   | `TCPIP::localhost::1080::SOCKET` |
 | `<visa>`        | `GPIB1::16::INSTR` | `GPIB1::16::INSTR`               |
+| `<serial_port>` | `COM1`             | `ASRL1::INSTR`                   |
 
 This allows both simplified and explicit VISA resource definitions depending on your setup.
 

@@ -62,6 +62,12 @@ class RoleWidget(QtWidgets.QWidget):
     def set_timeout(self, timeout: float) -> None:
         self.resource_widget.set_timeout(timeout)
 
+    def baud_rate(self) -> int:
+        return self.resource_widget.baud_rate()
+
+    def set_baud_rate(self, baud_rate: int) -> None:
+        self.resource_widget.set_baud_rate(baud_rate)
+
     def is_reset_instrument(self) -> bool:
         return self.resource_widget.is_reset_instrument()
 
@@ -82,6 +88,7 @@ class RoleWidget(QtWidgets.QWidget):
                 "resource_name": self.resource_name(),
                 "termination": self.termination(),
                 "timeout": self.timeout(),
+                "baud_reate": self.baud_rate(),
             }
             self._resources.setdefault(model, {}).update(resource)
 
@@ -136,6 +143,7 @@ class RoleWidget(QtWidgets.QWidget):
                 self.set_resource_name(resource.get("resource_name", ""))
                 self.set_termination(resource.get("termination", "\r\n"))
                 self.set_timeout(resource.get("timeout", 8.0))
+                self.set_baud_rate(resource.get("baud_rate", 9_600))
                 self.set_reset_instrument(resource.get("reset_instrument", False))
             except Exception as exc:
                 logging.exception(exc)
