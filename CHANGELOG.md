@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Translated `COM1`-style resource names to valid VISA names like `ASRL1::INSTR` (#163).
 
+## [0.26.1] - 2026-04-30
+
+### Fixed
+
+- It plot displayed IV plot data caused by a wrong data source (#165). 
+
 ## [0.26.0] - 2026-04-29
 
 ### Added
@@ -577,7 +583,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IV measurement.
 
 [Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...HEAD
-[0.27.0]: https://github.com/hephy-dd/diode-measurement/compare/0.26.0...0.27.0
+[0.27.0]: https://github.com/hephy-dd/diode-measurement/compare/0.26.1...0.27.0
+[0.26.1]: https://github.com/hephy-dd/diode-measurement/compare/0.26.0...0.26.1
 [0.26.0]: https://github.com/hephy-dd/diode-measurement/compare/0.25.3...0.26.0
 [0.25.3]: https://github.com/hephy-dd/diode-measurement/compare/0.25.2...0.25.3
 [0.25.2]: https://github.com/hephy-dd/diode-measurement/compare/0.25.1...0.25.2
