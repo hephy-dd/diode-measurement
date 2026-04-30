@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.27.0] - 2026-04-30
 
-## Added
+### Added
 
 - Added optional baud rate input for serial resources (#163).
 - Added browse VISA resources tool button and dialog (#164).
 
-## Changed
+### Changed
 
-- Translated `COM1`-style resource names to valid VISA names like `ASRL1::INSTR` (#163).
+- Translates `COM1`-style resource names to valid VISA names like `ASRL1::INSTR` (#163).
 
 ## [0.26.1] - 2026-04-30
 
@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added configurable voltage discharge timeout and threshold settings to the Preferences dialog (#161).
 - Added `sample` parameter to JSON-RPC `start` method (#162).
 
-## Changed
+### Changed
 
 - Added missing type hints across the codebase.
 - Replaced `time.time()` with `time.monotonic()` for reliable elapsed-time measurement.
