@@ -47,6 +47,14 @@ def parse_resource(resource_name: str) -> tuple[str, str]:
     return resource_name, visa_library
 
 
+def list_resources() -> list[str]:
+    rm = pyvisa.ResourceManager()
+    try:
+        return list(rm.list_resources())
+    finally:
+        rm.close()
+
+
 @dataclass
 class ResourceConfig:
     resource_name: str

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added
+
+- Added optional baud rate input for serial resources (#163).
+- Added browse VISA resources tool button and dialog (#164).
+
+## Changed
+
+- Translated `COM1`-style resource names to valid VISA names like `ASRL1::INSTR` (#163).
+
 ## [0.26.0] - 2026-04-29
 
 ### Added
