@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 
 - Added optional baud rate input for serial resources (#163).
+- Added browse VISA resources tool button and dialog (#164).
 
 ## Changed
 
