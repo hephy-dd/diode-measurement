@@ -1,5 +1,6 @@
 from diode_measurement.core.events import EventHandler
 
+
 def test_event_handler():
     results = []
     handler = EventHandler()

@@ -8,14 +8,13 @@ from typing import Any, Optional, Type
 from comet.estimate import Estimate
 from comet.functions import LinearRange
 
+from ..actors import TCUActor
 from ..drivers import driver_factory
-from ..state import State, EventBus, FSMState, IVReading
+from ..state import State, FSMState, IVReading
 from ..writer import Writer
 
-from .actor import Actor
-from .driver import TCU, VoltageMeasurable
+from .driver import VoltageMeasurable
 from .resource import ResourceConfig, Resource, AutoReconnectResource
-from .timers import IntervalTimer
 
 __all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
 
@@ -40,45 +39,6 @@ class MeasurementParameters:
     default_bias_voltage: float = 0.0
     default_waiting_time_continuous: float = 0.0
     provides_continuous: bool = False
-
-
-class TCUActor(Actor):
-    def __init__(self, tcu: TCU, event_bus: EventBus, abort_event) -> None:
-        super().__init__(abort_event=abort_event)
-        self.tcu = tcu
-        self.event_bus = event_bus
-        self.poll_interval: float = 5.0
-        self.query_timeout: float = 10.0
-        self._interval_timer = IntervalTimer(self.poll_interval)
-
-    def on_idle(self) -> None:
-        if not self._interval_timer.expired():
-            return
-        self._interval_timer.reset()
-        try:
-            temperature = self.tcu.get_temperature()
-        except Exception:
-            logging.exception("Failed to read TCU temperature")
-        else:
-            self.event_bus.submit("update", {"tcu_temperature": temperature})
-        try:
-            state = self.tcu.get_state()
-        except Exception:
-            logging.exception("Failed to read TCU state")
-        else:
-            self.event_bus.submit("update", {"tcu_state": state})
-
-    def on_message(self, message: Any) -> Any:
-        return message()
-
-    def is_within_setpoint(self) -> bool:
-        return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
-
-    def ensure_setpoint(self) -> None:
-        while not self._abort_event.is_set():
-            if self.is_within_setpoint():
-                break
-            self.sleep(self.poll_interval)
 
 
 class Measurement:

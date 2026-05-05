@@ -16,6 +16,7 @@ def test_resource_config():
     assert cfg.termination == "\n"
     assert cfg.timeout == 2.0
 
+
 def test_resource():
     cfg = ResourceConfig("TCPIP::localhost:8080::SOCKET", "@sim")
     res = Resource(cfg)
