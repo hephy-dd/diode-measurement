@@ -9,12 +9,11 @@ from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..actors import TCUActor
-from ..drivers import driver_factory
 from ..state import State, FSMState, IVReading
 from ..writer import Writer
 
 from .driver import VoltageMeasurable
-from .resource import ResourceConfig, Resource, AutoReconnectResource
+from .station import Station
 
 __all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
 
@@ -42,11 +41,9 @@ class MeasurementParameters:
 
 
 class Measurement:
-    def __init__(self, state: State) -> None:
-        super().__init__()
+    def __init__(self, state: State, station: Station) -> None:
         self.state: State = state
-        self.instruments: dict = {}
-        self._instruments: dict = {}
+        self.station: Station = station
 
         self.tcu_actor: Optional[TCUActor] = None
 
@@ -62,33 +59,6 @@ class Measurement:
     def on_finished(self) -> None:
         for writer in self.writers:
             writer.flush()
-
-    def register_instrument(self, name: str) -> None:
-        role = self.state.find_role(name)
-        if role is None:
-            raise KeyError(f"No such instrument: {name!r}")
-        if not role.enabled:
-            return None
-        model = role.model
-        if not role.resource_name.strip():
-            raise ValueError(
-                f"Empty resource name not allowed for {name.upper()} ({model})."
-            )
-        driver_cls = driver_factory(model)
-        if not driver_cls:
-            logger.warning("No such driver: %s", model)
-            return None
-        # If auto reconnect use experimental class AutoReconnectResource
-        auto_reconnect = self.state.auto_reconnect
-        resource_cls = AutoReconnectResource if auto_reconnect else Resource
-        resource_config = ResourceConfig(
-            resource_name=role.resource_name,
-            visa_library=role.visa_library,
-            termination=role.termination,
-            timeout=role.timeout,
-        )
-        resource = resource_cls(resource_config)
-        self._instruments[name] = driver_cls, resource
 
     def check_error_state(self, context) -> None:
         error = context.next_error()
@@ -114,15 +84,14 @@ class Measurement:
             logger.debug("handle started callbacks...")
             self.on_started()
             logger.debug("handle started callbacks... done.")
-            self.instruments.clear()
             with contextlib.ExitStack() as stack:
                 logger.debug("creating instrument contexts...")
-                for key, (cls, resource) in self._instruments.items():
+                for key, (cls, resource) in self.station._instruments.items():
                     logger.debug(
                         "creating instrument context %s: %s...", key, cls.__name__
                     )
                     context = cls(stack.enter_context(resource))
-                    self.instruments[key] = context
+                    self.station.instruments[key] = context
                 logger.debug("creating instrument contexts... done.")
                 try:
                     logger.debug("initialize...")
@@ -146,7 +115,6 @@ class Measurement:
             logger.debug("handle finished callbacks...")
             self.on_finished()
             logger.debug("handle finished callbacks... done.")
-            self.instruments.clear()
             self.set_fsm_state(FSMState.IDLE)
             logger.debug("run measurement... done.")
 
@@ -324,8 +292,8 @@ class RangeMeasurement(Measurement):
 
     def initialize(self) -> None:
         source = self.state.source_role
-        if source in self.instruments:
-            self.source_instrument = self.instruments.get(source)
+        if source in self.station.instruments:
+            self.source_instrument = self.station.instruments.get(source)
         else:
             raise RuntimeError("No source instrument set")
 
@@ -334,13 +302,13 @@ class RangeMeasurement(Measurement):
         self.bias_source_instrument = None
         if self.state.measurement_type in ["iv_bias"]:  # TODO
             bias_source = self.state.bias_source_role
-            if bias_source in self.instruments:
-                self.bias_source_instrument = self.instruments.get(bias_source)
+            if bias_source in self.station.instruments:
+                self.bias_source_instrument = self.station.instruments.get(bias_source)
             else:
                 raise RuntimeError("No bias source instrument set")
 
         logger.debug("querying context identities...")
-        for key, context in self.instruments.items():
+        for key, context in self.station.instruments.items():
             logger.debug("reading %s identity...", key.upper())
             identity: str = context.identify()
             logger.debug("reading %s identity... done.", key.upper())
@@ -372,7 +340,7 @@ class RangeMeasurement(Measurement):
         self.initialize_switch()
 
         # Reset (optional)
-        for key, instrument in self.instruments.items():
+        for key, instrument in self.station.instruments.items():
             role = self.state.find_role(key)
             if role and role.reset_instrument:
                 logger.info("Reset %s...", key.upper())
@@ -380,13 +348,13 @@ class RangeMeasurement(Measurement):
                 logger.info("Reset %s... done.", key.upper())
 
         # Clear state
-        for key, instrument in self.instruments.items():
+        for key, instrument in self.station.instruments.items():
             logger.info("Clear %s...", key.upper())
             instrument.clear()
             logger.info("Clear %s... done.", key.upper())
 
         # Configure
-        for key, instrument in self.instruments.items():
+        for key, instrument in self.station.instruments.items():
             logger.info("Configure %s...", key.upper())
             role = self.state.find_role(key)
             if role is not None:
@@ -402,11 +370,11 @@ class RangeMeasurement(Measurement):
         self.check_error_state(self.source_instrument)
 
         # check interlock (optional)
-        for instrument in self.instruments.values():
+        for instrument in self.station.instruments.values():
             self.check_interlock(instrument)
 
         # TCU (optional)
-        tcu = self.instruments.get("tcu")
+        tcu = self.station.instruments.get("tcu")
         if tcu is not None:
             self.tcu_actor = TCUActor(
                 tcu=tcu,
@@ -441,18 +409,18 @@ class RangeMeasurement(Measurement):
         self.apply_settle_waiting_time()
 
     def initialize_elms(self) -> None:
-        elm = self.instruments.get("elm")
+        elm = self.station.instruments.get("elm")
         if elm is not None:
             elm.set_zero_check_enabled(False)
             logger.info("ELM zero check: off")
 
-        elm2 = self.instruments.get("elm2")
+        elm2 = self.station.instruments.get("elm2")
         if elm2 is not None:
             elm2.set_zero_check_enabled(False)
             logger.info("ELM2 zero check: off")
 
     def initialize_switch(self) -> None:
-        switch = self.instruments.get("switch")
+        switch = self.station.instruments.get("switch")
         if switch is not None:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")
@@ -553,24 +521,24 @@ class RangeMeasurement(Measurement):
             )
 
     def finalize_elms(self) -> None:
-        elm = self.instruments.get("elm")
+        elm = self.station.instruments.get("elm")
         if elm is not None:
             elm.set_zero_check_enabled(True)
             logger.info("ELM zero check: on")
 
-        elm2 = self.instruments.get("elm2")
+        elm2 = self.station.instruments.get("elm2")
         if elm2 is not None:
             elm2.set_zero_check_enabled(True)
             logger.info("ELM2 zero check: on")
 
     def finalize_lcr(self) -> None:
-        lcr = self.instruments.get("lcr")
+        lcr = self.station.instruments.get("lcr")
         if lcr is not None:
             if hasattr(lcr, "finalize"):
                 lcr.finalize()
 
     def finalize_switch(self) -> None:
-        switch = self.instruments.get("switch")
+        switch = self.station.instruments.get("switch")
         if switch:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")

@@ -24,11 +24,11 @@ class IVBiasMeasurement(RangeMeasurement):
             writer.write_it_bias_row(asdict(reading))
 
     def acquire_reading_data(self, source_voltage: float) -> IVReading:
-        smu = self.instruments.get("smu")
-        smu2 = self.instruments.get("smu2")
-        elm = self.instruments.get("elm")
-        elm2 = self.instruments.get("elm2")
-        dmm = self.instruments.get("dmm")
+        smu = self.station.instruments.get("smu")
+        smu2 = self.station.instruments.get("smu2")
+        elm = self.station.instruments.get("elm")
+        elm2 = self.station.instruments.get("elm2")
+        dmm = self.station.instruments.get("dmm")
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
         i_smu2, v_smu2 = smu2.measure_iv() if smu2 else (math.nan, math.nan)
         i_elm = elm.measure_i() if elm else math.nan

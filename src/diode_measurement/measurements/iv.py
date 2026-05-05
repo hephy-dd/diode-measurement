@@ -24,10 +24,10 @@ class IVMeasurement(RangeMeasurement):
             writer.write_it_row(asdict(reading))
 
     def acquire_reading_data(self, source_voltage: float) -> IVReading:
-        smu = self.instruments.get("smu")
-        elm = self.instruments.get("elm")
-        elm2 = self.instruments.get("elm2")
-        dmm = self.instruments.get("dmm")
+        smu = self.station.instruments.get("smu")
+        elm = self.station.instruments.get("elm")
+        elm2 = self.station.instruments.get("elm2")
+        dmm = self.station.instruments.get("dmm")
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
         i_elm = elm.measure_i() if elm else math.nan
         i_elm2 = elm2.measure_i() if elm2 else math.nan

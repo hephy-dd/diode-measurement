@@ -1,4 +1,4 @@
-from ..core.driver import Driver
+from ..core.driver import driver_registry, driver_factory
 
 # Drivers
 from .k237 import K237
@@ -19,7 +19,7 @@ from .k708b import K708B
 
 __all__ = ["driver_factory"]
 
-driver_registry: dict[str, type[Driver]] = {
+driver_registry.update({
     "K237": K237,
     "K595": K595,
     "K2410": K2410,
@@ -35,12 +35,4 @@ driver_registry: dict[str, type[Driver]] = {
     "BrandBox": BrandBox,
     "K707B": K707B,
     "K708B": K708B,
-}
-
-
-def driver_factory(model: str) -> type[Driver]:
-    """Return the driver class for the given model."""
-    try:
-        return driver_registry[model]
-    except KeyError as exc:
-        raise ValueError(f"Unknown driver model: {model}") from exc
+})

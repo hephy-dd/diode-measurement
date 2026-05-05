@@ -6,9 +6,14 @@ from comet.driver.generic import InstrumentError
 
 from .resource import Resource
 
-logger = logging.getLogger(__name__)
+__all__ = [
+    "BaseDriver",
+    "Driver",
+    "driver_registry",
+    "driver_factory",
+]
 
-__all__ = ["Driver", "BaseDriver"]
+logger = logging.getLogger(__name__)
 
 
 def handle_exception(method):
@@ -79,3 +84,14 @@ class SwitchingMatrix(Driver, Protocol):
 @runtime_checkable
 class VoltageMeasurable(Protocol):
     def measure_v(self) -> float: ...
+
+
+driver_registry: dict[str, type[Driver]] = {}
+
+
+def driver_factory(model: str) -> type[Driver]:
+    """Return the driver class for the given model."""
+    try:
+        return driver_registry[model]
+    except KeyError as exc:
+        raise ValueError(f"Unknown driver model: {model}") from exc

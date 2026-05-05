@@ -16,6 +16,7 @@ from .core.cache import Cache
 from .core.job import Job
 from .core.measurement import Measurement
 from .core.resource import parse_resource, ResourceConfig
+from .core.station import Station
 
 # Source meter units
 from .gui.panels import K237Panel
@@ -1044,13 +1045,19 @@ class Controller(QtCore.QObject):
         measurement_type = state.measurement_type
         for spec in self.measurement_registry:  # TODO
             if spec.type == measurement_type:
-                measurement = spec.measurement_cls(state)
+                station = Station()
+                station.auto_reconnect = state.auto_reconnect
 
-                # Prepare role drivers
-                for role in self.main_window.roles():
-                    measurement.register_instrument(role.name())
+                for role_ in self.main_window.roles():
+                    name = role_.name()
+                    role = state.find_role(name)  # TODO
+                    if role is None:
+                        raise KeyError(f"No such instrument: {name!r}")
+                    if not role.enabled:
+                        continue
+                    station.register_instrument(name, role)
 
-                return measurement
+                return spec.measurement_cls(state, station)
 
         raise ValueError(f"No such measurement type: {measurement_type}")
 
