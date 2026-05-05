@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Hide resource baud rate input for non-serial resouce names (#166).
+- Hide resource baud rate input for non-serial resource names (#166).
 - Lock browse resources dialog button on measurements (#167).
 
 ## [0.27.0] - 2026-04-30
