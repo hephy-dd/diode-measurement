@@ -13,6 +13,7 @@ from PySide6 import QtCore, QtWidgets, QtStateMachine
 from comet.utils import safe_filename
 
 from .core.cache import Cache
+from .core.job import Job
 from .core.measurement import Measurement
 from .core.resource import parse_resource, ResourceConfig
 
@@ -54,7 +55,7 @@ from .reader import Reader
 from .utils import format_metric
 from .utils import get_bool, get_int, get_float, get_str, get_dict
 
-from .jobs import Job, MeasurementJob, K4215PerformCorrectionJob
+from .jobs import MeasurementJob, K4215PerformCorrectionJob
 from .settings import MeasurementParameters, measurement_registry
 from .state import FSMState, ChangeVoltageParameters, State
 
