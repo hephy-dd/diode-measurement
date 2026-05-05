@@ -158,6 +158,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
     def set_locked(self, state: bool) -> None:
         self.model_combo_box.setEnabled(not state)
         self.resource_line_edit.setEnabled(not state)
+        self.resource_browse_button.setEnabled(not state)
         self.baud_rate_combo_box.setEnabled(not state)
         self.termination_combo_box.setEnabled(not state)
         self.timeout_spin_box.setEnabled(not state)
