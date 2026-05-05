@@ -233,8 +233,8 @@ class ResourceWidget(QtWidgets.QGroupBox):
             text.startswith("ASRL")
             or text.startswith("COM")
         )
-        self.baud_rate_label.setEnabled(is_serial)
-        self.baud_rate_combo_box.setEnabled(is_serial)
+        self.baud_rate_label.setVisible(is_serial)
+        self.baud_rate_combo_box.setVisible(is_serial)
 
     @QtCore.Slot()
     def on_browse_resources(self) -> None:
