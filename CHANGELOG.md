@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-05-05
+
+### Fixed
+
+- Hide resource baud rate input for non-serial resouce names (#166).
+
 ## [0.27.0] - 2026-04-30
 
 ### Added
@@ -44,13 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.25.3] - 2026-04-27
 
-### Fixes
+### Fixed
 
 - Replace `INIT` by `READ?` to avoid trigger model errors on Keithley 2470 (#158, #159).
 
 ## [0.25.2] - 2026-04-24
 
-### Fixes
+### Fixed
 
 - Add missing `INIT` command when reading from Keithley 2470, preventing frozen readings (#157).
 
@@ -152,19 +158,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.22.3] - 2026-02-12
 
-### Fixes
+### Fixed
 
 - Disable K4215-CVU C-V bias voltage/offset after measurement (#123).
 
 ## [0.22.2] - 2025-09-26
 
-### Fixes
+### Fixed
 
 - Display DCAMPS measurements on K2657A (#125).
 
 ## [0.22.1] - 2025-09-22
 
-### Fixes
+### Fixed
 
 - Broken `measure_iv` method for K6517b (#120).
 - Broken disable TCP server on error (#121).
@@ -244,6 +250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable precision for file writer (#102).
 
 ### Changed
+
 - Added support for Python 3.12.
 
 ## [0.20.1] - 2024-02-05
@@ -436,7 +443,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Agilent 4284A LCR Meter (#35).
 - Aperture and correction settings for LCR Meters.
 
-## Changed
+### Changed
 
 - Show only plots of selected measurement (#37).
 - Refactored measurement thread handling.
@@ -582,7 +589,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...HEAD
+[0.27.1]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/hephy-dd/diode-measurement/compare/0.26.1...0.27.0
 [0.26.1]: https://github.com/hephy-dd/diode-measurement/compare/0.26.0...0.26.1
 [0.26.0]: https://github.com/hephy-dd/diode-measurement/compare/0.25.3...0.26.0
@@ -642,13 +650,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.8.2]: https://github.com/hephy-dd/diode-measurement/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/hephy-dd/diode-measurement/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/hephy-dd/diode-measurement/compare/0.7.0...0.8.0
-[0.7.0]: https://github.com/hephy-dd/diode-measurement/compare/0.6.1...0.7.0
+[0.7.0]: https://github.com/hephy-dd/diode-measurement/compare/0.6.2...0.7.0
+[0.6.2]: https://github.com/hephy-dd/diode-measurement/compare/0.6.1...0.6.2
 [0.6.1]: https://github.com/hephy-dd/diode-measurement/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/hephy-dd/diode-measurement/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/hephy-dd/diode-measurement/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/hephy-dd/diode-measurement/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/hephy-dd/diode-measurement/compare/0.2.1...0.3.0
-[0.2.1]: https://github.com/hephy-dd/diode-measurement/compare/0.1.1...0.2.0
+[0.2.1]: https://github.com/hephy-dd/diode-measurement/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/hephy-dd/diode-measurement/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/hephy-dd/diode-measurement/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/hephy-dd/diode-measurement/releases/tag/0.1.0
