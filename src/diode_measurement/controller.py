@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from collections.abc import Mapping
+from functools import partial
 from queue import Queue, Empty
 from typing import Any, Optional
 
@@ -46,17 +47,23 @@ from .gui.panels import BrandBoxPanel
 from .gui.panels import K707BPanel
 from .gui.panels import K708BPanel
 
-from .gui.mainwindow import MainWindow
-from .gui.widgets import show_exception
 from .gui.dialogs import ChangeVoltageDialog
+from .gui.mainwindow import MainWindow
 from .gui.plots import IVPlotsDataWidget, CVPlotsDataWidget
+from .gui.role import RoleWidget
+from .gui.widgets import show_exception
 
 from .reader import Reader
 
 from .utils import format_metric
 from .utils import get_bool, get_int, get_float, get_str, get_dict
 
-from .jobs import MeasurementJob, K4215PerformCorrectionJob
+from .jobs import (
+    TestConnectionJob,
+    ListResourcesJob,
+    K4215PerformCorrectionJob,
+    MeasurementJob,
+)
 from .settings import MeasurementParameters, measurement_registry
 from .state import FSMState, ChangeVoltageParameters, State
 
@@ -79,6 +86,17 @@ class Snapshot:
     elm2_current: Optional[float]
     lcr_capacity: Optional[float]
     temperature: Optional[float]
+
+
+def get_role_config(role: RoleWidget) -> ResourceConfig:
+    resource_name, visa_library = parse_resource(role.resource_name())
+    return ResourceConfig(
+        resource_name=resource_name,
+        visa_library=visa_library,
+        termination=role.termination(),
+        timeout=role.timeout(),
+        baud_rate=role.baud_rate(),
+    )
 
 
 class Controller(QtCore.QObject):
@@ -196,6 +214,12 @@ class Controller(QtCore.QObject):
         main_window.continuous_check_box.checkStateChanged.connect(
             self.on_continuous_changed
         )
+
+        self.browse_resources_controller = BrowseResourcesController(self.main_window, self)
+        self.browse_resources_controller.job_submitted.connect(self.submit_background_job)
+
+        self.test_connection_controller = TestConnectionController(self.main_window, self)
+        self.test_connection_controller.job_submitted.connect(self.submit_background_job)
 
         general_widget = main_window.general_widget
 
@@ -1128,12 +1152,13 @@ class Controller(QtCore.QObject):
             )
         self.change_voltage_controller.request_change_voltage(parameters)
 
+    @QtCore.Slot()
     def on_lcr_perform_correction(self) -> None:
-        role = self.main_window.find_role("lcr")
-        if role is None:
+        role_widget = self.main_window.find_role("lcr")
+        if role_widget is None:
             return
-        model = role.model()
-        config = role.configs().get(model, {})
+        model = role_widget.model()
+        config = role_widget.configs().get(model, {})
         if model == "K4215":
             dialog = K4215CorrectionDialog(self.main_window)
             external_bias_tee = config.get("external_bias_tee.enabled", False)
@@ -1141,29 +1166,24 @@ class Controller(QtCore.QObject):
                 dialog.set_hint("<b>With</b> external Bias Tee (applying -10V DC)")
             if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
                 return
+
+            resource_config = get_role_config(role_widget)
+
+            job = K4215PerformCorrectionJob(
+                resource_config=resource_config,
+                cable_length=config["correction.length"],
+                open_correction=dialog.is_open_correction(),
+                short_correction=dialog.is_short_correction(),
+                load_correction=dialog.get_load_correction(),
+                external_bias_tee=external_bias_tee,
+            )
+            job.message_changed.connect(self.main_window.set_message)
+
             self.main_window.control_tab_widget.setEnabled(False)
+            self.main_window.set_progress(0, 0, 0)
+            self.main_window.set_message("Performing open correction...")
 
-            resource_name, visa_library = parse_resource(role.resource_name())
-            resource_config = ResourceConfig(
-                resource_name=resource_name,
-                visa_library=visa_library,
-                termination=role.termination(),
-                timeout=role.timeout(),
-                baud_rate=role.baud_rate(),
-            )
-
-            self.submit_background_job(
-                K4215PerformCorrectionJob(
-                    resource_config=resource_config,
-                    cable_length=config.get("correction.length"),
-                    open_correction=dialog.is_open_correction(),
-                    short_correction=dialog.is_short_correction(),
-                    load_correction=dialog.get_load_correction(),
-                    external_bias_tee=external_bias_tee,
-                    progress=self.progress_changed.emit,
-                    message=self.message_changed.emit,
-                )
-            )
+            self.submit_background_job(job)
 
 
 class ChangeVoltageController(QtCore.QObject):
@@ -1211,3 +1231,59 @@ class ChangeVoltageController(QtCore.QObject):
     @QtCore.Slot()
     def on_change_voltage_ready(self) -> None:
         self.main_window.set_change_voltage_enabled(True)
+
+
+class BrowseResourcesController(QtCore.QObject):
+    job_submitted = QtCore.Signal(object)
+
+    def __init__(self, main_window: MainWindow, parent: QtCore.QObject) -> None:
+        super().__init__(parent)
+        self.main_window = main_window
+        self.main_window.role_browse_resources.connect(self.on_browse_resources)
+
+    @QtCore.Slot(str)
+    def on_browse_resources(self, role: str) -> None:
+        role_widget = self.main_window.find_role(role)
+        if role_widget is not None:
+            job = ListResourcesJob()
+            job.finished.connect(partial(self.on_show_browse_resources, role))
+
+            self.main_window.set_progress(0, 0, 0)
+            self.main_window.set_message("Searching for resources...")
+
+            self.job_submitted.emit(job)
+
+    @QtCore.Slot(str, list)
+    def on_show_browse_resources(self, role: str, resource_names: list[str]) -> None:
+        role_widget = self.main_window.find_role(role)
+        if role_widget is not None:
+            role_widget.show_browse_resources(resource_names)
+
+
+class TestConnectionController(QtCore.QObject):
+    job_submitted = QtCore.Signal(object)
+
+    def __init__(self, main_window: MainWindow, parent: QtCore.QObject) -> None:
+        super().__init__(parent)
+        self.main_window = main_window
+        self.main_window.role_test_connection.connect(self.on_test_connection)
+
+    @QtCore.Slot(str)
+    def on_test_connection(self, role: str) -> None:
+        role_widget = self.main_window.find_role(role)
+        if role_widget is not None:
+            resource_config = get_role_config(role_widget)
+            job = TestConnectionJob(
+                model=role_widget.model(),
+                resource_config=resource_config,
+            )
+            job.finished.connect(self.on_connection_identity)
+
+            self.main_window.set_progress(0, 0, 0)
+            self.main_window.set_message("Testing connection...")
+
+            self.job_submitted.emit(job)
+
+    @QtCore.Slot(str)
+    def on_connection_identity(self, identity: str) -> None:
+        QtWidgets.QMessageBox.information(self.main_window, "Connection Test", str(identity))

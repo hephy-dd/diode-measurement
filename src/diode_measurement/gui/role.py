@@ -11,6 +11,9 @@ __all__ = ["RoleWidget"]
 
 
 class RoleWidget(QtWidgets.QWidget):
+    browse_resources = QtCore.Signal()
+    test_connection = QtCore.Signal()
+
     def __init__(self, name: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self._name: str = name
@@ -18,6 +21,8 @@ class RoleWidget(QtWidgets.QWidget):
 
         self.resource_widget = ResourceWidget(self)
         self.resource_widget.model_changed.connect(self.model_changed)
+        self.resource_widget.browse_resources.connect(self.browse_resources.emit)
+        self.resource_widget.test_connection.connect(self.test_connection.emit)
 
         self.stacked_widget = QtWidgets.QStackedWidget(self)
 
@@ -132,6 +137,9 @@ class RoleWidget(QtWidgets.QWidget):
             if model == widget.model():
                 return widget
         return None
+
+    def show_browse_resources(self, resource_names: list[str]) -> None:
+        self.resource_widget.show_browse_resources(resource_names)
 
     @QtCore.Slot(str)
     def model_changed(self, model: str) -> None:

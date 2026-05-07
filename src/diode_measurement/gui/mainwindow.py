@@ -35,6 +35,8 @@ def stylesheet_switch(state):
 
 class MainWindow(QtWidgets.QMainWindow):
     prepare_change_voltage = QtCore.Signal()
+    role_browse_resources = QtCore.Signal(str)
+    role_test_connection = QtCore.Signal(str)
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -434,6 +436,8 @@ class MainWindow(QtWidgets.QMainWindow):
             raise KeyError(f"No such role: {role!r}")
         self.general_widget.add_role(role, title)
         widget = RoleWidget(role)
+        widget.browse_resources.connect(lambda role=role: self.role_browse_resources.emit(role))
+        widget.test_connection.connect(lambda role=role: self.role_test_connection.emit(role))
         self.roleWidgets[role] = widget
         self.control_tab_widget.addTab(widget, title)
         return widget
