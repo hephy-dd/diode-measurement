@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.2] - 2026-05-07
+
+### Fixed
+
+- Unlock change voltage button in continuous measurement mode (#169).
+
 ## [0.27.1] - 2026-05-05
 
 ### Fixed
@@ -590,7 +596,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.2...HEAD
+[0.27.2]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...0.27.2
 [0.27.1]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/hephy-dd/diode-measurement/compare/0.26.1...0.27.0
 [0.26.1]: https://github.com/hephy-dd/diode-measurement/compare/0.26.0...0.26.1
