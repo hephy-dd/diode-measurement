@@ -740,6 +740,9 @@ class Controller(QtCore.QObject):
 
         if (fsm_state := data.get("fsm_state")) is not None:
             cache.update({"fsm_state": fsm_state})
+            # Toggle change voltage button based on FSM state
+            enabled = fsm_state == FSMState.CONTINUOUS
+            self.main_window.set_change_voltage_enabled(enabled)
 
         if (source_voltage := data.get("source_voltage")) is not None:
             self.main_window.updateSourceVoltage(source_voltage)
