@@ -100,10 +100,9 @@ def get_role_config(role: RoleWidget) -> ResourceConfig:
 
 
 class Controller(QtCore.QObject):
-    started = QtCore.Signal()
     aborted = QtCore.Signal()
     updated = QtCore.Signal(dict)
-    failed = QtCore.Signal(Exception)
+    failed = QtCore.Signal(object)
     finished = QtCore.Signal()
 
     change_voltage_ready = QtCore.Signal()
@@ -117,9 +116,9 @@ class Controller(QtCore.QObject):
     ) -> None:
         super().__init__(parent)
 
-        self._shutdown_event = threading.Event()
-        self._background_inbox: Queue[Job] = Queue()
-        self._background_thread = threading.Thread(target=self._handle_background_jobs)
+        self._background_jobs = BackgroundJobsController(self)
+        self._background_jobs.failed.connect(self.failed.emit)
+        self._background_jobs.finished.connect(self.finished.emit)
 
         self.main_window = main_window
 
@@ -249,22 +248,22 @@ class Controller(QtCore.QObject):
 
         self.on_instruments_changed()
 
-        general_widget.role_check_boxes["smu"].toggled.connect(self.on_toggle_smu)
-        general_widget.role_check_boxes["smu2"].toggled.connect(self.on_toggle_smu2)
-        general_widget.role_check_boxes["elm"].toggled.connect(self.on_toggle_elm)
-        general_widget.role_check_boxes["elm2"].toggled.connect(self.on_toggle_elm2)
-        general_widget.role_check_boxes["lcr"].toggled.connect(self.on_toggle_lcr)
-        general_widget.role_check_boxes["dmm"].toggled.connect(self.on_toggle_dmm)
-        general_widget.role_check_boxes["tcu"].toggled.connect(self.on_toggle_tcu)
-        general_widget.role_check_boxes["switch"].toggled.connect(self.on_toggle_switch)
+        general_widget.role_check_boxes["smu"].toggled.connect(partial(self.set_role_enabled, "smu"))
+        general_widget.role_check_boxes["smu2"].toggled.connect(partial(self.set_role_enabled, "smu2"))
+        general_widget.role_check_boxes["elm"].toggled.connect(partial(self.set_role_enabled, "elm"))
+        general_widget.role_check_boxes["elm2"].toggled.connect(partial(self.set_role_enabled, "elm2"))
+        general_widget.role_check_boxes["lcr"].toggled.connect(partial(self.set_role_enabled, "lcr"))
+        general_widget.role_check_boxes["dmm"].toggled.connect(partial(self.set_role_enabled, "dmm"))
+        general_widget.role_check_boxes["tcu"].toggled.connect(partial(self.set_role_enabled, "tcu"))
+        general_widget.role_check_boxes["switch"].toggled.connect(partial(self.set_role_enabled, "switch"))
 
-        self.on_toggle_smu2(False)
-        self.on_toggle_elm(False)
-        self.on_toggle_elm2(False)
-        self.on_toggle_lcr(False)
-        self.on_toggle_dmm(False)
-        self.on_toggle_tcu(False)
-        self.on_toggle_switch(False)
+        self.set_role_enabled("smu2", False)
+        self.set_role_enabled("elm", False)
+        self.set_role_enabled("elm2", False)
+        self.set_role_enabled("lcr", False)
+        self.set_role_enabled("dmm", False)
+        self.set_role_enabled("tcu", False)
+        self.set_role_enabled("switch", False)
 
         main_window.clear_message()
         main_window.clear_progress()
@@ -285,12 +284,12 @@ class Controller(QtCore.QObject):
 
         # Transitions
 
-        self.idle_state.addTransition(self.started, self.running_state)
+        self.idle_state.addTransition(self._background_jobs.started, self.running_state)
 
-        self.running_state.addTransition(self.finished, self.idle_state)
+        self.running_state.addTransition(self._background_jobs.finished, self.idle_state)
         self.running_state.addTransition(self.aborted, self.stopping_state)
 
-        self.stopping_state.addTransition(self.finished, self.idle_state)
+        self.stopping_state.addTransition(self._background_jobs.finished, self.idle_state)
 
         # State machine
 
@@ -300,27 +299,6 @@ class Controller(QtCore.QObject):
         self.state_machine.addState(self.stopping_state)
         self.state_machine.setInitialState(self.idle_state)
         self.state_machine.start()
-
-    def submit_background_job(self, job: Job) -> None:
-        self._background_inbox.put_nowait(job)
-        self.started.emit()
-
-    def _handle_background_jobs(self) -> None:
-        while not self._shutdown_event.is_set():
-            try:
-                try:
-                    job = self._background_inbox.get(timeout=0.25)
-                except Empty:
-                    ...
-                else:
-                    try:
-                        job()
-                    except Exception as exc:
-                        self.failed.emit(exc)
-                    finally:
-                        self.finished.emit()
-            except Exception as exc:
-                logger.exception(exc)
 
     def snapshot(self) -> Snapshot:
         """Return thread save application state snapshot."""
@@ -341,21 +319,21 @@ class Controller(QtCore.QObject):
             )
 
     def get_role_model(self, role: str) -> str:
-        for role_ in self.main_window.roles():
-            if role_.name() == role:
-                return role_.model()
+        for role_widget in self.main_window.roles():
+            if role_widget.name() == role:
+                return role_widget.model()
         raise KeyError("No such role: {role!r}")
 
     def get_role_config(self, role: str) -> dict[str, Any]:
-        for role_ in self.main_window.roles():
-            if role_.name() == role:
-                return role_.current_config()
+        for role_widget in self.main_window.roles():
+            if role_widget.name() == role:
+                return role_widget.current_config()
         raise KeyError("No such role: {role!r}")
 
     def update_role_config(self, role: str, options: Mapping[str, Any]) -> dict[str, Any]:
-        for role_ in self.main_window.roles():
-            if role_.name() == role:
-                config = role_.current_config()
+        for role_widget in self.main_window.roles():
+            if role_widget.name() == role:
+                config = role_widget.current_config()
                 for key in options:
                     if key not in config:
                         logger.warning("Ignoring invalid config key %r for role %r", key, role)
@@ -363,11 +341,14 @@ class Controller(QtCore.QObject):
                     if key in options:
                         config[key] = options[key]
                 # Update models configs
-                configs = role_.configs()
-                configs[role_.model()] = config
-                role_.set_configs(configs)
-                return role_.current_config()
+                configs = role_widget.configs()
+                configs[role_widget.model()] = config
+                role_widget.set_configs(configs)
+                return role_widget.current_config()
         raise KeyError("No such role: {role!r}")
+
+    def submit_background_job(self, job: Job) -> None:
+        self._background_jobs.submit_job(job)
 
     def prepare_state(self) -> dict[str, Any]:
         state: dict[str, Any] = {}
@@ -444,19 +425,13 @@ class Controller(QtCore.QObject):
         return state
 
     def start(self) -> None:
-        if self._background_thread.ident is not None:
-            return
-        self._background_thread.start()
+        self._background_jobs.start()
 
     def shutdown(self) -> None:
-        self._shutdown_event.set()
         self.iv_plots_data_windget.stop()
         self.cv_plots_data_windget.stop()
+        self._background_jobs.shutdown(timeout=10.0)
         self.state_machine.stop()
-        if self._background_thread.is_alive():
-            self._background_thread.join(timeout=10.0)
-            if self._background_thread.is_alive():
-                logger.warning("Background thread did not stop within timeout")
 
     def read_settings(self) -> None:
         settings = QtCore.QSettings()
@@ -714,17 +689,17 @@ class Controller(QtCore.QObject):
                 if measurement_type == "iv":
                     self.iv_plots_data_windget.on_load_iv_readings(data)
                     self.iv_plots_data_windget.on_load_it_readings(continuous_data)
-                    self.on_toggle_smu(True)
-                    self.on_toggle_smu2(False)
-                    self.on_toggle_elm(bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
-                    self.on_toggle_elm2(bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
+                    self.set_role_enabled("smu", True)
+                    self.set_role_enabled("smu2", False)
+                    self.set_role_enabled("elm", bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
+                    self.set_role_enabled("elm2", bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
                 if measurement_type == "iv_bias":
                     self.iv_plots_data_windget.on_load_iv_readings(data)
                     self.iv_plots_data_windget.on_load_it_readings(continuous_data)
-                    self.on_toggle_smu(True)
-                    self.on_toggle_smu2(True)
-                    self.on_toggle_elm(bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
-                    self.on_toggle_elm2(bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
+                    self.set_role_enabled("smu", True)
+                    self.set_role_enabled("smu2", True)
+                    self.set_role_enabled("elm", bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
+                    self.set_role_enabled("elm2", bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
                 if measurement_type == "cv":
                     self.cv_plots_data_windget.load_cv_readings(data)
                     self.cv_plots_data_windget.load_cv2_readings(data)
@@ -943,53 +918,32 @@ class Controller(QtCore.QObject):
             ]:
                 general_widget.set_current_compliance_locked(True)
 
-    @QtCore.Slot(bool)
-    def on_toggle_smu(self, enabled: bool) -> None:
-        self.iv_plots_data_windget.set_series_visible("smu", enabled)
-        self.cv_plots_data_windget.set_series_visible("smu", enabled)
-        self.main_window.smu_group_box.setEnabled(enabled)
-        self.main_window.smu_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_smu2(self, enabled: bool) -> None:
-        self.iv_plots_data_windget.set_series_visible("smu2", enabled)
-        self.cv_plots_data_windget.set_series_visible("smu2", enabled)
-        self.main_window.smu2_group_box.setEnabled(enabled)
-        self.main_window.smu2_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_elm(self, enabled: bool) -> None:
-        self.iv_plots_data_windget.set_series_visible("elm", enabled)
-        self.cv_plots_data_windget.set_series_visible("elm", enabled)
-        self.main_window.elm_group_box.setEnabled(enabled)
-        self.main_window.elm_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_elm2(self, enabled: bool) -> None:
-        self.iv_plots_data_windget.set_series_visible("elm2", enabled)
-        self.cv_plots_data_windget.set_series_visible("elm2", enabled)
-        self.main_window.elm2_group_box.setEnabled(enabled)
-        self.main_window.elm2_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_lcr(self, enabled: bool) -> None:
-        self.iv_plots_data_windget.set_series_visible("lcr", enabled)
-        self.cv_plots_data_windget.set_series_visible("lcr", enabled)
-        self.main_window.lcr_group_box.setEnabled(enabled)
-        self.main_window.lcr_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_dmm(self, enabled: bool) -> None:
-        self.main_window.dmm_group_box.setEnabled(enabled)
-        self.main_window.dmm_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_tcu(self, enabled: bool) -> None:
-        self.main_window.tcu_group_box.setEnabled(enabled)
-        self.main_window.tcu_group_box.setVisible(enabled)
-
-    @QtCore.Slot(bool)
-    def on_toggle_switch(self, state: bool) -> None: ...
+    def set_role_enabled(self, role: str, enabled: bool) -> None:
+        self.iv_plots_data_windget.set_series_visible(role, enabled)
+        self.cv_plots_data_windget.set_series_visible(role, enabled)
+        if role == "smu":
+            self.main_window.smu_group_box.setEnabled(enabled)
+            self.main_window.smu_group_box.setVisible(enabled)
+        elif role == "smu2":
+            self.main_window.smu2_group_box.setEnabled(enabled)
+            self.main_window.smu2_group_box.setVisible(enabled)
+        elif role == "elm":
+            self.main_window.elm_group_box.setEnabled(enabled)
+            self.main_window.elm_group_box.setVisible(enabled)
+        elif role == "elm2":
+            self.main_window.elm2_group_box.setEnabled(enabled)
+            self.main_window.elm2_group_box.setVisible(enabled)
+        elif role == "lcr":
+            self.main_window.lcr_group_box.setEnabled(enabled)
+            self.main_window.lcr_group_box.setVisible(enabled)
+        elif role == "dmm":
+            self.main_window.dmm_group_box.setEnabled(enabled)
+            self.main_window.dmm_group_box.setVisible(enabled)
+        elif role == "tcu":
+            self.main_window.tcu_group_box.setEnabled(enabled)
+            self.main_window.tcu_group_box.setVisible(enabled)
+        elif role == "switch":
+            ...
 
     @QtCore.Slot()
     def on_output_editing_finished(self) -> None:
@@ -1184,6 +1138,51 @@ class Controller(QtCore.QObject):
             self.main_window.set_message("Performing open correction...")
 
             self.submit_background_job(job)
+
+
+class BackgroundJobsController(QtCore.QObject):
+    started = QtCore.Signal()
+    finished = QtCore.Signal()
+    failed = QtCore.Signal(object)
+
+    def __init__(self, parent: QtCore.QObject) -> None:
+        super().__init__(parent)
+        self._shutdown_event = threading.Event()
+        self._inbox: Queue[Job] = Queue()
+        self._thread = threading.Thread(target=self._handle_jobs)
+
+    def start(self) -> None:
+        if self._thread.ident is not None:
+            return
+        self._thread.start()
+
+    def shutdown(self, timeout: Optional[float] = None) -> None:
+        self._shutdown_event.set()
+        if self._thread.is_alive():
+            self._thread.join(timeout=timeout)
+            if self._thread.is_alive():
+                logger.warning("Background thread did not stop within timeout")
+
+    def submit_job(self, job: Job) -> None:
+        self.started.emit()
+        self._inbox.put_nowait(job)
+
+    def _handle_jobs(self) -> None:
+        while not self._shutdown_event.is_set():
+            try:
+                try:
+                    job = self._inbox.get(timeout=0.25)
+                except Empty:
+                    ...
+                else:
+                    try:
+                        job()
+                    except Exception as exc:
+                        self.failed.emit(exc)
+                    finally:
+                        self.finished.emit()
+            except Exception as exc:
+                logger.exception(exc)
 
 
 class ChangeVoltageController(QtCore.QObject):
