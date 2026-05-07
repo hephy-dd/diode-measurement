@@ -2,8 +2,6 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from ..core.resource import parse_resource, list_resources, ResourceConfig, Resource
-from ..drivers import driver_factory
 
 __all__ = ["ResourceWidget"]
 
@@ -29,27 +27,21 @@ class BrowseResourcesDialog(QtWidgets.QDialog):
         self.setWindowTitle("Browse VISA Resources")
         self.resize(360, 260)
 
-        self.list_widget = QtWidgets.QListWidget()
+        self.list_widget = QtWidgets.QListWidget(self)
         self.list_widget.itemDoubleClicked.connect(self.accept)
 
-        self.ok_button = QtWidgets.QPushButton("OK")
-        self.cancel_button = QtWidgets.QPushButton("Cancel")
-
-        self.ok_button.clicked.connect(self.accept)
-        self.cancel_button.clicked.connect(self.reject)
-
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.addStretch()
-        button_layout.addWidget(self.ok_button)
-        button_layout.addWidget(self.cancel_button)
+        self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        self.dialog_button_box.accepted.connect(self.accept)
+        self.dialog_button_box.rejected.connect(self.reject)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.list_widget)
-        layout.addLayout(button_layout)
+        layout.addWidget(self.dialog_button_box)
 
     def add_resource_name(self, name: str) -> None:
         self.list_widget.addItem(name)
-
         if self.list_widget.currentRow() < 0:
             self.list_widget.setCurrentRow(0)
 
@@ -62,6 +54,8 @@ class BrowseResourcesDialog(QtWidgets.QDialog):
 
 class ResourceWidget(QtWidgets.QGroupBox):
     model_changed = QtCore.Signal(str)
+    browse_resources = QtCore.Signal()
+    test_connection = QtCore.Signal()
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
@@ -86,7 +80,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.resource_browse_button = QtWidgets.QToolButton(self)
         self.resource_browse_button.setStatusTip("Browse connected VISA resources...")
         self.resource_browse_button.setText("...")
-        self.resource_browse_button.clicked.connect(self.on_browse_resources)
+        self.resource_browse_button.clicked.connect(self.browse_resources.emit)
 
         self.baud_rate_label = QtWidgets.QLabel("Baud Rate", self)
 
@@ -116,7 +110,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.test_connection_button.setText("&Test")
         self.test_connection_button.setStatusTip("Test instrument connection.")
         self.test_connection_button.setMaximumWidth(48)
-        self.test_connection_button.clicked.connect(self.on_test_conntection)
+        self.test_connection_button.clicked.connect(self.test_connection.emit)
 
         self.reset_instrument_check_box = QtWidgets.QCheckBox(self)
         self.reset_instrument_check_box.setText("Reset Instrument")
@@ -208,24 +202,21 @@ class ResourceWidget(QtWidgets.QGroupBox):
     def set_reset_instrument(self, enabled: bool) -> None:
         self.reset_instrument_check_box.setChecked(enabled)
 
+    def show_browse_resources(self, resource_names: list[str]) -> None:
+        dialog = BrowseResourcesDialog(self)
+        for resource_name in resource_names:
+            dialog.add_resource_name(resource_name)
+
+        result = dialog.exec()
+
+        if result == QtWidgets.QDialog.DialogCode.Accepted:
+            selected_resource = dialog.current_resource_name()
+            if selected_resource:
+                self.resource_line_edit.setText(selected_resource)
+
     @QtCore.Slot(str)
     def on_model_text_changed(self, text: str) -> None:
         self.model_changed.emit(text)
-
-    def create_resource(self) -> Resource:
-        resource_name, visa_library = parse_resource(self.resource_name())
-        resource_config = ResourceConfig(
-            resource_name=resource_name,
-            visa_library=visa_library,
-            termination=self.termination(),
-            timeout=self.timeout(),
-        )
-        return Resource(resource_config)
-
-    def read_identity(self) -> str:
-        with self.create_resource() as res:
-            instr = driver_factory(self.model())(res)
-            return instr.identify()
 
     @QtCore.Slot()
     def on_update_baud_rate_visibility(self) -> None:
@@ -236,30 +227,3 @@ class ResourceWidget(QtWidgets.QGroupBox):
         )
         self.baud_rate_label.setVisible(is_serial)
         self.baud_rate_combo_box.setVisible(is_serial)
-
-    @QtCore.Slot()
-    def on_browse_resources(self) -> None:
-        try:
-            resource_names = list_resources()
-        except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Failed to look up resources", format(exc))
-        else:
-            dialog = BrowseResourcesDialog(self)
-            for resource_name in resource_names:
-                dialog.add_resource_name(resource_name)
-
-            result = dialog.exec()
-
-            if result == QtWidgets.QDialog.DialogCode.Accepted:
-                selected_resource = dialog.current_resource_name()
-                if selected_resource:
-                    self.resource_line_edit.setText(selected_resource)
-
-    @QtCore.Slot()
-    def on_test_conntection(self) -> None:
-        try:
-            identity = self.read_identity()
-        except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Connection Test", format(exc))
-        else:
-            QtWidgets.QMessageBox.information(self, "Connection Test", format(identity))
