@@ -1133,8 +1133,8 @@ class Controller(QtCore.QObject):
                 short_correction=dialog.is_short_correction(),
                 load_correction=dialog.get_load_correction(),
                 external_bias_tee=external_bias_tee,
+                on_message_changed=self.message_changed.emit,
             )
-            job.message_changed.connect(self.main_window.set_message)
 
             self.main_window.control_tab_widget.setEnabled(False)
             self.main_window.set_progress(0, 0, 0)
@@ -1237,18 +1237,21 @@ class ChangeVoltageController(QtCore.QObject):
 
 class BrowseResourcesController(QtCore.QObject):
     job_submitted = QtCore.Signal(object)
+    result_ready = QtCore.Signal(str, list)
 
     def __init__(self, main_window: MainWindow, parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self.main_window = main_window
         self.main_window.role_browse_resources.connect(self.on_browse_resources)
+        self.result_ready.connect(self.on_show_browse_resources)
 
     @QtCore.Slot(str)
     def on_browse_resources(self, role: str) -> None:
         role_widget = self.main_window.find_role(role)
         if role_widget is not None:
-            job = ListResourcesJob()
-            job.finished.connect(partial(self.on_show_browse_resources, role))
+            job = ListResourcesJob(
+                on_result_ready=partial(self.result_ready.emit, role),
+            )
 
             self.main_window.set_progress(0, 0, 0)
             self.main_window.set_message("Searching for resources...")
@@ -1264,11 +1267,13 @@ class BrowseResourcesController(QtCore.QObject):
 
 class TestConnectionController(QtCore.QObject):
     job_submitted = QtCore.Signal(object)
+    result_ready = QtCore.Signal(str, str)
 
     def __init__(self, main_window: MainWindow, parent: QtCore.QObject) -> None:
         super().__init__(parent)
         self.main_window = main_window
         self.main_window.role_test_connection.connect(self.on_test_connection)
+        self.result_ready.connect(self.on_connection_identity)
 
     @QtCore.Slot(str)
     def on_test_connection(self, role: str) -> None:
@@ -1278,14 +1283,14 @@ class TestConnectionController(QtCore.QObject):
             job = TestConnectionJob(
                 model=role_widget.model(),
                 resource_config=resource_config,
+                on_result_ready=partial(self.result_ready.emit, role),
             )
-            job.finished.connect(self.on_connection_identity)
 
             self.main_window.set_progress(0, 0, 0)
             self.main_window.set_message("Testing connection...")
 
             self.job_submitted.emit(job)
 
-    @QtCore.Slot(str)
-    def on_connection_identity(self, identity: str) -> None:
-        QtWidgets.QMessageBox.information(self.main_window, "Connection Test", str(identity))
+    @QtCore.Slot(str, str)
+    def on_connection_identity(self, role: str, identity: str) -> None:
+        QtWidgets.QMessageBox.information(self.main_window, f"Connection Test ({role})", str(identity))

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from collections.abc import Iterator
 from enum import Enum
 from queue import Queue
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 from .core.role import Role
 

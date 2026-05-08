@@ -1,8 +1,9 @@
 import logging
 import time
+from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Optional
 
-from PySide6 import QtCore
 
 from ..core.resource import ResourceConfig, Resource, list_resources
 from ..drivers import K4215, driver_factory
@@ -16,49 +17,38 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-class TestConnectionJob(QtCore.QObject):
-    finished = QtCore.Signal(str)
-
-    def __init__(self, model: str, resource_config: ResourceConfig) -> None:
-        super().__init__()
-        self.model = model
-        self.resource_config = resource_config
+@dataclass
+class TestConnectionJob:
+    model: str
+    resource_config: ResourceConfig
+    on_result_ready: Callable[[str], None]
 
     def __call__(self) -> None:
         with Resource(self.resource_config) as res:
             instr = driver_factory(self.model)(res)
             identity = instr.identify()
-            self.finished.emit(identity)
+            self.on_result_ready(identity)
 
 
-class ListResourcesJob(QtCore.QObject):
-    finished = QtCore.Signal(list)
+@dataclass
+class ListResourcesJob:
+    on_result_ready: Callable[[list], None]
 
     def __call__(self) -> None:
         resource_names = list_resources()
-        self.finished.emit(resource_names)
+        self.on_result_ready(resource_names)
 
 
-class K4215PerformCorrectionJob(QtCore.QObject):
-    message_changed = QtCore.Signal(str)
-
-    def __init__(
-        self,
-        resource_config: ResourceConfig,
-        cable_length: float,
-        open_correction: bool,
-        short_correction: bool,
-        load_correction: Optional[int],
-        external_bias_tee: bool,
-    ) -> None:
-        super().__init__()
-        self.resource_config = resource_config
-        self.cable_length = cable_length
-        self.open_correction = open_correction
-        self.short_correction = short_correction
-        self.load_correction = load_correction
-        self.external_bias_tee = external_bias_tee
-        self.correction_timeout: float = 120.0  # TODO
+@dataclass
+class K4215PerformCorrectionJob:
+    resource_config: ResourceConfig
+    cable_length: float
+    open_correction: bool
+    short_correction: bool
+    load_correction: Optional[int]
+    external_bias_tee: bool
+    on_message_changed: Callable[[str], None]
+    correction_timeout: float = 120.0  # TODO
 
     def __call__(self) -> None:
         logger.info("Performing cable correction...")
@@ -109,4 +99,4 @@ class K4215PerformCorrectionJob(QtCore.QObject):
         logger.info("Cable correction done.")
 
     def set_message(self, message: str) -> None:
-        self.message_changed.emit(message)
+        self.on_message_changed(message)
