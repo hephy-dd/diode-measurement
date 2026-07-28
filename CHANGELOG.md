@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Option `AUTO` for Keithley 2470 breakdown protection (#124, #171).
+- More descriptive instrument model names e.g. `Keithley 4215 CVU` (#172).
 
 ### Changed
 
