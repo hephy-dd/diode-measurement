@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Option `AUTO` for Keithley 2470 breakdown protection (#124, #171).
+
 ### Changed
 
 - Moved test resource connection and resource detection to background jobs (#168).
