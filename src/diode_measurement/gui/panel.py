@@ -1,5 +1,5 @@
 from collections.abc import Callable, Mapping
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from PySide6 import QtWidgets
 
@@ -21,9 +21,7 @@ class WidgetParameter:
             return widget.isChecked()
         elif isinstance(widget, QtWidgets.QLineEdit):
             return widget.text()
-        elif isinstance(widget, QtWidgets.QSpinBox):
-            return widget.value()
-        elif isinstance(widget, QtWidgets.QDoubleSpinBox):
+        elif isinstance(widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
             return widget.value()
         elif isinstance(widget, QtWidgets.QComboBox):
             return widget.currentData()
@@ -37,9 +35,7 @@ class WidgetParameter:
             widget.setChecked(value)
         elif isinstance(widget, QtWidgets.QLineEdit):
             widget.setText(value)
-        elif isinstance(widget, QtWidgets.QSpinBox):
-            widget.setValue(value)
-        elif isinstance(widget, QtWidgets.QDoubleSpinBox):
+        elif isinstance(widget, (QtWidgets.QSpinBox, QtWidgets.QDoubleSpinBox)):
             widget.setValue(value)
         elif isinstance(widget, QtWidgets.QComboBox):
             index = widget.findData(value)
@@ -67,7 +63,7 @@ class MethodParameter:
 
 
 class InstrumentPanel(QtWidgets.QWidget):
-    def __init__(self, model: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, model: str, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._parameters: dict[str, Parameter] = {}
         self._model = model

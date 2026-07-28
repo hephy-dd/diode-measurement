@@ -20,12 +20,12 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: System :: Hardware",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "comet @ https://github.com/hephy-dd/comet/archive/refs/tags/v1.5.1.tar.gz",
-    "PySide6~=6.10.2",
-    "PyVISA~=1.14",
-    "PyVISA-py~=0.7",
+    "PySide6~=6.11.1",
+    "PyVISA~=1.16.1",
+    "PyVISA-py~=0.8.1",
     "json-rpc~=1.15",
 ]
 dynamic = ["version"]
@@ -59,3 +59,6 @@ include = [
 [[tool.mypy.overrides]]
 module = ["jsonrpc.*"]
 ignore_missing_imports = true
+
+[tool.ruff.lint]
+extend-ignore = ["BLE001", "RUF022"]

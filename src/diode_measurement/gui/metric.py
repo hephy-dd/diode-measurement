@@ -1,12 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
 __all__ = ["MetricWidget"]
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MetricUnit:
     base: float
     prefix: str
@@ -44,7 +43,7 @@ class MetricUnits:
         return cls.default_unit
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MetricItem:
     """Metric item used for combo box selection."""
 
@@ -61,7 +60,7 @@ class MetricWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(float)
     editingFinished = QtCore.Signal()
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._valueSpinBox = QtWidgets.QDoubleSpinBox(self)
         self._valueSpinBox.setStepType(
@@ -102,9 +101,8 @@ class MetricWidget(QtWidgets.QWidget):
         metric = MetricUnits.get(value)
         for index in range(self._unitComboBox.count()):
             item = self._unitComboBox.itemData(index)
-            if isinstance(item, MetricItem):
-                if item.metric.base == metric.base:
-                    self._unitComboBox.setCurrentIndex(index)
+            if isinstance(item, MetricItem) and item.metric.base == metric.base:
+                self._unitComboBox.setCurrentIndex(index)
         index = self._unitComboBox.currentIndex()
         item = self._unitComboBox.itemData(index)
         if isinstance(item, MetricItem):
@@ -133,7 +131,5 @@ class MetricWidget(QtWidgets.QWidget):
         self._unitComboBox.clear()
         for metric in MetricUnits.metric_units:
             item = MetricItem(metric, self._unit)
-            if metric.prefix and metric.prefix in prefixes:
-                self._unitComboBox.addItem(str(item), item)
-            elif "1" in prefixes:
+            if (metric.prefix and metric.prefix in prefixes) or "1" in prefixes:
                 self._unitComboBox.addItem(str(item), item)

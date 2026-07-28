@@ -1,12 +1,10 @@
 import logging
 import webbrowser
-from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from .. import __version__ as APP_VERSION
 from ..utils import format_metric, format_switch
-
 from .general import GeneralWidget
 from .logwindow import LogWidget
 from .preferences import PreferencesDialog
@@ -38,7 +36,7 @@ class MainWindow(QtWidgets.QMainWindow):
     role_browse_resources = QtCore.Signal(str)
     role_test_connection = QtCore.Signal(str)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._locked: bool = False
 
@@ -436,13 +434,17 @@ class MainWindow(QtWidgets.QMainWindow):
             raise KeyError(f"No such role: {role!r}")
         self.general_widget.add_role(role, title)
         widget = RoleWidget(role)
-        widget.browse_resources.connect(lambda role=role: self.role_browse_resources.emit(role))
-        widget.test_connection.connect(lambda role=role: self.role_test_connection.emit(role))
+        widget.browse_resources.connect(
+            lambda role=role: self.role_browse_resources.emit(role)
+        )
+        widget.test_connection.connect(
+            lambda role=role: self.role_test_connection.emit(role)
+        )
         self.roleWidgets[role] = widget
         self.control_tab_widget.addTab(widget, title)
         return widget
 
-    def find_role(self, role: str) -> Optional[RoleWidget]:
+    def find_role(self, role: str) -> RoleWidget | None:
         return self.roleWidgets.get(role)
 
     def roles(self) -> list[RoleWidget]:

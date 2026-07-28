@@ -1,14 +1,16 @@
 import logging
 import threading
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from collections.abc import Iterator
 from enum import Enum
 from queue import Queue
-from typing import Any, Callable, Optional
+from typing import Any
 
 from .core.role import Role
 
 __all__ = ["State"]
+
+logger = logging.getLogger(__name__)
 
 
 class FSMState(str, Enum):
@@ -19,20 +21,20 @@ class FSMState(str, Enum):
     STOPPING = "stopping"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ChangeVoltageParameters:
     end_voltage: float
     step_voltage: float
     waiting_time: float
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Reading:
     timestamp: float
     t_dmm: float
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IVReading(Reading):
     voltage: float
     v_smu: float
@@ -43,7 +45,7 @@ class IVReading(Reading):
     i_elm2: float
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CVReading(Reading):
     voltage: float
     v_smu: float
@@ -70,7 +72,7 @@ class EventBus:
             try:
                 callback(*args)
             except Exception:
-                logging.exception("Failed to submit event: %r", event_name)
+                logger.exception("Failed to submit event: %r", event_name)
 
 
 class State:
@@ -79,7 +81,7 @@ class State:
         self._state: dict[str, Any] = {}
         self.abort_event = threading.Event()
         self.tcu_poll_interval: float = 5.0
-        self._change_voltage_parameters: Optional[ChangeVoltageParameters] = None
+        self._change_voltage_parameters: ChangeVoltageParameters | None = None
         self._iv_reading_queues: list[Queue[IVReading]] = []
         self._it_reading_queues: list[Queue[IVReading]] = []
         self._cv_reading_queues: list[Queue[CVReading]] = []
@@ -130,12 +132,12 @@ class State:
             return self._state.get("waiting_time_continuous", 1.0)
 
     @property
-    def source_voltage(self) -> Optional[float]:
+    def source_voltage(self) -> float | None:
         with self._lock:
             return self._state.get("source_voltage")
 
     @property
-    def bias_source_voltage(self) -> Optional[float]:
+    def bias_source_voltage(self) -> float | None:
         with self._lock:
             return self._state.get("bias_source_voltage")
 
@@ -165,12 +167,12 @@ class State:
             return self._state.get("current_compliance", 0.0)
 
     @property
-    def source_role(self) -> Optional[str]:
+    def source_role(self) -> str | None:
         with self._lock:
             return self._state.get("source_role")
 
     @property
-    def bias_source_role(self) -> Optional[str]:
+    def bias_source_role(self) -> str | None:
         with self._lock:
             return self._state.get("bias_source_role")
 
@@ -189,7 +191,7 @@ class State:
         with self._lock:
             return self._change_voltage_parameters is not None
 
-    def pop_change_voltage_continuous(self) -> Optional[ChangeVoltageParameters]:
+    def pop_change_voltage_continuous(self) -> ChangeVoltageParameters | None:
         with self._lock:
             parameters = self._change_voltage_parameters
             self._change_voltage_parameters = None
@@ -203,7 +205,7 @@ class State:
                 waiting_time=parameters.waiting_time,
             )
 
-    def find_role(self, name: str) -> Optional[Role]:
+    def find_role(self, name: str) -> Role | None:
         with self._lock:
             role_data = self._state.get("roles", {}).get(name)
             if role_data is None:

@@ -17,12 +17,21 @@ QT_STYLES = QtWidgets.QStyleFactory().keys()
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--debug", action="store_true", help="show debug messages")
     parser.add_argument(
-        "--style", metavar="<name>", choices=QT_STYLES, help="select Qt style"
+        "--debug",
+        action="store_true",
+        help="show debug messages",
     )
     parser.add_argument(
-        "--version", action="version", version=f"%(prog)s {__version__}"
+        "--style",
+        metavar="<name>",
+        choices=QT_STYLES,
+        help="select Qt style",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     return parser.parse_args()
 
@@ -43,7 +52,7 @@ def exception_hook(exc_type, exc_value, exc_traceback):
     Function to catch unhandled Python exceptions
     """
     tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    logging.exception(tb)
+    logging.exception(tb)  # noqa: LOG015
 
     show_exception(exc_value)
 

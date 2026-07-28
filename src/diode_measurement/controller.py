@@ -2,90 +2,81 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from collections.abc import Mapping
 from functools import partial
-from queue import Queue, Empty
-from typing import Any, Optional
-
-from PySide6 import QtCore, QtWidgets, QtStateMachine
+from queue import Empty, Queue
+from typing import Any
 
 from comet.utils import safe_filename
+from PySide6 import QtCore, QtStateMachine, QtWidgets
 
 from .core.cache import Cache
 from .core.job import Job
 from .core.measurement import Measurement
-from .core.resource import parse_resource, ResourceConfig
+from .core.resource import ResourceConfig, parse_resource
 from .core.station import Station
-
-# Source meter units
-from .gui.panels import K237Panel
-from .gui.panels import K2410Panel
-from .gui.panels import K2470Panel
-from .gui.panels import K2657APanel
-
-# Electrometers
-from .gui.panels import K6514Panel
-from .gui.panels import K6517BPanel
-
-# LCR meters
-from .gui.panels import K595Panel
-from .gui.panels import E4980APanel
-from .gui.panels import A4284APanel
-from .gui.panels import K4215Panel
-from .gui.panels.k4215 import K4215CorrectionDialog
-
-# DMM
-from .gui.panels import K2700Panel
-
-# TCU
-from .gui.panels import AC3Panel
-
-# Switches
-from .gui.panels import BrandBoxPanel
-from .gui.panels import K707BPanel
-from .gui.panels import K708BPanel
-
 from .gui.dialogs import ChangeVoltageDialog
 from .gui.mainwindow import MainWindow
-from .gui.plots import IVPlotsDataWidget, CVPlotsDataWidget
+
+# Source meter units
+# Electrometers
+# LCR meters
+# DMM
+# TCU
+# Switches
+from .gui.panels import (
+    A4284APanel,
+    AC3Panel,
+    BrandBoxPanel,
+    E4980APanel,
+    K237Panel,
+    K595Panel,
+    K707BPanel,
+    K708BPanel,
+    K2410Panel,
+    K2470Panel,
+    K2657APanel,
+    K2700Panel,
+    K4215Panel,
+    K6514Panel,
+    K6517BPanel,
+)
+from .gui.panels.k4215 import K4215CorrectionDialog
+from .gui.plots import CVPlotsDataWidget, IVPlotsDataWidget
 from .gui.role import RoleWidget
 from .gui.widgets import show_exception
-
-from .reader import Reader
-
-from .utils import format_metric
-from .utils import get_bool, get_int, get_float, get_str, get_dict
-
 from .jobs import (
-    TestConnectionJob,
-    ListResourcesJob,
     K4215PerformCorrectionJob,
+    ListResourcesJob,
     MeasurementJob,
+    TestConnectionJob,
 )
+from .reader import Reader
 from .settings import MeasurementParameters, measurement_registry
-from .state import FSMState, ChangeVoltageParameters, State
+from .state import ChangeVoltageParameters, FSMState, State
+from .utils import format_metric, get_bool, get_dict, get_float, get_int, get_str
 
 __all__ = ["Controller"]
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Snapshot:
     state: FSMState
-    measurement_type: Optional[str]
-    sample: Optional[str]
-    source_voltage: Optional[float]
-    smu_voltage: Optional[float]
-    smu_current: Optional[float]
-    smu2_voltage: Optional[float]
-    smu2_current: Optional[float]
-    elm_current: Optional[float]
-    elm2_current: Optional[float]
-    lcr_capacity: Optional[float]
-    temperature: Optional[float]
+    measurement_type: str | None
+    sample: str | None
+    source_voltage: float | None
+    smu_voltage: float | None
+    smu_current: float | None
+    smu2_voltage: float | None
+    smu2_current: float | None
+    elm_current: float | None
+    elm2_current: float | None
+    lcr_capacity: float | None
+    temperature: float | None
 
 
 def get_role_config(role: RoleWidget) -> ResourceConfig:
@@ -112,7 +103,7 @@ class Controller(QtCore.QObject):
     progress_changed = QtCore.Signal(int, int, int)
 
     def __init__(
-        self, main_window: MainWindow, parent: Optional[QtCore.QObject] = None
+        self, main_window: MainWindow, parent: QtCore.QObject | None = None
     ) -> None:
         super().__init__(parent)
 
@@ -125,7 +116,9 @@ class Controller(QtCore.QObject):
         self.is_exception_dialog_active: bool = False
 
         self.state: State = State()
-        self.state.event_bus.register_callback("change_voltage_done", self.change_voltage_ready.emit)
+        self.state.event_bus.register_callback(
+            "change_voltage_done", self.change_voltage_ready.emit
+        )
         self.state.event_bus.register_callback("update", self.updated.emit)
         self.state.event_bus.register_callback("failed", self.failed.emit)
 
@@ -138,7 +131,9 @@ class Controller(QtCore.QObject):
         it_reading_queue = self.state.create_it_reading_queue()
         cv_reading_queue = self.state.create_cv_reading_queue()
 
-        self.iv_plots_data_windget = IVPlotsDataWidget(iv_reading_queue, it_reading_queue)
+        self.iv_plots_data_windget = IVPlotsDataWidget(
+            iv_reading_queue, it_reading_queue
+        )
         self.iv_plots_data_windget.start(500)
         self.cv_plots_data_windget = CVPlotsDataWidget(cv_reading_queue)
         self.cv_plots_data_windget.start(500)
@@ -214,11 +209,19 @@ class Controller(QtCore.QObject):
             self.on_continuous_changed
         )
 
-        self.browse_resources_controller = BrowseResourcesController(self.main_window, self)
-        self.browse_resources_controller.job_submitted.connect(self.submit_background_job)
+        self.browse_resources_controller = BrowseResourcesController(
+            self.main_window, self
+        )
+        self.browse_resources_controller.job_submitted.connect(
+            self.submit_background_job
+        )
 
-        self.test_connection_controller = TestConnectionController(self.main_window, self)
-        self.test_connection_controller.job_submitted.connect(self.submit_background_job)
+        self.test_connection_controller = TestConnectionController(
+            self.main_window, self
+        )
+        self.test_connection_controller.job_submitted.connect(
+            self.submit_background_job
+        )
 
         general_widget = main_window.general_widget
 
@@ -248,14 +251,30 @@ class Controller(QtCore.QObject):
 
         self.on_instruments_changed()
 
-        general_widget.role_check_boxes["smu"].toggled.connect(partial(self.set_role_enabled, "smu"))
-        general_widget.role_check_boxes["smu2"].toggled.connect(partial(self.set_role_enabled, "smu2"))
-        general_widget.role_check_boxes["elm"].toggled.connect(partial(self.set_role_enabled, "elm"))
-        general_widget.role_check_boxes["elm2"].toggled.connect(partial(self.set_role_enabled, "elm2"))
-        general_widget.role_check_boxes["lcr"].toggled.connect(partial(self.set_role_enabled, "lcr"))
-        general_widget.role_check_boxes["dmm"].toggled.connect(partial(self.set_role_enabled, "dmm"))
-        general_widget.role_check_boxes["tcu"].toggled.connect(partial(self.set_role_enabled, "tcu"))
-        general_widget.role_check_boxes["switch"].toggled.connect(partial(self.set_role_enabled, "switch"))
+        general_widget.role_check_boxes["smu"].toggled.connect(
+            partial(self.set_role_enabled, "smu")
+        )
+        general_widget.role_check_boxes["smu2"].toggled.connect(
+            partial(self.set_role_enabled, "smu2")
+        )
+        general_widget.role_check_boxes["elm"].toggled.connect(
+            partial(self.set_role_enabled, "elm")
+        )
+        general_widget.role_check_boxes["elm2"].toggled.connect(
+            partial(self.set_role_enabled, "elm2")
+        )
+        general_widget.role_check_boxes["lcr"].toggled.connect(
+            partial(self.set_role_enabled, "lcr")
+        )
+        general_widget.role_check_boxes["dmm"].toggled.connect(
+            partial(self.set_role_enabled, "dmm")
+        )
+        general_widget.role_check_boxes["tcu"].toggled.connect(
+            partial(self.set_role_enabled, "tcu")
+        )
+        general_widget.role_check_boxes["switch"].toggled.connect(
+            partial(self.set_role_enabled, "switch")
+        )
 
         self.set_role_enabled("smu2", False)
         self.set_role_enabled("elm", False)
@@ -286,10 +305,14 @@ class Controller(QtCore.QObject):
 
         self.idle_state.addTransition(self._background_jobs.started, self.running_state)
 
-        self.running_state.addTransition(self._background_jobs.finished, self.idle_state)
+        self.running_state.addTransition(
+            self._background_jobs.finished, self.idle_state
+        )
         self.running_state.addTransition(self.aborted, self.stopping_state)
 
-        self.stopping_state.addTransition(self._background_jobs.finished, self.idle_state)
+        self.stopping_state.addTransition(
+            self._background_jobs.finished, self.idle_state
+        )
 
         # State machine
 
@@ -330,13 +353,17 @@ class Controller(QtCore.QObject):
                 return role_widget.current_config()
         raise KeyError("No such role: {role!r}")
 
-    def update_role_config(self, role: str, options: Mapping[str, Any]) -> dict[str, Any]:
+    def update_role_config(
+        self, role: str, options: Mapping[str, Any]
+    ) -> dict[str, Any]:
         for role_widget in self.main_window.roles():
             if role_widget.name() == role:
                 config = role_widget.current_config()
                 for key in options:
                     if key not in config:
-                        logger.warning("Ignoring invalid config key %r for role %r", key, role)
+                        logger.warning(
+                            "Ignoring invalid config key %r for role %r", key, role
+                        )
                 for key in config:
                     if key in options:
                         config[key] = options[key]
@@ -404,17 +431,27 @@ class Controller(QtCore.QObject):
         if general_widget.is_role_checked("smu2"):
             state["bias_source_role"] = "smu2"
 
-        roles.setdefault("smu", {}).update({"enabled": general_widget.is_role_checked("smu")})
+        roles.setdefault("smu", {}).update(
+            {"enabled": general_widget.is_role_checked("smu")}
+        )
         roles.setdefault("smu2", {}).update(
             {"enabled": general_widget.is_role_checked("smu2")}
         )
-        roles.setdefault("elm", {}).update({"enabled": general_widget.is_role_checked("elm")})
+        roles.setdefault("elm", {}).update(
+            {"enabled": general_widget.is_role_checked("elm")}
+        )
         roles.setdefault("elm2", {}).update(
             {"enabled": general_widget.is_role_checked("elm2")}
         )
-        roles.setdefault("lcr", {}).update({"enabled": general_widget.is_role_checked("lcr")})
-        roles.setdefault("dmm", {}).update({"enabled": general_widget.is_role_checked("dmm")})
-        roles.setdefault("tcu", {}).update({"enabled": general_widget.is_role_checked("tcu")})
+        roles.setdefault("lcr", {}).update(
+            {"enabled": general_widget.is_role_checked("lcr")}
+        )
+        roles.setdefault("dmm", {}).update(
+            {"enabled": general_widget.is_role_checked("dmm")}
+        )
+        roles.setdefault("tcu", {}).update(
+            {"enabled": general_widget.is_role_checked("tcu")}
+        )
         roles.setdefault("switch", {}).update(
             {"enabled": general_widget.is_role_checked("switch")}
         )
@@ -528,7 +565,9 @@ class Controller(QtCore.QObject):
             role.set_termination(get_str(settings.value("termination"), ""))
             role.set_timeout(get_float(settings.value("timeout"), 4.0))
             role.set_baud_rate(get_int(settings.value("baud_rate"), 9_600))
-            role.set_reset_instrument(get_bool(settings.value("reset_instrument"), False))
+            role.set_reset_instrument(
+                get_bool(settings.value("reset_instrument"), False)
+            )
             role.set_resources(get_dict(settings.value("resources"), {}))
             role.set_configs(get_dict(settings.value("configs"), {}))
             settings.endGroup()
@@ -679,7 +718,9 @@ class Controller(QtCore.QObject):
                 if (waiting_time := meta.get("waiting_time")) is not None:
                     general_widget.set_waiting_time(waiting_time)
 
-                if (waiting_time_continuous := meta.get("waiting_time_continuous")) is not None:
+                if (
+                    waiting_time_continuous := meta.get("waiting_time_continuous")
+                ) is not None:
                     general_widget.set_waiting_time_continuous(waiting_time_continuous)
 
                 if (current_compliance := meta.get("current_compliance")) is not None:
@@ -691,15 +732,35 @@ class Controller(QtCore.QObject):
                     self.iv_plots_data_windget.on_load_it_readings(continuous_data)
                     self.set_role_enabled("smu", True)
                     self.set_role_enabled("smu2", False)
-                    self.set_role_enabled("elm", bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
-                    self.set_role_enabled("elm2", bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
+                    self.set_role_enabled(
+                        "elm",
+                        bool(
+                            self.iv_plots_data_windget.iv_plot_widget.elm_series.count()
+                        ),
+                    )
+                    self.set_role_enabled(
+                        "elm2",
+                        bool(
+                            self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()
+                        ),
+                    )
                 if measurement_type == "iv_bias":
                     self.iv_plots_data_windget.on_load_iv_readings(data)
                     self.iv_plots_data_windget.on_load_it_readings(continuous_data)
                     self.set_role_enabled("smu", True)
                     self.set_role_enabled("smu2", True)
-                    self.set_role_enabled("elm", bool(self.iv_plots_data_windget.iv_plot_widget.elm_series.count()))
-                    self.set_role_enabled("elm2", bool(self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()))
+                    self.set_role_enabled(
+                        "elm",
+                        bool(
+                            self.iv_plots_data_windget.iv_plot_widget.elm_series.count()
+                        ),
+                    )
+                    self.set_role_enabled(
+                        "elm2",
+                        bool(
+                            self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()
+                        ),
+                    )
                 if measurement_type == "cv":
                     self.cv_plots_data_windget.load_cv_readings(data)
                     self.cv_plots_data_windget.load_cv2_readings(data)
@@ -795,7 +856,9 @@ class Controller(QtCore.QObject):
         if (source_output_state := data.get("source_output_state")) is not None:
             self.main_window.updateSourceOutputState(source_output_state)
 
-        if (bias_source_output_state := data.get("bias_source_output_state")) is not None:
+        if (
+            bias_source_output_state := data.get("bias_source_output_state")
+        ) is not None:
             self.main_window.updateBiasSourceOutputState(bias_source_output_state)
 
         if (message := data.get("message")) is not None:
@@ -980,8 +1043,10 @@ class Controller(QtCore.QObject):
     def create_filename(self) -> str:
         path = self.main_window.general_widget.output_dir()
         sample = self.state.sample
-        timestamp = datetime.fromtimestamp(self.state.timestamp).strftime(
-            "%Y-%m-%dT%H-%M-%S"
+        timestamp = (
+            datetime.fromtimestamp(self.state.timestamp)
+            .astimezone()
+            .strftime("%Y-%m-%dT%H-%M-%S")
         )
         filename = safe_filename(f"{sample}-{timestamp}.txt")
         return os.path.join(path, filename)
@@ -1077,12 +1142,18 @@ class Controller(QtCore.QObject):
             value_format = get_str(settings.value("writer/valueFormat"), "+.3E")
 
             # discharge guard
-            discharge_timeout = get_float(settings.value("misc/discharge_timeout"), 60.0)
-            discharge_threshold = get_float(settings.value("misc/discharge_threshold"), 0.5)
-            self.state.update({
-                "discharge_timeout": discharge_timeout,
-                "discharge_threshold": discharge_threshold,
-            })
+            discharge_timeout = get_float(
+                settings.value("misc/discharge_timeout"), 60.0
+            )
+            discharge_threshold = get_float(
+                settings.value("misc/discharge_threshold"), 0.5
+            )
+            self.state.update(
+                {
+                    "discharge_timeout": discharge_timeout,
+                    "discharge_threshold": discharge_threshold,
+                }
+            )
 
             self.main_window.clear()
             self.iv_plots_data_windget.clear()
@@ -1097,7 +1168,7 @@ class Controller(QtCore.QObject):
             self.submit_background_job(job)
 
         except Exception as exc:
-            logger.exception(exc)
+            logger.exception("measurement failed")
             self.failed.emit(exc)
             self.aborted.emit()
 
@@ -1159,7 +1230,7 @@ class BackgroundJobsController(QtCore.QObject):
             return
         self._thread.start()
 
-    def shutdown(self, timeout: Optional[float] = None) -> None:
+    def shutdown(self, timeout: float | None = None) -> None:
         self._shutdown_event.set()
         if self._thread.is_alive():
             self._thread.join(timeout=timeout)
@@ -1184,13 +1255,13 @@ class BackgroundJobsController(QtCore.QObject):
                         self.failed.emit(exc)
                     finally:
                         self.finished.emit()
-            except Exception as exc:
-                logger.exception(exc)
+            except Exception:
+                logger.exception("failed to handle job")
 
 
 class ChangeVoltageController(QtCore.QObject):
     def __init__(
-        self, main_window, context: State, parent: Optional[QtCore.QObject] = None
+        self, main_window, context: State, parent: QtCore.QObject | None = None
     ) -> None:
         super().__init__(parent)
         self.main_window = main_window
@@ -1288,4 +1359,6 @@ class TestConnectionController(QtCore.QObject):
 
     @QtCore.Slot(str)
     def on_connection_identity(self, identity: str) -> None:
-        QtWidgets.QMessageBox.information(self.main_window, "Connection Test", str(identity))
+        QtWidgets.QMessageBox.information(
+            self.main_window, "Connection Test", str(identity)
+        )

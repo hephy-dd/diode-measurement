@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from typing import Optional
 
 from PySide6 import QtWidgets
 
@@ -9,7 +8,7 @@ __all__ = ["K707BPanel"]
 
 
 class K707BPanel(InstrumentPanel):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("K707B", parent)
 
         # Channels

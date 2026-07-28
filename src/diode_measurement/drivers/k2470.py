@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -16,7 +16,7 @@ class K2470(BaseDriver):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> Optional[InstrumentError]:
+    def next_error(self) -> InstrumentError | None:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
         if code == 0:
@@ -79,12 +79,14 @@ class K2470(BaseDriver):
 
     def measure_iv(self) -> tuple[float, float]:
         """Measure I and V at once using READ?."""
-        result = self.resource.query(":READ? \"defbuffer1\", SOUR, READ")
+        result = self.resource.query(':READ? "defbuffer1", SOUR, READ')
         try:
             source, reading = result.split(",", 1)
             return float(reading), float(source)
         except Exception as exc:
-            raise ValueError(f"Unexpected instrument response for READ?: {result!r}") from exc
+            raise ValueError(
+                f"Unexpected instrument response for READ?: {result!r}"
+            ) from exc
 
     def set_route_terminals(self, terminal: str) -> None:
         self._write(f":ROUT:TERM {terminal}")

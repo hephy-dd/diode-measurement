@@ -27,11 +27,13 @@ def test_driver_k595(res):
 
     res.buffer = ["59510000000000000000000000000"]
     error = d.next_error()
+    assert error is not None
     assert (error.code, error.message) == (100, "IDDC")
     assert res.buffer == ["U1X"]
 
     res.buffer = ["59501000000000000000000000000"]
     error = d.next_error()
+    assert error is not None
     assert (error.code, error.message) == (101, "IDDCO")
     assert res.buffer == ["U1X"]
 

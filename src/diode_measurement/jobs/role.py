@@ -1,10 +1,9 @@
 import logging
 import time
-from typing import Optional
 
 from PySide6 import QtCore
 
-from ..core.resource import ResourceConfig, Resource, list_resources
+from ..core.resource import Resource, ResourceConfig, list_resources
 from ..drivers import K4215, driver_factory
 
 __all__ = [
@@ -48,7 +47,7 @@ class K4215PerformCorrectionJob(QtCore.QObject):
         cable_length: float,
         open_correction: bool,
         short_correction: bool,
-        load_correction: Optional[int],
+        load_correction: int | None,
         external_bias_tee: bool,
     ) -> None:
         super().__init__()

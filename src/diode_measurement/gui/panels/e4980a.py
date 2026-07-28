@@ -1,14 +1,12 @@
-from typing import Optional
-
 from PySide6 import QtWidgets
 
-from ..panel import InstrumentPanel, WidgetParameter, MethodParameter
+from ..panel import InstrumentPanel, MethodParameter, WidgetParameter
 
 __all__ = ["E4980APanel"]
 
 
 class E4980APanel(InstrumentPanel):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("E4980A", parent)
 
         # AC amplitude

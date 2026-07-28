@@ -1,12 +1,15 @@
+import logging
 import time
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 import pyvisa.errors
 
-from ..core.driver import Resource, BaseDriver, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, Resource, handle_exception
 
 __all__ = ["K4215"]
+
+logger = logging.getLogger(__name__)
 
 
 class K4215(BaseDriver):
@@ -27,7 +30,7 @@ class K4215(BaseDriver):
     def clear(self) -> None:
         self._write("BC")
 
-    def next_error(self) -> Optional[InstrumentError]:
+    def next_error(self) -> InstrumentError | None:
         """Get the next error from the instrument's error queue."""
         # KXCI uses :ERROR:LAST:GET to retrieve the last error
         response = self._query(":ERROR:LAST:GET")
@@ -47,7 +50,7 @@ class K4215(BaseDriver):
                     return None
                 return InstrumentError(code, message)
             except Exception:
-                pass
+                logger.exception("failed to parse error message: %r", response)
 
         # Try to parse response in format: message. (code)
         if "(" in response and ")" in response:
@@ -59,7 +62,7 @@ class K4215(BaseDriver):
                     return None
                 return InstrumentError(code, message)
             except Exception:
-                pass
+                logger.exception("failed to parse error message: %r", response)
 
         # Fallback: return the raw response with error code -1
         return InstrumentError(-1, response.strip())
@@ -258,7 +261,9 @@ class K4215(BaseDriver):
 
         self._write(f":CVU:MODEL {impedance_type}")
 
-    def set_aperture(self, aperture=10, filter_factor=1, delay_factor=1) -> None:
+    def set_aperture(
+        self, aperture: float = 10.0, filter_factor: int = 1, delay_factor: int = 1
+    ) -> None:
         """Set measurement speed and aperture settings.
 
         Args:
@@ -357,10 +362,9 @@ class K4215(BaseDriver):
 
     def set_current_compliance_level(self, level: float) -> None:
         """Set current compliance - not supported on K4215."""
-        pass  # Not supported by K4215
 
     def set_voltage_range(self, level: float) -> None:
-        pass  # Not supported by K4215
+        """Set voltage range - not supported on K4215."""
 
     def finalize(self) -> None:
         """Clean up and reset the instrument."""

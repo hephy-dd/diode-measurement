@@ -1,5 +1,3 @@
-from typing import Optional
-
 from PySide6 import QtWidgets
 
 __all__ = ["ChangeVoltageDialog"]
@@ -8,7 +6,7 @@ __all__ = ["ChangeVoltageDialog"]
 class ChangeVoltageDialog(QtWidgets.QDialog):
     """Change voltage dialog for continuous It measurements."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle("Change Voltage")

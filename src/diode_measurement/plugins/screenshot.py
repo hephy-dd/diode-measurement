@@ -3,9 +3,9 @@ import pathlib
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from diode_measurement.controller import Controller
 from diode_measurement.core.plugin import Plugin
 from diode_measurement.utils import get_bool
-from diode_measurement.controller import Controller
 
 __all__ = ["ScreenshotPlugin"]
 
@@ -62,10 +62,10 @@ class ScreenshotPlugin(Plugin):
         return ""
 
     def is_option_enabled(self) -> bool:
-        if self.context.main_window.general_widget.output_group_box.isChecked():
-            if self.save_screenshot_check_box.isChecked():
-                return True
-        return False
+        return (
+            self.context.main_window.general_widget.output_group_box.isChecked()
+            and self.save_screenshot_check_box.isChecked()
+        )
 
     def grab_screenshot(self) -> QtGui.QPixmap:
         return self.context.main_window.dataStackedWidget.grab()
@@ -82,5 +82,5 @@ class ScreenshotPlugin(Plugin):
                     pixmap.save(filename, "PNG")
                     logger.info("Saved screenshot to %s", filename)
         except Exception as exc:
-            logger.exception(exc)
+            logger.exception("failed to save screenshot")
             self.context.handle_exception(exc)

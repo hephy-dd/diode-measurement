@@ -1,8 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Self
+
+__all__ = ["Role"]
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Role:
     enabled: bool
     model: str
@@ -14,7 +16,7 @@ class Role:
     options: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Role":
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         return cls(
             enabled=data.get("enabled", False),
             model=data.get("model", ""),

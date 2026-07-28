@@ -5,7 +5,7 @@ from dataclasses import asdict
 
 from comet.estimate import Estimate
 
-from ..core.measurement import RangeMeasurement, IVReading
+from ..core.measurement import IVReading, RangeMeasurement
 
 __all__ = ["IVBiasMeasurement"]
 

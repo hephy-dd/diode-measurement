@@ -1,9 +1,9 @@
 import logging
 import re
 import time
-from dataclasses import dataclass
 from collections.abc import Callable
-from typing import Any, Literal, Optional
+from dataclasses import dataclass
+from typing import Any, Literal, Self
 
 import pyvisa
 from pyvisa.resources import MessageBasedResource
@@ -55,7 +55,7 @@ def list_resources() -> list[str]:
         rm.close()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ResourceConfig:
     resource_name: str
     visa_library: str = "@py"
@@ -70,10 +70,10 @@ class ResourceError(Exception): ...
 class Resource:
     def __init__(self, resource_config: ResourceConfig) -> None:
         self._resource_config = resource_config
-        self._rm: Optional[pyvisa.ResourceManager] = None
-        self._resource: Optional[pyvisa.resources.MessageBasedResource] = None
+        self._rm: pyvisa.ResourceManager | None = None
+        self._resource: pyvisa.resources.MessageBasedResource | None = None
 
-    def __enter__(self) -> "Resource":
+    def __enter__(self) -> Self:
         try:
             resource_config = self._resource_config
             self._rm = pyvisa.ResourceManager(resource_config.visa_library)
@@ -90,13 +90,15 @@ class Resource:
 
             if not isinstance(resource, MessageBasedResource):
                 resource.close()
-                raise TypeError(f"Expected MessageBasedResource, got {type(resource).__name__}")
+                raise TypeError(
+                    f"Expected MessageBasedResource, got {type(resource).__name__}"
+                )
             self._resource = resource
         except pyvisa.Error as exc:
             raise ResourceError(f"{self.resource_name}: {exc}") from exc
         return self
 
-    def __exit__(self, *exc) -> Literal[False]:
+    def __exit__(self, *args) -> Literal[False]:
         try:
             if self._resource is not None:
                 self._resource.close()
@@ -161,10 +163,10 @@ class AutoReconnectResource(Resource):
             try:
                 if attempt:
                     logger.info(
-                        "auto reconnect to resource (%d/%d): %s",
+                        "auto reconnect to resource (%d/%d): %r",
                         attempt,
                         self.retry_attempts,
-                        repr(self.resource_name),
+                        self.resource_name,
                     )
                     try:
                         self.__exit__()
@@ -173,9 +175,9 @@ class AutoReconnectResource(Resource):
                     time.sleep(self.retry_delay)
                     self.__enter__()
                 return target(*args)
-            except (pyvisa.Error, ConnectionError, ResourceError) as exc:
+            except (pyvisa.Error, ConnectionError, ResourceError):
                 if attempt < self.retry_attempts:
-                    logger.exception(exc)
+                    logger.exception("failed to connect, retry...")
                 else:
                     raise
 

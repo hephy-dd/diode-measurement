@@ -1,23 +1,23 @@
 import logging
-from queue import Queue, Empty
-from threading import Event, Thread
-from dataclasses import dataclass
 from concurrent.futures import Future
-from typing import Any, Optional
+from dataclasses import dataclass
+from queue import Empty, Queue
+from threading import Event, Thread
+from typing import Any
 
-__all__ = ["Actor"]
+__all__ = ["ThreadingActor"]
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Envelope:
     message: Any
     future: Future
 
 
-class Actor:
-    def __init__(self, abort_event: Optional[Event] = None) -> None:
+class ThreadingActor:
+    def __init__(self, abort_event: Event | None = None) -> None:
         self._abort_event = Event() if abort_event is None else abort_event
         self._inbox: Queue[Envelope] = Queue()
         self._thread = Thread(
@@ -29,7 +29,7 @@ class Actor:
         if not self._thread.is_alive():
             self._thread.start()
 
-    def stop(self, timeout: Optional[float] = None) -> None:
+    def stop(self, timeout: float | None = None) -> None:
         self._abort_event.set()
         if self._thread.is_alive():
             self._thread.join(timeout)
@@ -47,11 +47,9 @@ class Actor:
     def sleep(self, seconds: float) -> None:
         self._abort_event.wait(seconds)
 
-    def on_idle(self) -> None:
-        ...
+    def on_idle(self) -> None: ...
 
-    def on_message(self, message: Any) -> Any:
-        ...
+    def on_message(self, message: Any) -> Any: ...
 
     def _event_loop(self) -> None:
         while not self._abort_event.is_set():

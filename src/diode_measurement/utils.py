@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping
-from typing import Any, Optional
+from typing import Any
 
-from comet.utils import ureg, auto_scale
+from comet.utils import auto_scale, ureg
 
 __all__ = [
     "format_metric",
@@ -37,7 +37,7 @@ def format_switch(value: bool) -> str:
 
 def limits(iterable: Iterable) -> tuple:
     """Calculate limits of 2D point series."""
-    limits: tuple = tuple()
+    limits: tuple = ()
     for x, y in iterable:
         if not limits:
             limits = (x, x, y, y)
@@ -129,7 +129,7 @@ def get_str(value: Any, default: str = "") -> str:
         return default
 
 
-def get_dict(value: Any, default: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def get_dict(value: Any, default: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a dict value, or default if the input is not mapping-like."""
     if isinstance(value, dict):
         return value

@@ -58,12 +58,14 @@ def test_driver_k4215_error_handling(res):
     # Test error code and text parsing
     res.buffer = ["KXCI command error. (-992)"]
     error = d.next_error()
+    assert error is not None
     assert (error.code, error.message) == (-992, "KXCI command error")
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
     # Test unparseable error format
     res.buffer = ["Unknown error format with some text"]
     error = d.next_error()
+    assert error is not None
     assert (error.code, error.message) == (-1, "Unknown error format with some text")
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
@@ -252,26 +254,26 @@ def test_driver_k4215_aperture_control(res):
     """Test aperture, filter, and delay control."""
     d = K4215(res)
 
-    # Test default aperture settings - default is aperture=10, filter_factor=1, delay_factor=1
+    # Test default aperture settings - default is aperture=10.0, filter_factor=1, delay_factor=1
     res.buffer = []
     assert d.set_aperture() is None
     assert res.buffer == [":CVU:SPEED 3,1.000E+00,1.000E+00,1.000E+01"]
 
     # Test custom aperture settings
     res.buffer = []
-    assert d.set_aperture(aperture=5, filter_factor=2, delay_factor=3) is None
+    assert d.set_aperture(aperture=5.0, filter_factor=2, delay_factor=3) is None
     assert res.buffer == [":CVU:SPEED 3,3.000E+00,2.000E+00,5.000E+00"]
 
     # Test aperture with different values
     res.buffer = []
-    assert d.set_aperture(aperture=8, filter_factor=4, delay_factor=2) is None
+    assert d.set_aperture(aperture=8.0, filter_factor=4, delay_factor=2) is None
     assert res.buffer == [":CVU:SPEED 3,2.000E+00,4.000E+00,8.000E+00"]
 
     # check out of range aperture values
     with pytest.raises(ValueError):
         d.set_aperture(aperture=0.001)  # Below min 0.006
     with pytest.raises(ValueError):
-        d.set_aperture(aperture=11)  # Above max 10.002
+        d.set_aperture(aperture=11.0)  # Above max 10.002
 
     # check out of range filter_factor values
     with pytest.raises(ValueError):
@@ -354,7 +356,12 @@ def test_driver_k4215_start_open_correction(res):
     assert res.buffer == [":CVU:CABLE:COMP:OPEN 1.5"]
 
     res.buffer = []
-    assert d.start_open_correction(4.0,) is None
+    assert (
+        d.start_open_correction(
+            4.0,
+        )
+        is None
+    )
     assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:OPEN 4.0"]
 
 

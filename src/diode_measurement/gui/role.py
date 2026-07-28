@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
@@ -9,12 +9,14 @@ from .resource import ResourceWidget
 
 __all__ = ["RoleWidget"]
 
+logger = logging.getLogger(__name__)
+
 
 class RoleWidget(QtWidgets.QWidget):
     browse_resources = QtCore.Signal()
     test_connection = QtCore.Signal()
 
-    def __init__(self, name: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, name: str, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._name: str = name
         self._resources: dict[str, Any] = {}  # TODO
@@ -132,7 +134,7 @@ class RoleWidget(QtWidgets.QWidget):
                 widgets.append(widget)
         return widgets
 
-    def find_instrument_panel(self, model: str) -> Optional[InstrumentPanel]:
+    def find_instrument_panel(self, model: str) -> InstrumentPanel | None:
         for widget in self.instrument_panels():
             if model == widget.model():
                 return widget
@@ -153,8 +155,8 @@ class RoleWidget(QtWidgets.QWidget):
                 self.set_timeout(resource.get("timeout", 8.0))
                 self.set_baud_rate(resource.get("baud_rate", 9_600))
                 self.set_reset_instrument(resource.get("reset_instrument", False))
-            except Exception as exc:
-                logging.exception(exc)
+            except Exception:
+                logger.exception(f"failed to set resource config for model: {model!r}")
             self.stacked_widget.setCurrentWidget(widget)
             self.stacked_widget.show()
         else:
