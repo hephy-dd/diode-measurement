@@ -1,0 +1,744 @@
+import contextlib
+import logging
+import time
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from comet.estimate import Estimate
+from comet.functions import LinearRange
+
+from ..actors import TCUActor
+from ..state import FSMState, IVReading, State
+from ..writer import Writer
+from .driver import VoltageMeasurable
+from .station import Station
+
+__all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class MeasurementParameters:
+    id: str
+    type: str
+    title: str
+    measurement_cls: type["Measurement"]
+    supported_roles: list[str]
+    default_roles: list[str]
+    default_begin_voltage: float
+    default_end_voltage: float
+    default_step_voltage: float
+    default_waiting_time: float
+    default_current_compliance: float
+    voltage_unit: str
+    current_compliance_unit: str
+    default_bias_voltage: float = 0.0
+    default_waiting_time_continuous: float = 0.0
+    provides_continuous: bool = False
+
+
+class Measurement:
+    def __init__(self, state: State, station: Station) -> None:
+        self.state: State = state
+        self.station: Station = station
+
+        self.tcu_actor: TCUActor | None = None
+
+        self.writers: list[Writer] = []
+
+    def add_writer(self, writer: Writer) -> None:
+        self.writers.append(writer)
+
+    def on_started(self) -> None:
+        for writer in self.writers:
+            writer.write_meta(dict(self.state))
+
+    def on_finished(self) -> None:
+        for writer in self.writers:
+            writer.flush()
+
+    def check_error_state(self, context) -> None:
+        error = context.next_error()
+        if error is not None:
+            raise RuntimeError(f"Instrument Error: {error.code}: {error.message}")
+
+    def submit_update(self, data: Mapping[str, Any]) -> None:
+        self.state.event_bus.submit("update", data)
+
+    def set_fsm_state(self, state: FSMState) -> None:
+        self.submit_update({"fsm_state": state})
+
+    def initialize(self) -> None: ...
+
+    def measure(self) -> None: ...
+
+    def finalize(self) -> None: ...
+
+    def run(self) -> None:
+        try:
+            logger.debug("run measurement...")
+            self.set_fsm_state(FSMState.CONFIGURE)
+            logger.debug("handle started callbacks...")
+            self.on_started()
+            logger.debug("handle started callbacks... done.")
+            with contextlib.ExitStack() as stack:
+                logger.debug("creating instrument contexts...")
+                for key, (cls, resource) in self.station.instrument_registry.items():
+                    logger.debug(
+                        "creating instrument context %s: %s...", key, cls.__name__
+                    )
+                    context = cls(stack.enter_context(resource))
+                    self.station.instruments[key] = context
+                logger.debug("creating instrument contexts... done.")
+                try:
+                    logger.debug("initialize...")
+                    self.initialize()
+                    logger.debug("initialize... done.")
+                    logger.debug("measure...")
+                    self.measure()
+                    logger.debug("measure... done.")
+                except Exception as exc:
+                    logger.exception("failed to initialize measurement")
+                    self.state.event_bus.submit("failed", exc)
+                finally:
+                    logger.debug("finalize...")
+                    self.set_fsm_state(FSMState.STOPPING)
+                    self.finalize()
+                    logger.debug("finalize... done.")
+        except Exception as exc:
+            logger.exception("failed to run measurement")
+            self.state.event_bus.submit("failed", exc)
+        finally:
+            logger.debug("handle finished callbacks...")
+            self.on_finished()
+            logger.debug("handle finished callbacks... done.")
+            self.set_fsm_state(FSMState.IDLE)
+            logger.debug("run measurement... done.")
+
+
+class RangeMeasurement(Measurement):
+    def on_it_reading(self, reading) -> None: ...
+
+    # Interlock check
+
+    def check_interlock(self, instrument) -> None:
+        if hasattr(instrument, "is_interlock") and not instrument.is_interlock():
+            name = type(instrument).__name__
+            raise RuntimeError(f"{name}: instrument not interlocked!")
+
+    # Source
+
+    def get_source_output_state(self) -> bool:
+        return self.source_instrument.get_output_enabled()  # type: ignore
+
+    def set_source_output_state(self, state: bool) -> None:
+        logger.info("Source output state: %s", state)
+        self.source_instrument.set_output_enabled(state)  # type: ignore
+        self.submit_update({"source_output_state": state})
+        self.state.update({"source_output_state": state})
+
+    def get_source_voltage(self) -> float:
+        return self.source_instrument.get_voltage_level()  # type: ignore
+
+    def set_source_voltage(self, voltage: float) -> None:
+        logger.info("Source voltage level: %gV", voltage)
+        self.source_instrument.set_voltage_level(voltage)  # type: ignore
+        self.submit_update({"source_voltage": voltage})
+        self.state.update({"source_voltage": voltage})
+
+    def set_source_voltage_range(self, voltage: float) -> None:
+        logger.info("Source voltage range: %gV", voltage)
+        self.source_instrument.set_voltage_range(voltage)  # type: ignore
+
+    # Bias source
+
+    def get_bias_source_output_state(self) -> bool:
+        return self.bias_source_instrument.get_output_enabled()  # type: ignore
+
+    def set_bias_source_output_state(self, state: bool) -> None:
+        logger.info("Bias source output state: %s", state)
+        self.bias_source_instrument.set_output_enabled(state)  # type: ignore
+        self.submit_update({"bias_source_output_state": state})
+        self.state.update({"bias_source_output_state": state})
+
+    def get_bias_source_voltage(self) -> float:
+        return self.bias_source_instrument.get_voltage_level()  # type: ignore
+
+    def set_bias_source_voltage(self, voltage: float) -> None:
+        logger.info("Bias source voltage level: %gV", voltage)
+        self.bias_source_instrument.set_voltage_level(voltage)  # type: ignore
+        self.submit_update({"bias_source_voltage": voltage})
+        self.state.update({"bias_source_voltage": voltage})
+
+    def set_bias_source_voltage_range(self, voltage: float) -> None:
+        logger.info("Bias source voltage range: %gV", voltage)
+        self.bias_source_instrument.set_voltage_range(voltage)  # type: ignore
+
+    def check_current_compliance(self) -> None:
+        """Raise exception if current compliance tripped and continue in
+        compliance option is not active.
+        """
+        if (
+            not self.state.continue_in_compliance
+            and self.source_instrument.compliance_tripped()  # type: ignore
+        ):
+            raise RuntimeError("Source compliance tripped!")
+
+    def update_current_compliance(self) -> None:
+        """Update current compliance if value changed."""
+        current_compliance = self.state.current_compliance
+        if self.current_compliance != current_compliance:  # type: ignore
+            self.current_compliance = current_compliance
+            self.set_source_compliance(self.current_compliance)
+            self.check_error_state(self.source_instrument)
+
+    def set_source_compliance(self, compliance: float) -> None:
+        logger.info("Source current compliance level: %gA", compliance)
+        self.source_instrument.set_current_compliance_level(compliance)  # type: ignore
+
+    def set_bias_source_compliance(self, compliance: float) -> None:
+        logger.info("Bias source current compliance level: %gA", compliance)
+        self.bias_source_instrument.set_current_compliance_level(compliance)  # type: ignore
+
+    def check_bias_current_compliance(self) -> None:
+        """Raise exception if biascurrent compliance tripped and continue in
+        compliance option is not active.
+        """
+        if (
+            not self.state.continue_in_compliance
+            and self.bias_source_instrument.compliance_tripped()  # type: ignore
+        ):
+            raise RuntimeError("Source compliance tripped!")
+
+    def update_bias_current_compliance(self) -> None:
+        """Update current compliance if value changed."""
+        current_compliance = self.state.current_compliance
+        if self.bias_current_compliance != current_compliance:  # type: ignore
+            self.bias_current_compliance = current_compliance
+            self.set_bias_source_compliance(self.bias_current_compliance)
+            self.check_error_state(self.bias_source_instrument)
+
+    def apply_waiting_time(self) -> None:
+        waiting_time: float = self.state.waiting_time
+        logger.info("Waiting for %.2f sec", waiting_time)
+        time.sleep(waiting_time)
+
+    def apply_waiting_time_continuous(self, estimate: Estimate) -> None:
+        waiting_time: float = self.state.waiting_time_continuous
+        interval: float = 1.0
+        logger.info("Waiting for %.2f sec", waiting_time)
+        if waiting_time < interval:
+            time.sleep(waiting_time)
+        else:
+            now: float = time.monotonic()
+            threshold: float = now + waiting_time
+            while now < threshold:
+                if self.state.stop_requested:
+                    self.update_message("Stopping...")
+                    break
+                if self.state.is_change_voltage_continuous:
+                    break
+                remaining: float = round(threshold - now)
+                self.update_estimate_message_continuous(
+                    f"Next reading in {remaining:d} sec...", estimate
+                )
+                time.sleep(interval)
+                now = time.monotonic()
+
+    def apply_change_voltage(self):
+        parameters = self.state.pop_change_voltage_continuous()
+        if parameters is not None:
+            self.set_fsm_state(FSMState.RAMPING)
+            self.ramp_to_continuous(
+                end_voltage=parameters.end_voltage,
+                step_voltage=parameters.step_voltage,
+                waiting_time=parameters.waiting_time,
+            )
+            if not self.state.stop_requested:  # hack
+                self.set_fsm_state(FSMState.CONTINUOUS)
+            self.state.event_bus.submit("change_voltage_done")
+
+    def update_message(self, message: str) -> None:
+        """Emit update message event."""
+        self.submit_update({"message": message})
+
+    def update_progress(self, begin: int, end: int, step: int) -> None:
+        """Emit update progress event."""
+        self.submit_update({"progress": (begin, end, step)})
+
+    def update_estimate_message(self, message: str, estimate: Estimate) -> None:
+        """Emit update message event for ramp iterations."""
+        elapsed_time = format(estimate.elapsed).split(".")[0]
+        remaining_time = format(estimate.remaining).split(".")[0]
+        average_time = format(estimate.average.total_seconds(), ".2f")
+        self.update_message(
+            f"{message} | Elapsed {elapsed_time} | Remaining {remaining_time} | Average {average_time} s"
+        )
+
+    def update_estimate_message_continuous(
+        self, message: str, estimate: Estimate
+    ) -> None:
+        """Emit update message event for continuous iterations."""
+        elapsed_time = format(estimate.elapsed).split(".")[0]
+        average_time = format(estimate.average.total_seconds(), ".3f")
+        self.update_message(
+            f"{message} | Elapsed {elapsed_time} | Average {average_time} s"
+        )
+
+    def update_estimate_progress(self, estimate: Estimate) -> None:
+        """Emit update progress event for ramp iterations."""
+        self.update_progress(0, estimate.total, estimate.passed)
+
+    def initialize(self) -> None:
+        source = self.state.source_role
+        if source in self.station.instruments:
+            self.source_instrument = self.station.instruments.get(source)
+        else:
+            raise RuntimeError("No source instrument set")
+
+        # Bias
+
+        self.bias_source_instrument = None
+        if self.state.measurement_type in ["iv_bias"]:  # TODO
+            bias_source = self.state.bias_source_role
+            if bias_source in self.station.instruments:
+                self.bias_source_instrument = self.station.instruments.get(bias_source)
+            else:
+                raise RuntimeError("No bias source instrument set")
+
+        logger.debug("querying context identities...")
+        for key, context in self.station.instruments.items():
+            logger.debug("reading %s identity...", key.upper())
+            identity: str = context.identify()
+            logger.debug("reading %s identity... done.", key.upper())
+            logger.info("%s IDN: %s", key.upper(), identity)
+        logger.debug("querying context identities... done.")
+
+        logger.debug("get source output state...")
+        source_output_state: bool = self.get_source_output_state()
+        logger.debug("get source output state... done.")
+
+        if source_output_state:
+            self.ramp_to_zero()
+        else:
+            self.set_source_voltage(0.0)
+
+        # Bias
+
+        if self.bias_source_instrument:
+            logger.debug("get bias source output state...")
+            bias_source_output_state = self.get_bias_source_output_state()
+            logger.debug("get bias source output state... done.")
+
+            if bias_source_output_state:
+                self.ramp_bias_to_zero()
+            else:
+                self.set_bias_source_voltage(0.0)
+
+        # Switch
+        self.initialize_switch()
+
+        # Reset (optional)
+        for key, instrument in self.station.instruments.items():
+            role = self.state.find_role(key)
+            if role and role.reset_instrument:
+                logger.info("Reset %s...", key.upper())
+                instrument.reset()
+                logger.info("Reset %s... done.", key.upper())
+
+        # Clear state
+        for key, instrument in self.station.instruments.items():
+            logger.info("Clear %s...", key.upper())
+            instrument.clear()
+            logger.info("Clear %s... done.", key.upper())
+
+        # Configure
+        for key, instrument in self.station.instruments.items():
+            logger.info("Configure %s...", key.upper())
+            role = self.state.find_role(key)
+            if role is not None:
+                for name, value in role.options.items():
+                    logger.info("%s: %r", name, value)
+                instrument.configure(role.options)
+                self.check_error_state(instrument)
+            logger.info("Configure %s... done.", key.upper())
+
+        # Compliance
+        self.current_compliance = self.state.current_compliance
+        self.set_source_compliance(self.current_compliance)
+        self.check_error_state(self.source_instrument)
+
+        # check interlock (optional)
+        for instrument in self.station.instruments.values():
+            self.check_interlock(instrument)
+
+        # TCU (optional)
+        tcu = self.station.instruments.get("tcu")
+        if tcu is not None:
+            self.tcu_actor = TCUActor(
+                tcu=tcu,
+                event_bus=self.state.event_bus,
+                abort_event=self.state.abort_event,
+            )
+
+        if self.tcu_actor is not None:
+            self.tcu_actor.start()
+            if not self.tcu_actor.is_within_setpoint():
+                self.update_message("Waiting for TCU to reach setpoint...")
+                self.update_progress(0, 0, 0)
+            self.tcu_actor.ensure_setpoint()
+
+        self.bias_current_compliance = self.state.current_compliance
+        if self.bias_source_instrument:
+            self.set_bias_source_compliance(self.bias_current_compliance)
+            self.check_error_state(self.bias_source_instrument)
+
+        if self.bias_source_instrument:
+            self.set_bias_source_output_state(True)
+            self.ramp_bias_to_bias()
+            self.check_error_state(self.bias_source_instrument)
+
+        # Enable output
+        self.set_source_output_state(True)
+
+        self.initialize_elms()
+
+        self.ramp_to_begin()
+
+        self.apply_settle_waiting_time()
+
+    def initialize_elms(self) -> None:
+        elm = self.station.instruments.get("elm")
+        if elm is not None:
+            elm.set_zero_check_enabled(False)
+            logger.info("ELM zero check: off")
+
+        elm2 = self.station.instruments.get("elm2")
+        if elm2 is not None:
+            elm2.set_zero_check_enabled(False)
+            logger.info("ELM2 zero check: off")
+
+    def initialize_switch(self) -> None:
+        switch = self.station.instruments.get("switch")
+        if switch is not None:
+            switch.open_all_channels()
+            logger.info("Switch: opened ALL channels")
+
+    def apply_settle_waiting_time(self) -> None:
+        """Wait after output enable/ramp"""
+        waiting_time_settle: float = self.state.get("settle_waiting_time", 1.0)
+        logger.debug("apply settle time...")
+        time.sleep(waiting_time_settle)
+        logger.debug("apply settle time... done.")
+
+    def measure(self) -> None:
+        ramp: LinearRange = LinearRange(
+            self.state.voltage_begin,
+            self.state.voltage_end,
+            self.state.voltage_step,
+        )
+
+        self.update_message(f"Ramp to {ramp.end} V")
+        estimate: Estimate = Estimate(len(ramp))
+
+        self.set_fsm_state(FSMState.RAMPING)
+
+        for step, voltage in enumerate(ramp):
+            self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
+            self.update_estimate_progress(estimate)
+
+            if self.state.stop_requested:
+                self.update_message("Stopping...")
+                return
+            self.set_source_voltage(voltage)
+
+            self.apply_waiting_time()
+
+            self.acquire_reading(voltage)
+
+            self.check_current_compliance()
+            self.update_current_compliance()
+
+            if self.bias_source_instrument:
+                self.check_bias_current_compliance()
+                self.update_bias_current_compliance()
+
+            estimate.advance()
+
+        self.update_message("")
+
+        if self.state.stop_requested:
+            self.update_message("Stopping...")
+            return
+
+        if self.state.is_continuous:
+            self.update_message("Continuous measurement...")
+            self.set_fsm_state(FSMState.CONTINUOUS)
+            self.acquire_continuous_reading()
+
+    def finalize(self) -> None:
+        try:
+            if self.tcu_actor is not None:
+                self.tcu_actor.stop()
+
+            self.finalize_elms()
+
+            self.ramp_to_zero()
+
+            if self.bias_source_instrument:
+                self.ramp_bias_to_zero()
+
+            self.finalize_lcr()
+
+            self.assure_discharge()
+
+            self.set_source_output_state(False)
+
+            if self.bias_source_instrument:
+                self.set_bias_source_output_state(False)
+
+            self.finalize_switch()
+        finally:
+            if self.tcu_actor is not None:
+                self.tcu_actor.stop()
+
+            self.submit_update(
+                {
+                    "source_voltage": None,
+                    "bias_source_voltage": None,
+                    "smu_voltage": None,
+                    "smu_current": None,
+                    "smu2_voltage": None,
+                    "smu2_current": None,
+                    "elm_current": None,
+                    "elm2_current": None,
+                    "lcr_capacity": None,
+                    "dmm_temperature": None,
+                    "tcu_temperature": None,
+                    "tcu_state": None,
+                }
+            )
+
+    def finalize_elms(self) -> None:
+        elm = self.station.instruments.get("elm")
+        if elm is not None:
+            elm.set_zero_check_enabled(True)
+            logger.info("ELM zero check: on")
+
+        elm2 = self.station.instruments.get("elm2")
+        if elm2 is not None:
+            elm2.set_zero_check_enabled(True)
+            logger.info("ELM2 zero check: on")
+
+    def finalize_lcr(self) -> None:
+        lcr = self.station.instruments.get("lcr")
+        if lcr is not None and hasattr(lcr, "finalize"):
+            lcr.finalize()
+
+    def finalize_switch(self) -> None:
+        switch = self.station.instruments.get("switch")
+        if switch:
+            switch.open_all_channels()
+            logger.info("Switch: opened ALL channels")
+
+    def assure_discharge(self) -> None:
+        """Wait until capacitors discared before output disable."""
+
+        discharge_timeout: float = self.state.discharge_timeout
+        discharge_threshold: float = abs(self.state.discharge_threshold)
+
+        def read_source_voltage():
+            if isinstance(self.source_instrument, VoltageMeasurable):
+                return self.source_instrument.measure_v()
+            logger.warning("Source instrument does not provide voltage readings.")
+            return 0.0
+
+        self.update_message("Waiting for voltage settled...")
+        self.update_progress(0, 0, 0)
+
+        start = time.monotonic()
+
+        while abs(read_source_voltage()) > discharge_threshold:
+            time.sleep(1.0)
+
+            delta = time.monotonic() - start
+            if delta > discharge_timeout:
+                raise TimeoutError(
+                    f"Timeout while waiting for voltage to settle < {discharge_threshold} V, source output still enabled."
+                )
+
+        self.update_message("")
+
+    def acquire_reading(self, source_voltage: float) -> None:
+        raise NotImplementedError
+
+    def acquire_reading_data(self, source_voltage: float) -> IVReading:
+        raise NotImplementedError
+
+    def acquire_continuous_reading(self) -> None: ...
+
+    def ramp_to_begin(self) -> None:
+        source_voltage = self.get_source_voltage()
+        voltage_begin: float = self.state.voltage_begin
+        voltage_end: float = self.state.voltage_end
+        voltage_step: float = 5.0
+        waiting_time: float = 0.250
+
+        # Set voltage range according to highest voltage in ramp.
+        # Including reverse ramps, eg. -100V...+10V -> range is 100V
+        self.set_source_voltage_range(max(abs(voltage_begin), abs(voltage_end)))
+
+        ramp: LinearRange = LinearRange(source_voltage, voltage_begin, voltage_step)
+        estimate: Estimate = Estimate(len(ramp))
+
+        for step, voltage in enumerate(ramp):
+            self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
+            self.update_estimate_progress(estimate)
+
+            if self.state.stop_requested:
+                break
+            self.set_source_voltage(voltage)
+            time.sleep(waiting_time)
+            estimate.advance()
+
+    def ramp_to_zero(self) -> None:
+        source_voltage = self.get_source_voltage()
+        self.submit_update(
+            {
+                "smu_voltage": None,
+                "smu_current": None,
+                "smu2_voltage": None,
+                "smu2_current": None,
+                "elm_current": None,
+                "elm2_current": None,
+                "lcr_capacity": None,
+                "dmm_temperature": None,
+            }
+        )
+
+        source_voltage_end: float = 0.0
+        source_voltage_step: float = 5.0
+        waiting_time: float = 0.250
+
+        ramp: LinearRange = LinearRange(
+            source_voltage, source_voltage_end, source_voltage_step
+        )
+        estimate: Estimate = Estimate(len(ramp))
+        logger.info("Ramp source to zero...")
+        for step, voltage in enumerate(ramp):
+            self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
+            self.update_estimate_progress(estimate)
+
+            self.set_source_voltage(voltage)
+            time.sleep(waiting_time)
+            estimate.advance()
+        logger.info("Ramp source to zero... done.")
+
+    def ramp_bias_to_bias(self) -> None:
+        bias_voltage_end: float = self.state.bias_voltage
+        self.set_bias_source_voltage_range(bias_voltage_end)
+
+        bias_voltage_begin: float = 0.0
+        bias_voltage_step: float = 5.0
+        waiting_time: float = 0.250
+
+        ramp: LinearRange = LinearRange(
+            bias_voltage_begin, bias_voltage_end, bias_voltage_step
+        )
+        estimate: Estimate = Estimate(len(ramp))
+
+        logger.info("Ramp bias source to %g V...", ramp.end)
+        for step, voltage in enumerate(ramp):
+            self.update_estimate_message(f"Ramp bias to {ramp.end} V", estimate)
+            self.update_estimate_progress(estimate)
+
+            if self.state.stop_requested:
+                break
+            self.set_bias_source_voltage(voltage)
+            time.sleep(waiting_time)
+            estimate.advance()
+        logger.info("Ramp bias source to %g V... done.", ramp.end)
+
+    def ramp_bias_to_zero(self) -> None:
+        bias_source_voltage: float = self.get_bias_source_voltage()
+        end_voltage: float = 0.0
+        step_voltage: float = 5.0
+        waiting_time: float = 0.250
+        self.submit_update(
+            {
+                "smu_voltage": None,
+                "smu_current": None,
+                "smu2_voltage": None,
+                "smu2_current": None,
+                "elm_current": None,
+                "elm2_current": None,
+                "lcr_capacity": None,
+                "dmm_temperature": None,
+            }
+        )
+        ramp: LinearRange = LinearRange(bias_source_voltage, end_voltage, step_voltage)
+        estimate: Estimate = Estimate(len(ramp))
+        logger.info("Ramp bias source to zero...")
+        for step, voltage in enumerate(ramp):
+            self.update_estimate_message(f"Ramp bias to {ramp.end} V", estimate)
+            self.update_estimate_progress(estimate)
+
+            self.set_bias_source_voltage(voltage)
+            time.sleep(waiting_time)
+            estimate.advance()
+        logger.info("Ramp bias source to zero... done.")
+
+    def ramp_to_continuous(
+        self, end_voltage: float, step_voltage: float, waiting_time: float
+    ) -> None:
+        source_voltage: float = self.get_source_voltage()
+
+        ramp: LinearRange = LinearRange(source_voltage, end_voltage, step_voltage)
+        estimate: Estimate = Estimate(len(ramp))
+
+        # If end voltage higher, set new range before ramp.
+        if abs(ramp.end) > abs(ramp.begin):
+            self.set_source_voltage_range(ramp.end)
+
+        for step, voltage in enumerate(ramp):
+            self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
+            self.update_estimate_progress(estimate)
+
+            if self.state.stop_requested:
+                self.update_message("Stopping...")
+                return
+
+            self.set_source_voltage(voltage)
+
+            time.sleep(waiting_time)
+
+            reading: IVReading = self.acquire_reading_data(voltage)
+            logger.info(reading)
+
+            self.on_it_reading(reading)
+
+            self.submit_update(
+                {
+                    "smu_voltage": reading.v_smu,
+                    "smu_current": reading.i_smu,
+                    "smu2_voltage": reading.v_smu2,
+                    "smu2_current": reading.i_smu2,
+                    "elm_current": reading.i_elm,
+                    "elm2_current": reading.i_elm2,
+                }
+            )
+
+            self.check_current_compliance()
+            self.update_current_compliance()
+
+            if self.bias_source_instrument:
+                self.check_bias_current_compliance()
+                self.update_bias_current_compliance()
+
+            estimate.advance()
+
+        # If end voltage lower, set new range after ramp.
+        if abs(ramp.end) < abs(ramp.begin):
+            self.set_source_voltage_range(ramp.end)

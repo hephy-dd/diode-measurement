@@ -1,4 +1,4 @@
-from diode_measurement.driver.e4980a import E4980A
+from diode_measurement.drivers.e4980a import E4980A
 
 from . import res
 
@@ -7,7 +7,7 @@ def test_driver_e4980a(res):
     d = E4980A(res)
 
     res.buffer = ["Agilent Model 4980A\r"]
-    assert d.identity() == "Agilent Model 4980A"
+    assert d.identify() == "Agilent Model 4980A"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -18,8 +18,8 @@ def test_driver_e4980a(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"No error\""]
-    assert d.next_error() == (0, "No error")
+    res.buffer = ['0,"No error"']
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]
@@ -60,7 +60,15 @@ def test_driver_e4980a(res):
 
     res.buffer = ["1", "0", "1", "1.000000E-01,2.000000E-01"]
     assert d.measure_impedance() == (0.1, 0.2)
-    assert res.buffer == ["*CLS", "*OPC?", "*OPC", ":TRIG:IMM", "*ESR?", "*ESR?", ":FETC?"]
+    assert res.buffer == [
+        "*CLS",
+        "*OPC?",
+        "*OPC",
+        ":TRIG:IMM",
+        "*ESR?",
+        "*ESR?",
+        ":FETC?",
+    ]
 
     res.buffer = ["1"]
     assert d.set_function_impedance_type("CPRP") is None

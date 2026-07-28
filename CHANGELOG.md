@@ -7,6 +7,144 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Moved test resource connection and resource detection to background jobs (#168).
+- Modernized the codebase and dropped support for Python 3.9 and 3.10 (#170).
+
+## [0.27.2] - 2026-05-07
+
+### Fixed
+
+- Unlock change voltage button in continuous measurement mode (#169).
+
+## [0.27.1] - 2026-05-05
+
+### Fixed
+
+- Hide resource baud rate input for non-serial resource names (#166).
+- Lock browse resources dialog button on measurements (#167).
+
+## [0.27.0] - 2026-04-30
+
+### Added
+
+- Added optional baud rate input for serial resources (#163).
+- Added browse VISA resources tool button and dialog (#164).
+
+### Changed
+
+- Translates `COM1`-style resource names to valid VISA names like `ASRL1::INSTR` (#163).
+
+## [0.26.1] - 2026-04-30
+
+### Fixed
+
+- It plot displayed IV plot data caused by a wrong data source (#165).
+
+## [0.26.0] - 2026-04-29
+
+### Added
+
+- Added `pyright` to the `tox` workflow for consistent static type checking in local development and CI (#160).
+- Added configurable voltage discharge timeout and threshold settings to the Preferences dialog (#161).
+- Added `sample` parameter to JSON-RPC `start` method (#162).
+
+### Changed
+
+- Added missing type hints across the codebase.
+- Replaced `time.time()` with `time.monotonic()` for reliable elapsed-time measurement.
+- Refactored plot widgets for improved maintainability.
+
+### Fixed
+
+- Resolved all reported Pyright type errors across the codebase to ensure clean type-checking (#160).
+
+## [0.25.3] - 2026-04-27
+
+### Fixed
+
+- Replace `INIT` by `READ?` to avoid trigger model errors on Keithley 2470 (#158, #159).
+
+## [0.25.2] - 2026-04-24
+
+### Fixed
+
+- Add missing `INIT` command when reading from Keithley 2470, preventing frozen readings (#157).
+
+## [0.25.1] - 2026-04-21
+
+### Fixed
+
+- Error on importing recorded measurement files due to introduced changes.
+
+## [0.25.0] - 2026-04-17
+
+### Added
+
+- TCU (Temperature Control Unit) role and support for AC3 Chiller (#136).
+- Per-Instrument reset options (#137).
+- Configure instrument options using RPC server (#135, #156).
+
+### Changed
+
+- Switch build backend from setuptools to Hatchling (#119).
+- Adopt `src` layout for package sources (#119).
+
+### Removed
+
+- Global reset instruments option (#137).
+
+## [0.24.3] - 2026-04-16
+
+### Fixed
+
+- RPC `status` method always returned state `idle` regardless of actual operation (#155).
+
+## [0.24.2] - 2026-04-15
+
+### Fixed
+
+- RPC `start` method failed to start a measurement and caused the GUI to freeze (#154).
+
+## [0.24.1] - 2026-03-24
+
+### Fixed
+
+- Run optional finalize for LCRs only if implemented (#153).
+
+## [0.24.0] - 2026-03-12
+
+### Added
+
+- Add support for Keithley 707b/708b switching matrix (#146).
+
+### Changed
+
+- Migrated code base from PyQt5 to PySide6 (#118).
+- Move PyInstaller configuration to `.pyinstaller/` layout and updated build workflows (#143).
+- Migrated to comet utilities, removed duplicates (#145).
+- Refactored the code architecture to improve maintainability and performance.
+
+### Fixed
+
+- Source break-ins while measuring with Keithley 2470 (#147).
+
+## [0.23.2] - 2026-03-06
+
+### Added
+
+- Perform K4215-CVU open correction using a -10 V DC external bias tee when enabled (#142).
+
+### Fixed
+
+- Disable K4215-CVU C-V bias voltage/offset after measurement; restores the fix previously released in 0.22.3 (#123).
+
+## [0.23.1] - 2026-03-06
+
+### Fixed
+
+- Graceful shutdown of threads in case of exceptions (#141).
 
 ## [0.23.0] - 2026-03-04
 
@@ -30,15 +168,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix missing elm2 series population in IT plot (#129).
 
+## [0.22.3] - 2026-02-12
+
+### Fixed
+
+- Disable K4215-CVU C-V bias voltage/offset after measurement (#123).
+
 ## [0.22.2] - 2025-09-26
 
-### Fixes
+### Fixed
 
 - Display DCAMPS measurements on K2657A (#125).
 
 ## [0.22.1] - 2025-09-22
 
-### Fixes
+### Fixed
 
 - Broken `measure_iv` method for K6517b (#120).
 - Broken disable TCP server on error (#121).
@@ -118,6 +262,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable precision for file writer (#102).
 
 ### Changed
+
 - Added support for Python 3.12.
 
 ## [0.20.1] - 2024-02-05
@@ -310,7 +455,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Agilent 4284A LCR Meter (#35).
 - Aperture and correction settings for LCR Meters.
 
-## Changed
+### Changed
 
 - Show only plots of selected measurement (#37).
 - Refactored measurement thread handling.
@@ -456,8 +601,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.23.0...HEAD
-[0.23.0]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...0.23.0
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.2...HEAD
+[0.27.2]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...0.27.2
+[0.27.1]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...0.27.1
+[0.27.0]: https://github.com/hephy-dd/diode-measurement/compare/0.26.1...0.27.0
+[0.26.1]: https://github.com/hephy-dd/diode-measurement/compare/0.26.0...0.26.1
+[0.26.0]: https://github.com/hephy-dd/diode-measurement/compare/0.25.3...0.26.0
+[0.25.3]: https://github.com/hephy-dd/diode-measurement/compare/0.25.2...0.25.3
+[0.25.2]: https://github.com/hephy-dd/diode-measurement/compare/0.25.1...0.25.2
+[0.25.1]: https://github.com/hephy-dd/diode-measurement/compare/0.25.0...0.25.1
+[0.25.0]: https://github.com/hephy-dd/diode-measurement/compare/0.24.3...0.25.0
+[0.24.3]: https://github.com/hephy-dd/diode-measurement/compare/0.24.2...0.24.3
+[0.24.2]: https://github.com/hephy-dd/diode-measurement/compare/0.24.1...0.24.2
+[0.24.1]: https://github.com/hephy-dd/diode-measurement/compare/0.24.0...0.24.1
+[0.24.0]: https://github.com/hephy-dd/diode-measurement/compare/0.23.2...0.24.0
+[0.23.2]: https://github.com/hephy-dd/diode-measurement/compare/0.23.1...0.23.2
+[0.23.1]: https://github.com/hephy-dd/diode-measurement/compare/0.23.0...0.23.1
+[0.23.0]: https://github.com/hephy-dd/diode-measurement/compare/0.22.3...0.23.0
+[0.22.3]: https://github.com/hephy-dd/diode-measurement/compare/0.22.2...0.22.3
 [0.22.2]: https://github.com/hephy-dd/diode-measurement/compare/0.22.1...0.22.2
 [0.22.1]: https://github.com/hephy-dd/diode-measurement/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/hephy-dd/diode-measurement/compare/0.21.7...0.22.0
@@ -502,13 +663,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.8.2]: https://github.com/hephy-dd/diode-measurement/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/hephy-dd/diode-measurement/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/hephy-dd/diode-measurement/compare/0.7.0...0.8.0
-[0.7.0]: https://github.com/hephy-dd/diode-measurement/compare/0.6.1...0.7.0
+[0.7.0]: https://github.com/hephy-dd/diode-measurement/compare/0.6.2...0.7.0
+[0.6.2]: https://github.com/hephy-dd/diode-measurement/compare/0.6.1...0.6.2
 [0.6.1]: https://github.com/hephy-dd/diode-measurement/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/hephy-dd/diode-measurement/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/hephy-dd/diode-measurement/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/hephy-dd/diode-measurement/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/hephy-dd/diode-measurement/compare/0.2.1...0.3.0
-[0.2.1]: https://github.com/hephy-dd/diode-measurement/compare/0.1.1...0.2.0
+[0.2.1]: https://github.com/hephy-dd/diode-measurement/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/hephy-dd/diode-measurement/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/hephy-dd/diode-measurement/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/hephy-dd/diode-measurement/releases/tag/0.1.0

@@ -2,82 +2,95 @@
 
 IV/CV measurements for silicon sensors.
 
-## Run
+## Overview
 
-On Windows download a pre-built executable from the release section and run it.
+Diode Measurement is a tool for performing IV (current-voltage) and CV (capacitance-voltage) measurements on silicon sensors using a range of supported laboratory instruments.
 
-## Install
-
-Install using pip in a virtual environment.
-
-```bash
-pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.23.0.tar.gz
-```
-
-## Build Executable
-
-Building a Windows executable using PyInstaller.
-
-```bash
-# Create build environment
-python -m venv build_env
-. build_env/Scripts/activate
-
-# Install dependencies
-pip install -U pip
-pip install wheel pyusb pyserial gpib-ctypes
-pip install pyinstaller pyinstaller-versionfile
-pip install .
-
-# Build executable
-pyinstaller pyinstaller.spec
-```
-
-An executable will be created in `dist/diode-measurement-{version}.exe`
+It provides a unified interface for configuring instruments, running measurements, and collecting data across multiple hardware setups.
 
 ## Supported Instruments
 
-Source Meter Units
+### Source Meter Units (SMU)
 
 - Keithley 237
 - Keithley 2410
 - Keithley 2470
 - Keithley 2657A
 
-Electro Meter
+### Electrometers
 
 - Keithley 6514
 - Keithley 6517B
 
-LCR Meter
+### LCR Meters
 
 - Agilent 4284A
 - Keithley 595
 - Keithley 4215-CVU
 - Keysight E4980A
 
-DMM (Temperature)
+### Digital Multimeter (Temperature)
 
 - Keithley 2700
 
-Switching Matrix
+### Temperature Control Unit (TCU)
+
+- ERS AC3 Fusion (Thermal Chuck)
+
+### Switching Matrix
 
 - HEPHY BrandBox (HV Switch)
+- Keithley 707B
+- Keithley 708B
 
-## Setup
+## Installation
 
-To interface instruments using a GPIB interface the NI-VISA drivers need to be
-installed. Interfacing instruments using TCPIP, USB or Serial port is supported
-out of the box by using PyVISA-py, pyusb and pyserial.
+### Windows
 
-The instrument resource name inputs accept follwing formats:
+Pre-built Windows executables are available in the GitHub Releases section.
 
-|Format|Example|Result|
-|:-----|:------|:-----|
-|&lt;n&gt;|16|GPIB::16::INSTR|
-|&lt;ip&gt;:&lt;port&gt;|0.0.0.0:1080|TCPIP::0.0.0.0::1080::SOCKET|
-|&lt;host&gt;:&lt;port&gt;|localhost:1080|TCPIP::localhost::1080::SOCKET|
-|&lt;visa&gt;|GPIB1::16::INSTR|GPIB1::16::INSTR|
+### Python Installation
+
+Install the package inside a virtual environment using `pip`:
+
+```bash
+pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.27.2.tar.gz
+```
+
+## Run
+
+After installation, start the application with:
+
+```bash
+diode-measurement
+```
+
+## Local Development
+
+To run the project locally, we recommend using Astral’s [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone https://github.com/hephy-dd/diode-measurement.git -b 0.27.2
+cd diode-measurement
+uv venv
+uv run diode-measurement
+```
+
+## Instrument Setup
+
+## Resource Name Formats
+
+Instrument resource name inputs accept the following formats:
+
+| Format          | Example            | Resolved Resource                |
+| :-------------- | :----------------- | :------------------------------- |
+| `<n>`           | `16`               | `GPIB::16::INSTR`                |
+| `<ip>:<port>`   | `0.0.0.0:1080`     | `TCPIP::0.0.0.0::1080::SOCKET`   |
+| `<host>:<port>` | `localhost:1080`   | `TCPIP::localhost::1080::SOCKET` |
+| `<visa>`        | `GPIB1::16::INSTR` | `GPIB1::16::INSTR`               |
+| `<serial_port>` | `COM1`             | `ASRL1::INSTR`                   |
+
+This allows both simplified and explicit VISA resource definitions depending on your setup.
 
 ## Data formats
 
@@ -191,18 +204,27 @@ Start notification starts a new measurement.
 {"jsonrpc": "2.0", "method": "start"}
 ```
 
-Optional parameters are `continuous` (Boolean), `reset` (Boolean),
-`auto_reconnect` (Boolean), `begin_voltage` (Volt), `end_voltage` (Volt),
-`step_voltage` (Volt), `waiting_time` (seconds), `compliance` (Ampere) and
-`waiting_time_continuous` (seconds). Specified values will be applied to the
-user interface before starting the measurement.
+Optional parameters are:
+
+- `continuous` (bool)
+- `auto_reconnect` (bool)
+- `measurement_type` (one of `iv`, `iv_bias`, `cv_diode`, `cv_mos`)
+- `measurement_instruments` (list of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+- `sample` (str)
+- `begin_voltage` (float, Volt)
+- `end_voltage` (float, Volt)
+- `step_voltage` (float, Volt)
+- `waiting_time` (float, seconds)
+- `compliance` (float, Ampere)
+- `waiting_time_continuous` (float, seconds)
+
+**Note:** specified values are applied to the user interface before starting a measurement.
 
 ```json
 {
   "jsonrpc": "2.0",
   "method": "start",
   "params": {
-    "reset": true,
     "end_voltage": -100.0,
     "step_voltage": 10.0,
     "waiting_time": 1.0
@@ -222,10 +244,14 @@ Stop notification stops an active measurement.
 
 Change voltage notification applies only during continuous It measurement.
 
-Required parameter `end_voltage` (Volt).
+Required parameters are:
 
-Optional parameters with default values are `step_voltage` (default is `1.0`
-Volt) and `waiting_time` (default is `1.0` seconds).
+- `end_voltage` (float, Volt)
+
+Optional parameters are:
+
+- `step_voltage` (float, Volt, default is `1.0`)
+- `waiting_time` (float, seconds, default is `1.0`)
 
 ```json
 {
@@ -247,7 +273,7 @@ Request an application state snapshot.
 {"jsonrpc": "2.0", "method": "state", "id": 0}
 ```
 
-This will return application state parameters.
+This returns application state parameters.
 
 ```json
 {
@@ -270,35 +296,155 @@ This will return application state parameters.
 }
 ```
 
+#### Get Instrument Options
+
+Get current instrument options using method `instrument.get`.
+
+Required parameter is:
+
+- `instrument` (one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "instrument.get",
+  "params": {
+    "instrument": "smu"
+  },
+  "id": 1
+}
+```
+
+This returns the current model's instrument options.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "instrument": "smu",
+    "model": "K2410",
+    "options": {
+      "filter.enable": false,
+      "filter.count": 10,
+      "filter.mode": "REP",
+      "nplc": 1.0,
+      "route.terminals": "REAR",
+      "system.breakdown.protection": false,
+    }
+  },
+  "id": 1
+}
+```
+
+**Note:** option keys might change in future releases.
+
+#### Update Instrument Options
+
+Update current instrument options using method `instrument.update`.
+
+
+Required parameters are:
+
+- `instrument` (str, one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
+- `options` (dict, specific to selected instrument model)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "instrument.update",
+  "params": {
+    "instrument": "smu",
+    "options" : {
+      "filter.enable": true,
+      "filter.count": 25,
+    }
+  },
+  "id": 2
+}
+```
+
+This returns the current model's updated instrument options.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "instrument": "smu",
+    "model": "K2410",
+    "options": {
+      "filter.enable": true,
+      "filter.count": 25,
+      "filter.mode": "REP",
+      "nplc": 1.0,
+      "route.terminals": "REAR",
+      "system.breakdown.protection": false,
+    }
+  },
+  "id": 2
+}
+```
+
+**Note:** option keys might change in future releases.
+
 ### States
 
-Following states are exposed by the state snapshot: `idle`, `configure`,
-`ramping`, `continuous`, `stopping`.
+Following states are exposed by the state snapshot:
+
+- `idle`
+- `configure`
+- `ramping`
+- `continuous`
+- `stopping`
 
 ![State diagram](docs/images/rpc_states.png)
 
 ### Example
 
-Example using [netcat](https://en.wikipedia.org/wiki/Netcat) to initiate a new
-measurement and applies a new end voltage.
+#### Using netcat
+
+Example using [netcat](https://en.wikipedia.org/wiki/Netcat) to start a new
+measurement and set a target end voltage:
 
 ```bash
-echo '{"jsonrpc": "2.0", "method": "start", "params": {"end_voltage": 100.0}}' | nc localhost 8000
+echo '{"jsonrpc": "2.0", "method": "start", "params": {"end_voltage": 100.0}}' | nc localhost 4000
 ```
 
-Example using Python to read application state from TCP server.
+#### Using Python Socket
+
+Example using Python to query the application state from the TCP server:
 
 ```python
 import json
 import socket
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.connect(('localhost', 8000))
+    sock.connect(("localhost", 4000))
+
     request = {
-      "jsonrpc": "2.0",
-      "method": "state",
-      "id": None
+        "jsonrpc": "2.0",
+        "method": "state",
+        "id": None,
     }
-    sock.sendall(json.dumps(request).encode('utf-8'))
-    print(sock.recv(4096).decode('utf-8'))
+
+    sock.sendall(json.dumps(request).encode("utf-8"))
+    print(sock.recv(4096).decode("utf-8"))
 ```
+
+#### Using Python Client
+
+Example using the `DiodeMeasurementClient`:
+
+```python
+from rpc_client import DiodeMeasurementClient
+
+client = DiodeMeasurementClient("localhost", 4000)
+
+client.start(measurement_type="iv", end_voltage=100.0)
+
+while client.current_state() != "idle":
+    print(client.state())
+    time.sleep(1)
+```
+
+See [scripts](scripts/) for a reference client implementation and example scripts
+demonstrating how to use it.

@@ -1,6 +1,6 @@
 import pytest
 
-from diode_measurement.driver.k2400 import K2400
+from diode_measurement.drivers.k2400 import K2400
 
 from . import res
 
@@ -9,7 +9,7 @@ def test_driver_k2400(res):
     d = K2400(res)
 
     res.buffer = ["Keithley Model 2400\r"]
-    assert d.identity() == "Keithley Model 2400"
+    assert d.identify() == "Keithley Model 2400"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -20,14 +20,14 @@ def test_driver_k2400(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"No error\""]
-    assert d.next_error() == (0, "No error")
+    res.buffer = ['0,"No error"']
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]  # errornous response
     with pytest.raises(RuntimeError) as excinfo:
         d.next_error()
-    assert excinfo.value.args == ("Failed to parse error message: '1'", )
+    assert excinfo.value.args == ("Failed to parse error message: '1'",)
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]

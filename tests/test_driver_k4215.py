@@ -1,6 +1,6 @@
 import pytest
 
-from diode_measurement.driver.k4215 import K4215
+from diode_measurement.drivers.k4215 import K4215
 
 from . import res
 
@@ -11,7 +11,7 @@ def test_driver_k4215_basic_operations(res):
 
     # Test identity
     res.buffer = ["KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"]
-    assert d.identity() == "KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"
+    assert d.identify() == "KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"
     assert res.buffer == ["*IDN?"]
 
     # Test reset
@@ -24,10 +24,26 @@ def test_driver_k4215_basic_operations(res):
     assert d.clear() is None
     assert res.buffer == ["BC"]
 
-    # Test finalize
+
+def test_driver_k4215_finalize(res):
+    d = K4215(res)
+
+    assert d.configure({}) is None
+
     res.buffer = []
     assert d.finalize() is None
-    assert res.buffer == ["*RST", ":ERROR:LAST:CLEAR"]
+    assert res.buffer == []
+
+    assert d.configure({"external_bias_tee.enabled": True}) is None
+
+    res.buffer = []
+    assert d.finalize() is None
+    assert res.buffer == [
+        ":CVU:CONFIG:ACVHI 1",
+        ":CVU:CONFIG:DCVHI 1",
+        ":CVU:DCV:OFFSET 0",
+        ":CVU:DCV 0",
+    ]
 
 
 def test_driver_k4215_error_handling(res):
@@ -36,20 +52,21 @@ def test_driver_k4215_error_handling(res):
 
     # Test no error
     res.buffer = [""]
-    assert d.next_error() == (0, "No error")
+    assert d.next_error() is None
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
     # Test error code and text parsing
     res.buffer = ["KXCI command error. (-992)"]
-    assert d.next_error() == (-992, "KXCI command error")
+    error = d.next_error()
+    assert error is not None
+    assert (error.code, error.message) == (-992, "KXCI command error")
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
     # Test unparseable error format
     res.buffer = ["Unknown error format with some text"]
-    result = d.next_error()
-    assert isinstance(result, tuple)
-    assert len(result) == 2
-    assert result == (-1, "Unknown error format with some text")
+    error = d.next_error()
+    assert error is not None
+    assert (error.code, error.message) == (-1, "Unknown error format with some text")
     assert res.buffer == [":ERROR:LAST:GET", ":ERROR:LAST:CLEAR"]
 
 
@@ -237,26 +254,26 @@ def test_driver_k4215_aperture_control(res):
     """Test aperture, filter, and delay control."""
     d = K4215(res)
 
-    # Test default aperture settings - default is aperture=10, filter_factor=1, delay_factor=1
+    # Test default aperture settings - default is aperture=10.0, filter_factor=1, delay_factor=1
     res.buffer = []
     assert d.set_aperture() is None
     assert res.buffer == [":CVU:SPEED 3,1.000E+00,1.000E+00,1.000E+01"]
 
     # Test custom aperture settings
     res.buffer = []
-    assert d.set_aperture(aperture=5, filter_factor=2, delay_factor=3) is None
+    assert d.set_aperture(aperture=5.0, filter_factor=2, delay_factor=3) is None
     assert res.buffer == [":CVU:SPEED 3,3.000E+00,2.000E+00,5.000E+00"]
 
     # Test aperture with different values
     res.buffer = []
-    assert d.set_aperture(aperture=8, filter_factor=4, delay_factor=2) is None
+    assert d.set_aperture(aperture=8.0, filter_factor=4, delay_factor=2) is None
     assert res.buffer == [":CVU:SPEED 3,2.000E+00,4.000E+00,8.000E+00"]
 
     # check out of range aperture values
     with pytest.raises(ValueError):
         d.set_aperture(aperture=0.001)  # Below min 0.006
     with pytest.raises(ValueError):
-        d.set_aperture(aperture=11)  # Above max 10.002
+        d.set_aperture(aperture=11.0)  # Above max 10.002
 
     # check out of range filter_factor values
     with pytest.raises(ValueError):
@@ -339,7 +356,12 @@ def test_driver_k4215_start_open_correction(res):
     assert res.buffer == [":CVU:CABLE:COMP:OPEN 1.5"]
 
     res.buffer = []
-    assert d.start_open_correction(4.0,) is None
+    assert (
+        d.start_open_correction(
+            4.0,
+        )
+        is None
+    )
     assert res.buffer == [":CVU:CABLE:COMP:MEASCUSTOM", ":CVU:CABLE:COMP:OPEN 4.0"]
 
 
@@ -396,7 +418,7 @@ def test_driver_k4215_external_bias_tee(res):
     # Test external bias tee configuration
     res.buffer = []  # Need enough responses for all the _write calls
     d._external_bias_tee_enabled = True
-    d._enable_bias_tee_dc_voltage()
+    d.enable_bias_tee_dc_voltage()
     expected_commands = [
         ":CVU:CONFIG:ACVHI 1",
         ":CVU:CONFIG:DCVHI 1",

@@ -1,6 +1,6 @@
 import pytest
 
-from diode_measurement.driver.k2470 import K2470
+from diode_measurement.drivers.k2470 import K2470
 
 from . import res
 
@@ -9,7 +9,7 @@ def test_driver_k2470(res):
     d = K2470(res)
 
     res.buffer = ["Keithley Model 2470\r"]
-    assert d.identity() == "Keithley Model 2470"
+    assert d.identify() == "Keithley Model 2470"
     assert res.buffer == ["*IDN?"]
 
     res.buffer = ["1"]
@@ -20,8 +20,8 @@ def test_driver_k2470(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"no error;;\""]
-    assert d.next_error() == (0, "no error;;")
+    res.buffer = ['0,"no error;;"']
+    assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]
@@ -52,17 +52,23 @@ def test_driver_k2470(res):
     assert d.compliance_tripped() is True
     assert res.buffer == [":SOUR:VOLT:ILIM:LEV:TRIP?"]
 
-    res.buffer = ["+4.210000E-03"]
+    res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_i() == 0.00421
-    assert res.buffer == [":MEAS:CURR?"]
+    assert res.buffer == [
+        ':READ? "defbuffer1", SOUR, READ',
+    ]
 
-    res.buffer = ["+4.210000E+01"]
+    res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_v() == 42.1
-    assert res.buffer == [":MEAS:VOLT?"]
+    assert res.buffer == [
+        ':READ? "defbuffer1", SOUR, READ',
+    ]
 
-    res.buffer = ["+4.210000E-03", "+4.210000E+01"]
+    res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_iv() == (0.00421, 42.1)
-    assert res.buffer == [":MEAS:CURR?", ":MEAS:VOLT?"]
+    assert res.buffer == [
+        ':READ? "defbuffer1", SOUR, READ',
+    ]
 
     res.buffer = ["1"]
     assert d.set_route_terminals("REAR") is None
@@ -71,6 +77,10 @@ def test_driver_k2470(res):
     res.buffer = ["1"]
     assert d.set_source_function("VOLT") is None
     assert res.buffer == [":SOUR:FUNC VOLT", "*OPC?"]
+
+    res.buffer = ["1"]
+    assert d.set_sense_function("CURR") is None
+    assert res.buffer == [':SENS:FUNC "CURR"', "*OPC?"]
 
     res.buffer = ["1"]
     assert d.set_sense_current_average_tcontrol("MOV") is None
