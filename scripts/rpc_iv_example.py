@@ -4,7 +4,6 @@ import time
 
 from rpc_client import DiodeMeasurementClient
 
-
 client = DiodeMeasurementClient("localhost", 4000)
 
 # Wait until the system is idle

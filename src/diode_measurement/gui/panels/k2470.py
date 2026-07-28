@@ -1,3 +1,7 @@
+from collections.abc import Mapping
+from typing import Any
+
+from numpy.ma.extras import isin
 from PySide6 import QtWidgets
 
 from ..panel import InstrumentPanel, WidgetParameter
@@ -72,12 +76,16 @@ class K2470Panel(InstrumentPanel):
         self.system_group_box = QtWidgets.QGroupBox()
         self.system_group_box.setTitle("System")
 
-        self.breakdown_protection_check_box = QtWidgets.QCheckBox(
-            "Breakdown Protection"
-        )
+        self.breakdown_protection_label = QtWidgets.QLabel("Breakdown Protection")
+
+        self.breakdown_protection_combo_box = QtWidgets.QComboBox()
+        self.breakdown_protection_combo_box.addItem("Auto", "AUTO")
+        self.breakdown_protection_combo_box.addItem("On", "ON")
+        self.breakdown_protection_combo_box.addItem("Off", "OFF")
 
         system_layout = QtWidgets.QVBoxLayout(self.system_group_box)
-        system_layout.addWidget(self.breakdown_protection_check_box)
+        system_layout.addWidget(self.breakdown_protection_label)
+        system_layout.addWidget(self.breakdown_protection_combo_box)
         system_layout.addStretch()
 
         # Layout
@@ -108,7 +116,7 @@ class K2470Panel(InstrumentPanel):
         )
         self.bind_parameter(
             "system.breakdown.protection",
-            WidgetParameter(self.breakdown_protection_check_box),
+            WidgetParameter(self.breakdown_protection_combo_box),
         )
 
         self.restore_defaults()
@@ -119,7 +127,7 @@ class K2470Panel(InstrumentPanel):
         self.filter_mode_combo_box.setCurrentIndex(0)
         self.nplc_spin_box.setValue(1.0)
         self.route_terminals_combo_box.setCurrentIndex(0)
-        self.breakdown_protection_check_box.setChecked(False)
+        self.breakdown_protection_combo_box.setCurrentIndex(0)
 
     def set_locked(self, state: bool) -> None:
         self.filter_enable_check_box.setEnabled(not state)
@@ -127,4 +135,11 @@ class K2470Panel(InstrumentPanel):
         self.filter_mode_combo_box.setEnabled(not state)
         self.nplc_spin_box.setEnabled(not state)
         self.route_terminals_combo_box.setEnabled(not state)
-        self.breakdown_protection_check_box.setEnabled(not state)
+        self.breakdown_protection_combo_box.setEnabled(not state)
+
+    def migrate_config_value(self, key: str, value: Any) -> Any:
+        match key:
+            case "system.breakdown.protection":
+                if isinstance(value, bool):
+                    return {True: "AUTO", False: "OFF"}.get(value, "AUTO")
+        return value

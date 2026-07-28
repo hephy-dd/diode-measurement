@@ -39,8 +39,6 @@ class WidgetParameter:
             widget.setValue(value)
         elif isinstance(widget, QtWidgets.QComboBox):
             index = widget.findData(value)
-            if index < 0:
-                raise ValueError(f"Invalid value: {value!r}")
             widget.setCurrentIndex(index)
         elif isinstance(widget, MetricWidget):
             widget.setValue(value)
@@ -80,6 +78,9 @@ class InstrumentPanel(QtWidgets.QWidget):
             raise KeyError(f"Parameter already exists: {key!r}")
         self._parameters[key] = parameter
 
+    def migrate_config_value(self, key: str, value: Any) -> Any:
+        return value
+
     def config(self) -> dict[str, Any]:
         config: dict[str, Any] = {}
         for key, parameter in self._parameters.items():
@@ -92,6 +93,7 @@ class InstrumentPanel(QtWidgets.QWidget):
             if parameter is None:
                 raise KeyError(f"No such parameter: {key!r}")
             try:
-                parameter.setValue(value)
+                value_ = self.migrate_config_value(key, value)
+                parameter.setValue(value_)
             except ValueError as exc:
                 raise ValueError(f"Failed to set parameter: {key!r}: {exc}") from exc

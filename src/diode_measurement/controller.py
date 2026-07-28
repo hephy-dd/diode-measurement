@@ -1364,4 +1364,6 @@ class TestConnectionController(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def on_connection_identity(self, role: str, identity: str) -> None:
-        QtWidgets.QMessageBox.information(self.main_window, f"Connection Test ({role})", str(identity))
+        QtWidgets.QMessageBox.information(
+            self.main_window, f"Connection Test ({role})", str(identity)
+        )
