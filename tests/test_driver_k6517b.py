@@ -18,7 +18,7 @@ def test_driver_k6517b(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"no error\""]
+    res.buffer = ['0,"no error"']
     assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 

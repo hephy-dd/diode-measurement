@@ -25,11 +25,13 @@ def test_driver_k237(res):
 
     res.buffer = ["23701000000000000000000000000"]
     error = d.next_error()
+    assert error is not None
     assert (error.code, error.message) == (101, "IDDC")
     assert res.buffer == ["U1X"]
 
     res.buffer = ["23700000000001000000000000000"]
     error = d.next_error()
+    assert error is not None
     assert (error.code, error.message) == (110, "In Standby")
     assert res.buffer == ["U1X"]
 

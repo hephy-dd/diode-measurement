@@ -18,7 +18,7 @@ def test_driver_k2470(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"no error;;\""]
+    res.buffer = ['0,"no error;;"']
     assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
@@ -52,15 +52,21 @@ def test_driver_k2470(res):
 
     res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_i() == 0.00421
-    assert res.buffer == [":READ? \"defbuffer1\", SOUR, READ",]
+    assert res.buffer == [
+        ':READ? "defbuffer1", SOUR, READ',
+    ]
 
     res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_v() == 42.1
-    assert res.buffer == [":READ? \"defbuffer1\", SOUR, READ",]
+    assert res.buffer == [
+        ':READ? "defbuffer1", SOUR, READ',
+    ]
 
     res.buffer = ["+4.210000E+01,+4.210000E-03"]
     assert d.measure_iv() == (0.00421, 42.1)
-    assert res.buffer == [":READ? \"defbuffer1\", SOUR, READ",]
+    assert res.buffer == [
+        ':READ? "defbuffer1", SOUR, READ',
+    ]
 
     res.buffer = ["1"]
     assert d.set_route_terminals("REAR") is None
@@ -72,7 +78,7 @@ def test_driver_k2470(res):
 
     res.buffer = ["1"]
     assert d.set_sense_function("CURR") is None
-    assert res.buffer == [":SENS:FUNC \"CURR\"", "*OPC?"]
+    assert res.buffer == [':SENS:FUNC "CURR"', "*OPC?"]
 
     res.buffer = ["1"]
     assert d.set_sense_current_average_tcontrol("MOV") is None

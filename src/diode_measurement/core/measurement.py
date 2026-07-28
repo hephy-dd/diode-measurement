@@ -1,17 +1,16 @@
 import contextlib
 import logging
 import time
-from dataclasses import dataclass
 from collections.abc import Mapping
-from typing import Any, Optional, Type
+from dataclasses import dataclass
+from typing import Any
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..actors import TCUActor
-from ..state import State, FSMState, IVReading
+from ..state import FSMState, IVReading, State
 from ..writer import Writer
-
 from .driver import VoltageMeasurable
 from .station import Station
 
@@ -20,12 +19,12 @@ __all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class MeasurementParameters:
     id: str
     type: str
     title: str
-    measurement_cls: Type["Measurement"]
+    measurement_cls: type["Measurement"]
     supported_roles: list[str]
     default_roles: list[str]
     default_begin_voltage: float
@@ -45,7 +44,7 @@ class Measurement:
         self.state: State = state
         self.station: Station = station
 
-        self.tcu_actor: Optional[TCUActor] = None
+        self.tcu_actor: TCUActor | None = None
 
         self.writers: list[Writer] = []
 
@@ -86,7 +85,7 @@ class Measurement:
             logger.debug("handle started callbacks... done.")
             with contextlib.ExitStack() as stack:
                 logger.debug("creating instrument contexts...")
-                for key, (cls, resource) in self.station._instruments.items():
+                for key, (cls, resource) in self.station.instrument_registry.items():
                     logger.debug(
                         "creating instrument context %s: %s...", key, cls.__name__
                     )
@@ -101,7 +100,7 @@ class Measurement:
                     self.measure()
                     logger.debug("measure... done.")
                 except Exception as exc:
-                    logger.exception(exc)
+                    logger.exception("failed to initialize measurement")
                     self.state.event_bus.submit("failed", exc)
                 finally:
                     logger.debug("finalize...")
@@ -109,7 +108,7 @@ class Measurement:
                     self.finalize()
                     logger.debug("finalize... done.")
         except Exception as exc:
-            logger.exception(exc)
+            logger.exception("failed to run measurement")
             self.state.event_bus.submit("failed", exc)
         finally:
             logger.debug("handle finished callbacks...")
@@ -120,16 +119,14 @@ class Measurement:
 
 
 class RangeMeasurement(Measurement):
-    def on_it_reading(self, reading) -> None:
-        ...
+    def on_it_reading(self, reading) -> None: ...
 
     # Interlock check
 
     def check_interlock(self, instrument) -> None:
-        if hasattr(instrument, "is_interlock"):
-            if not instrument.is_interlock():
-                name = type(instrument).__name__
-                raise RuntimeError(f"{name}: instrument not interlocked!")
+        if hasattr(instrument, "is_interlock") and not instrument.is_interlock():
+            name = type(instrument).__name__
+            raise RuntimeError(f"{name}: instrument not interlocked!")
 
     # Source
 
@@ -183,9 +180,11 @@ class RangeMeasurement(Measurement):
         """Raise exception if current compliance tripped and continue in
         compliance option is not active.
         """
-        if not self.state.continue_in_compliance:
-            if self.source_instrument.compliance_tripped():  # type: ignore
-                raise RuntimeError("Source compliance tripped!")
+        if (
+            not self.state.continue_in_compliance
+            and self.source_instrument.compliance_tripped()  # type: ignore
+        ):
+            raise RuntimeError("Source compliance tripped!")
 
     def update_current_compliance(self) -> None:
         """Update current compliance if value changed."""
@@ -207,9 +206,11 @@ class RangeMeasurement(Measurement):
         """Raise exception if biascurrent compliance tripped and continue in
         compliance option is not active.
         """
-        if not self.state.continue_in_compliance:
-            if self.bias_source_instrument.compliance_tripped():  # type: ignore
-                raise RuntimeError("Source compliance tripped!")
+        if (
+            not self.state.continue_in_compliance
+            and self.bias_source_instrument.compliance_tripped()  # type: ignore
+        ):
+            raise RuntimeError("Source compliance tripped!")
 
     def update_bias_current_compliance(self) -> None:
         """Update current compliance if value changed."""
@@ -533,9 +534,8 @@ class RangeMeasurement(Measurement):
 
     def finalize_lcr(self) -> None:
         lcr = self.station.instruments.get("lcr")
-        if lcr is not None:
-            if hasattr(lcr, "finalize"):
-                lcr.finalize()
+        if lcr is not None and hasattr(lcr, "finalize"):
+            lcr.finalize()
 
     def finalize_switch(self) -> None:
         switch = self.station.instruments.get("switch")
@@ -577,8 +577,7 @@ class RangeMeasurement(Measurement):
     def acquire_reading_data(self, source_voltage: float) -> IVReading:
         raise NotImplementedError
 
-    def acquire_continuous_reading(self) -> None:
-        ...
+    def acquire_continuous_reading(self) -> None: ...
 
     def ramp_to_begin(self) -> None:
         source_voltage = self.get_source_voltage()
@@ -627,7 +626,7 @@ class RangeMeasurement(Measurement):
             source_voltage, source_voltage_end, source_voltage_step
         )
         estimate: Estimate = Estimate(len(ramp))
-        logging.info("Ramp source to zero...")
+        logger.info("Ramp source to zero...")
         for step, voltage in enumerate(ramp):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
@@ -635,7 +634,7 @@ class RangeMeasurement(Measurement):
             self.set_source_voltage(voltage)
             time.sleep(waiting_time)
             estimate.advance()
-        logging.info("Ramp source to zero... done.")
+        logger.info("Ramp source to zero... done.")
 
     def ramp_bias_to_bias(self) -> None:
         bias_voltage_end: float = self.state.bias_voltage
@@ -650,7 +649,7 @@ class RangeMeasurement(Measurement):
         )
         estimate: Estimate = Estimate(len(ramp))
 
-        logging.info("Ramp bias source to %g V...", ramp.end)
+        logger.info("Ramp bias source to %g V...", ramp.end)
         for step, voltage in enumerate(ramp):
             self.update_estimate_message(f"Ramp bias to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
@@ -660,7 +659,7 @@ class RangeMeasurement(Measurement):
             self.set_bias_source_voltage(voltage)
             time.sleep(waiting_time)
             estimate.advance()
-        logging.info("Ramp bias source to %g V... done.", ramp.end)
+        logger.info("Ramp bias source to %g V... done.", ramp.end)
 
     def ramp_bias_to_zero(self) -> None:
         bias_source_voltage: float = self.get_bias_source_voltage()
@@ -681,7 +680,7 @@ class RangeMeasurement(Measurement):
         )
         ramp: LinearRange = LinearRange(bias_source_voltage, end_voltage, step_voltage)
         estimate: Estimate = Estimate(len(ramp))
-        logging.info("Ramp bias source to zero...")
+        logger.info("Ramp bias source to zero...")
         for step, voltage in enumerate(ramp):
             self.update_estimate_message(f"Ramp bias to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
@@ -689,7 +688,7 @@ class RangeMeasurement(Measurement):
             self.set_bias_source_voltage(voltage)
             time.sleep(waiting_time)
             estimate.advance()
-        logging.info("Ramp bias source to zero... done.")
+        logger.info("Ramp bias source to zero... done.")
 
     def ramp_to_continuous(
         self, end_voltage: float, step_voltage: float, waiting_time: float

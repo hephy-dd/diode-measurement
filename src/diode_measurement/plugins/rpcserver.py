@@ -4,21 +4,21 @@ to control measurements remotely by third party software.
 
 import asyncio
 import datetime
-import jsonrpc
 import logging
 import math
 import threading
 import time
-from dataclasses import dataclass, asdict
-from concurrent.futures import Future
-from queue import Queue, Empty
 from collections.abc import Callable
-from typing import Any, Optional
+from concurrent.futures import Future
+from dataclasses import asdict, dataclass
+from queue import Empty, Queue
+from typing import Any
 
+import jsonrpc
 from PySide6 import QtCore, QtWidgets
 
-from diode_measurement.core.plugin import Plugin
 from diode_measurement.controller import ChangeVoltageParameters, Controller
+from diode_measurement.core.plugin import Plugin
 from diode_measurement.utils import get_bool, get_int, get_str
 
 __all__ = ["RPCServerPlugin"]
@@ -38,7 +38,7 @@ def json_dict(d: dict) -> dict:
     return {k: (v if is_finite(v) else None) for k, v in d.items()}
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class StartEvent:
     parameters: dict
 
@@ -47,13 +47,13 @@ class StartEvent:
         controller.request_start()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class StopEvent:
     def __call__(self, controller: Controller) -> None:
         controller.request_stop()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ChangeVoltageEvent:
     end_voltage: float
     step_voltage: float
@@ -68,13 +68,13 @@ class ChangeVoltageEvent:
         controller.request_change_voltage(parameters)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class StateEvent:
     def __call__(self, controller: Controller) -> dict[str, Any]:
         return asdict(controller.snapshot())
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class InstrumentGetEvent:
     instrument: str
 
@@ -85,10 +85,10 @@ class InstrumentGetEvent:
             "instrument": self.instrument,
             "model": model,
             "options": options,
-         }
+        }
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class InstrumentUpdateEvent:
     instrument: str
     options: dict[str, Any]
@@ -100,10 +100,10 @@ class InstrumentUpdateEvent:
             "instrument": self.instrument,
             "model": model,
             "options": options,
-         }
+        }
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Envelope:
     event: Any
     future: Future
@@ -126,7 +126,7 @@ class EventHandler:
         self.inbox.put_nowait(Envelope(event, future))
         return future
 
-    def poll_event(self) -> Optional[Envelope]:
+    def poll_event(self) -> Envelope | None:
         try:
             return self.inbox.get_nowait()
         except Empty:
@@ -144,8 +144,8 @@ class EventHandler:
                     envelope.future.set_exception(exc)
                 else:
                     envelope.future.set_result(result)
-            except Exception as exc:
-                logger.exception(exc)
+            except Exception:
+                logger.exception("failed to poll event")
 
 
 class RPCHandler:
@@ -166,17 +166,17 @@ class RPCHandler:
 
     def on_start(
         self,
-        continuous: Optional[bool] = None,
-        auto_reconnect: Optional[bool] = None,
-        measurement_type: Optional[str] = None,
-        measurement_instruments: Optional[list[str]] = None,
-        sample: Optional[str] = None,
-        begin_voltage: Optional[float] = None,
-        end_voltage: Optional[float] = None,
-        step_voltage: Optional[float] = None,
-        waiting_time: Optional[float] = None,
-        compliance: Optional[float] = None,
-        waiting_time_continuous: Optional[float] = None,
+        continuous: bool | None = None,
+        auto_reconnect: bool | None = None,
+        measurement_type: str | None = None,
+        measurement_instruments: list[str] | None = None,
+        sample: str | None = None,
+        begin_voltage: float | None = None,
+        end_voltage: float | None = None,
+        step_voltage: float | None = None,
+        waiting_time: float | None = None,
+        compliance: float | None = None,
+        waiting_time_continuous: float | None = None,
     ) -> None:
         parameters: dict[str, Any] = {}
         if continuous is not None:
@@ -228,7 +228,9 @@ class RPCHandler:
         event = InstrumentGetEvent(instrument=instrument)
         return self.event_handler.notify(event).result(self.timeout)
 
-    def on_instrument_update(self, instrument: str, options: dict[str, Any]) -> dict[str, Any]:
+    def on_instrument_update(
+        self, instrument: str, options: dict[str, Any]
+    ) -> dict[str, Any]:
         event = InstrumentUpdateEvent(instrument=instrument, options=options)
         return self.event_handler.notify(event).result(self.timeout)
 
@@ -241,8 +243,8 @@ class AsyncioTCPServer:
         self.port = port
         self.rpc_handler = rpc_handler
         self.message_ready = message_ready
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._server: Optional[asyncio.base_events.Server] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._server: asyncio.base_events.Server | None = None
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -272,7 +274,7 @@ class AsyncioTCPServer:
                 writer.close()
                 await writer.wait_closed()
             except Exception:
-                pass
+                logger.exception("failed to close writer")
 
     async def start(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
@@ -303,7 +305,7 @@ class RPCWidget(QtWidgets.QWidget):
 
     restart_signal = QtCore.Signal()
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("RPC")
 
@@ -387,7 +389,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
     failed = QtCore.Signal(object)
     message_ready = QtCore.Signal(str)
 
-    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._thread = threading.Thread(target=self.run)
         self._enabled = threading.Event()
@@ -457,7 +459,9 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
 
     def _append_protocol(self, message: str) -> None:
         with self._message_cache_lock:
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            timestamp = (
+                datetime.datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+            )
             self._message_cache.append(f"{timestamp} {message}")
 
     def fetch_cached_messages(self) -> list[str]:
@@ -504,7 +508,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
 
     def _run_server(self, hostname: str, port: int) -> None:
         logger.info("TCP started %s:%s", hostname, port)
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: asyncio.AbstractEventLoop | None = None
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -523,7 +527,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
                 server._server.close()
                 loop.run_until_complete(server._server.wait_closed())
         except Exception as exc:
-            logger.exception(exc)
+            logger.exception("TCP failed %s:%s", hostname, port)
             self.failed.emit(exc)
         finally:
             try:
@@ -531,7 +535,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
                     loop.stop()
                     loop.close()
             except Exception:
-                pass
+                ...
             logger.info("TCP stopped %s:%s", hostname, port)
             self.running.emit(False)
             self._shutdown_handlers.clear()

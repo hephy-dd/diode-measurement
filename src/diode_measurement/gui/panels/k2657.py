@@ -1,5 +1,3 @@
-from typing import Optional
-
 from PySide6 import QtWidgets
 
 from ..panel import InstrumentPanel, WidgetParameter
@@ -8,7 +6,7 @@ __all__ = ["K2657APanel"]
 
 
 class K2657APanel(InstrumentPanel):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("K2657A", parent)
 
         self.filter_group_box = QtWidgets.QGroupBox()

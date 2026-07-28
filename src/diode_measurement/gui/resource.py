@@ -1,7 +1,4 @@
-from typing import Optional
-
 from PySide6 import QtCore, QtWidgets
-
 
 __all__ = ["ResourceWidget"]
 
@@ -21,7 +18,7 @@ BAUD_RATES: list[int] = [
 
 
 class BrowseResourcesDialog(QtWidgets.QDialog):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle("Browse VISA Resources")
@@ -32,7 +29,9 @@ class BrowseResourcesDialog(QtWidgets.QDialog):
 
         self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
         self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
-        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        self.dialog_button_box.addButton(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
         self.dialog_button_box.accepted.connect(self.accept)
         self.dialog_button_box.rejected.connect(self.reject)
 
@@ -57,7 +56,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
     browse_resources = QtCore.Signal()
     test_connection = QtCore.Signal()
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setTitle("Instrument")
 
@@ -73,9 +72,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.resource_line_edit.setStatusTip(
             "Instrument resource GPIB number, IP and port or any valid VISA resource name."
         )
-        self.resource_line_edit.textChanged.connect(
-            self.on_update_baud_rate_visibility
-        )
+        self.resource_line_edit.textChanged.connect(self.on_update_baud_rate_visibility)
 
         self.resource_browse_button = QtWidgets.QToolButton(self)
         self.resource_browse_button.setStatusTip("Browse connected VISA resources...")
@@ -92,7 +89,9 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.termination_label = QtWidgets.QLabel("Termination", self)
 
         self.termination_combo_box = QtWidgets.QComboBox(self)
-        self.termination_combo_box.setStatusTip("Read and write termination characters.")
+        self.termination_combo_box.setStatusTip(
+            "Read and write termination characters."
+        )
         self.termination_combo_box.addItem("CR+LF", "\r\n")
         self.termination_combo_box.addItem("CR", "\r")
         self.termination_combo_box.addItem("LF", "\n")
@@ -114,7 +113,9 @@ class ResourceWidget(QtWidgets.QGroupBox):
 
         self.reset_instrument_check_box = QtWidgets.QCheckBox(self)
         self.reset_instrument_check_box.setText("Reset Instrument")
-        self.reset_instrument_check_box.setStatusTip("Reset instrument on start measurement")
+        self.reset_instrument_check_box.setStatusTip(
+            "Reset instrument on start measurement"
+        )
 
         layout = QtWidgets.QGridLayout(self)
 
@@ -221,9 +222,6 @@ class ResourceWidget(QtWidgets.QGroupBox):
     @QtCore.Slot()
     def on_update_baud_rate_visibility(self) -> None:
         text = self.resource_line_edit.text().strip().upper()
-        is_serial = (
-            text.startswith("ASRL")
-            or text.startswith("COM")
-        )
+        is_serial = text.startswith(("ASRL", "COM"))
         self.baud_rate_label.setVisible(is_serial)
         self.baud_rate_combo_box.setVisible(is_serial)

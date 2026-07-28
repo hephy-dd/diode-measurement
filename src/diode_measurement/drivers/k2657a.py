@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -16,7 +16,7 @@ class K2657A(BaseDriver):
     def clear(self) -> None:
         self._write("status.reset()")
 
-    def next_error(self) -> Optional[InstrumentError]:
+    def next_error(self) -> InstrumentError | None:
         code, message, *_ = self._print("errorqueue.next()").split("\t")
         code = int(float(code))
         if code == 0:

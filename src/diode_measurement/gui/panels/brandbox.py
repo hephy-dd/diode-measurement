@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from typing import Optional
 
 from PySide6 import QtWidgets
 
@@ -9,9 +8,9 @@ __all__ = ["BrandBoxPanel"]
 
 
 class BrandBoxPanel(InstrumentPanel):
-    CHANNELS: list[str] = ["A1", "B1", "C1", "A2", "B2", "C2"]
+    CHANNELS: tuple[str, ...] = ("A1", "B1", "C1", "A2", "B2", "C2")
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("BrandBox", parent)
 
         # Channels

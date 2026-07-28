@@ -1,12 +1,12 @@
 import csv
 import math
-from collections.abc import Iterable
-from typing import Any, Optional, TextIO
+from collections.abc import Iterable, Mapping
+from typing import Any, TextIO
 
 __all__ = ["Writer"]
 
 
-def safe_format(value: Any, format_spec: Optional[str] = None) -> str:
+def safe_format(value: Any, format_spec: str | None = None) -> str:
     """Safe format any value, return `NAN` if format fails."""
     try:
         return format(value, format_spec or "")
@@ -20,21 +20,20 @@ class Writer:
     def __init__(self, fp: TextIO) -> None:
         self._fp: TextIO = fp
         self._writer = csv.writer(fp, delimiter=self.delimiter)
-        self._current_table: Optional[str] = None
+        self._current_table: str | None = None
         self._timestamp_offset: float = 0.0
         self.relative_timestamp: bool = False
         self.timestamp_format: str = ".6f"
         self.value_format: str = "+.3E"
 
-    def get_timestamp(self, data: dict) -> Optional[float]:
+    def get_timestamp(self, data: Mapping[str, Any]) -> float | None:
         """Return absolute or relative timestamp based on configuration."""
         timestamp = data.get("timestamp")
-        if timestamp is not None:
-            if self.relative_timestamp:
-                timestamp -= self._timestamp_offset
+        if timestamp is not None and self.relative_timestamp:
+            timestamp -= self._timestamp_offset
         return timestamp
 
-    def reset_timestamp_offset(self, data: dict) -> None:
+    def reset_timestamp_offset(self, data: Mapping[str, Any]) -> None:
         """Reset timestamp offset for relative timestamps."""
         if self.relative_timestamp:
             self._timestamp_offset = data.get("timestamp", 0.0)
@@ -56,7 +55,7 @@ class Writer:
     def write_table_row(self, columns: Iterable[str]) -> None:
         self._writer.writerow(columns)
 
-    def write_meta(self, data: dict) -> None:
+    def write_meta(self, data: Mapping[str, Any]) -> None:
         self._current_table = None
         self.write_tag("sample", data.get("sample"))
         self.write_tag("measurement_type", data.get("measurement_type"))
@@ -85,7 +84,7 @@ class Writer:
         self.write_meta_lcr(data)
         self.flush()
 
-    def write_meta_lcr(self, data: dict[str, Any]) -> None:
+    def write_meta_lcr(self, data: Mapping[str, Any]) -> None:
         lcr = data.get("roles", {}).get("lcr", {})
         if lcr.get("enabled"):
             lcr_options = lcr.get("options", {})
@@ -102,7 +101,7 @@ class Writer:
                     "lcr_ac_frequency[Hz]", safe_format(frequency, self.value_format)
                 )
 
-    def write_iv_row(self, data: dict[str, Any]) -> None:
+    def write_iv_row(self, data: Mapping[str, Any]) -> None:
         if self._current_table != "iv":
             self._current_table = "iv"
             self.write_table_header(
@@ -130,7 +129,7 @@ class Writer:
         )
         self.flush()
 
-    def write_iv_bias_row(self, data: dict[str, Any]) -> None:
+    def write_iv_bias_row(self, data: Mapping[str, Any]) -> None:
         if self._current_table != "iv":
             self._current_table = "iv"
             self.write_table_header(
@@ -162,7 +161,7 @@ class Writer:
         )
         self.flush()
 
-    def write_it_row(self, data: dict[str, Any]) -> None:
+    def write_it_row(self, data: Mapping[str, Any]) -> None:
         if self._current_table != "it":
             self._current_table = "it"
             self.write_table_header(
@@ -190,7 +189,7 @@ class Writer:
         )
         self.flush()
 
-    def write_it_bias_row(self, data: dict[str, Any]) -> None:
+    def write_it_bias_row(self, data: Mapping[str, Any]) -> None:
         if self._current_table != "it":
             self._current_table = "it"
             self.write_table_header(
@@ -222,7 +221,7 @@ class Writer:
         )
         self.flush()
 
-    def write_cv_row(self, data: dict[str, Any]) -> None:
+    def write_cv_row(self, data: Mapping[str, Any]) -> None:
         if self._current_table != "cv":
             self._current_table = "cv"
             self.write_table_header(

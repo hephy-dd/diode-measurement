@@ -23,10 +23,10 @@ class PluginRegistry:
 
     def install(self, plugin: Plugin) -> None:
         """Install a plugin."""
-        logger.debug("Installing plugin %s...", repr(type(plugin).__name__))
+        logger.debug("Installing plugin %r...", type(plugin).__name__)
         self._plugins.append(plugin)
         plugin.install(self._context)
-        logger.debug("Installing plugin %s... done.", repr(type(plugin).__name__))
+        logger.debug("Installing plugin %r... done.", type(plugin).__name__)
 
     @property
     def plugins(self) -> list[Plugin]:
@@ -36,7 +36,7 @@ class PluginRegistry:
     def uninstall(self) -> None:
         """Uninstall all plugins."""
         for plugin in self._plugins[:]:
-            logger.debug("Uninstalling plugin %s...", repr(type(plugin).__name__))
+            logger.debug("Uninstalling plugin %r...", type(plugin).__name__)
             plugin.uninstall(self._context)
             self._plugins.remove(plugin)
-            logger.debug("Uninstalling plugin %s... done.", repr(type(plugin).__name__))
+            logger.debug("Uninstalling plugin %r... done.", type(plugin).__name__)

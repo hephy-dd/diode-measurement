@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -9,7 +9,7 @@ __all__ = ["K2400"]
 class K2400(BaseDriver):
     def __init__(self, resource) -> None:
         super().__init__(resource)
-        self._format_element: Optional[str] = None
+        self._format_element: str | None = None
 
     def identify(self) -> str:
         return self._query("*IDN?")
@@ -20,7 +20,7 @@ class K2400(BaseDriver):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> Optional[InstrumentError]:
+    def next_error(self) -> InstrumentError | None:
         result = self._query(":SYST:ERR?")
         try:
             code, message = result.split(",")

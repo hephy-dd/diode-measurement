@@ -1,5 +1,3 @@
-from typing import Optional
-
 from PySide6 import QtWidgets
 
 from ..panel import InstrumentPanel, MethodParameter
@@ -8,7 +6,7 @@ __all__ = ["AC3Panel"]
 
 
 class AC3Panel(InstrumentPanel):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("AC3", parent)
 
         self.setpoint_group_box = QtWidgets.QGroupBox("Setpoint")

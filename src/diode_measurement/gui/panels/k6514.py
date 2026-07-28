@@ -1,15 +1,13 @@
-from typing import Optional
-
 from PySide6 import QtWidgets
 
-from ..panel import InstrumentPanel, WidgetParameter
 from ..metric import MetricWidget
+from ..panel import InstrumentPanel, WidgetParameter
 
 __all__ = ["K6514Panel"]
 
 
 class K6514Panel(InstrumentPanel):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("K6514", parent)
 
         # Range

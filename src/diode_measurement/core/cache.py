@@ -1,6 +1,6 @@
 import threading
-from collections.abc import Mapping, Iterator
-from typing import Any
+from collections.abc import Iterator, Mapping
+from typing import Any, Self
 
 __all__ = ["Cache"]
 
@@ -12,7 +12,7 @@ class Cache:
         self._lock: threading.RLock = threading.RLock()
         self._items: dict[str, Any] = {}
 
-    def __enter__(self) -> "Cache":
+    def __enter__(self) -> Self:
         self._lock.acquire()
         return self
 

@@ -1,6 +1,6 @@
 import time
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
 
@@ -17,7 +17,7 @@ class A4284A(BaseDriver):
     def clear(self) -> None:
         self._write("*CLS")
 
-    def next_error(self) -> Optional[InstrumentError]:
+    def next_error(self) -> InstrumentError | None:
         code, message = self._query(":SYST:ERR?").split(",")
         code = int(code)
         if code == 0:

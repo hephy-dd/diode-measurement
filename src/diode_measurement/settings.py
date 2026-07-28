@@ -1,5 +1,5 @@
 from .core.measurement import MeasurementParameters
-from .measurements import IVMeasurement, IVBiasMeasurement, CVMeasurement
+from .measurements import CVMeasurement, IVBiasMeasurement, IVMeasurement
 
 __all__ = ["measurement_registry"]
 

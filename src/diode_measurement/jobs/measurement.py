@@ -1,8 +1,8 @@
 import contextlib
 import logging
 import os
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from ..core.measurement import Measurement
 from ..writer import Writer
@@ -12,7 +12,7 @@ __all__ = ["MeasurementJob"]
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MeasurementJob:
     measurement: Measurement
     timestamp_format: str

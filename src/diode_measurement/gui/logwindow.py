@@ -1,7 +1,6 @@
 import logging
 import threading
 from collections.abc import Callable
-from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -43,7 +42,7 @@ class LogWidget(QtWidgets.QTextEdit):
     updateInterval = 200
     """Update interval in milliseconds."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setReadOnly(True)
         document = self.document()
@@ -131,11 +130,11 @@ class LogWidget(QtWidgets.QTextEdit):
     def formatRecord(cls, record: logging.LogRecord) -> str:
         """Format log record."""
         timestamp = cls.formatTime(record.created)
-        return "{}\t{}\t{}".format(timestamp, record.levelname, record.message)
+        return f"{timestamp}\t{record.levelname}\t{record.message}"
 
 
 class LogWindow(QtWidgets.QWidget):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(self.tr("Logging"))
 

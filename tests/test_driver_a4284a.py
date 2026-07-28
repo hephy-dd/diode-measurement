@@ -20,7 +20,7 @@ def test_driver_a4284a(res):
     assert d.clear() is None
     assert res.buffer == ["*CLS", "*OPC?"]
 
-    res.buffer = ["0,\"No error\""]
+    res.buffer = ['0,"No error"']
     assert d.next_error() is None
     assert res.buffer == [":SYST:ERR?"]
 
@@ -62,7 +62,15 @@ def test_driver_a4284a(res):
 
     res.buffer = ["1", "0", "1", "1.000000E-01,2.000000E-01"]
     assert d.measure_impedance() == (0.1, 0.2)
-    assert res.buffer == ["*CLS", "*OPC?", "*OPC", ":TRIG:IMM", "*ESR?", "*ESR?", ":FETC?"]
+    assert res.buffer == [
+        "*CLS",
+        "*OPC?",
+        "*OPC",
+        ":TRIG:IMM",
+        "*ESR?",
+        "*ESR?",
+        ":FETC?",
+    ]
 
     res.buffer = ["1"]
     assert d.set_function_impedance_type("CPRP") is None

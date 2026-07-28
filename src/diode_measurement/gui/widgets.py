@@ -1,12 +1,11 @@
 import traceback
-from typing import Optional
 
 from PySide6 import QtWidgets
 
 __all__ = ["show_exception"]
 
 
-def show_exception(exc: Exception, parent: Optional[QtWidgets.QWidget] = None) -> None:
+def show_exception(exc: Exception, parent: QtWidgets.QWidget | None = None) -> None:
     detailed_text = "".join(traceback.format_tb(exc.__traceback__))
 
     messag_box = QtWidgets.QMessageBox(parent)
@@ -18,7 +17,7 @@ def show_exception(exc: Exception, parent: Optional[QtWidgets.QWidget] = None) -
     messag_box.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
 
     # Fix message box width
-    layout: Optional[QtWidgets.QLayout] = messag_box.layout()
+    layout: QtWidgets.QLayout | None = messag_box.layout()
     if isinstance(layout, QtWidgets.QGridLayout):
         spacer_item = QtWidgets.QSpacerItem(
             448,

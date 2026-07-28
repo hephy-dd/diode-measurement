@@ -1,8 +1,6 @@
-from typing import Optional
-
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import get_str, get_float
+from ..utils import get_float, get_str
 
 TIMESTAMP_FORMATS: list[str] = [
     ".3f",
@@ -19,7 +17,7 @@ VALUE_FORMATS: list[str] = [
 
 
 class PreferencesDialog(QtWidgets.QDialog):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle("Preferences")
@@ -33,9 +31,7 @@ class PreferencesDialog(QtWidgets.QDialog):
         self.tab_widget.addTab(self.misc_widget, "Misc")
 
         self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
-        self.dialog_button_box.addButton(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-        )
+        self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
         self.dialog_button_box.addButton(
             QtWidgets.QDialogButtonBox.StandardButton.Cancel
         )
@@ -57,7 +53,7 @@ class PreferencesDialog(QtWidgets.QDialog):
 
 
 class OutputWidget(QtWidgets.QWidget):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.timestamp_format_combo_box = QtWidgets.QComboBox(self)
@@ -87,7 +83,7 @@ class OutputWidget(QtWidgets.QWidget):
     def set_timestamp_format(self, timestamp_format: str) -> None:
         index = self.timestamp_format_combo_box.findData(timestamp_format)
         if index < 0:
-            index = 1
+            index = 1  # TIMESTAMP_FORMATS[1]
         self.timestamp_format_combo_box.setCurrentIndex(index)
 
     def value_format(self) -> str:
@@ -96,8 +92,7 @@ class OutputWidget(QtWidgets.QWidget):
 
     def set_value_format(self, value_format: str) -> None:
         index = self.value_format_combo_box.findData(value_format)
-        if index < 0:
-            index = 0
+        index = max(index, 0)
         self.value_format_combo_box.setCurrentIndex(index)
 
     def read_settings(self) -> None:
@@ -123,7 +118,7 @@ class OutputWidget(QtWidgets.QWidget):
 
 
 class MiscWidget(QtWidgets.QWidget):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.discharge_timeout_spin_box = QtWidgets.QDoubleSpinBox(self)

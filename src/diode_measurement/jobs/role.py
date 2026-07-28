@@ -2,10 +2,8 @@ import logging
 import time
 from dataclasses import dataclass
 from collections.abc import Callable
-from typing import Optional
 
-
-from ..core.resource import ResourceConfig, Resource, list_resources
+from ..core.resource import Resource, ResourceConfig, list_resources
 from ..drivers import K4215, driver_factory
 
 __all__ = [
@@ -45,7 +43,7 @@ class K4215PerformCorrectionJob:
     cable_length: float
     open_correction: bool
     short_correction: bool
-    load_correction: Optional[int]
+    load_correction: int | None
     external_bias_tee: bool
     on_message_changed: Callable[[str], None]
     correction_timeout: float = 120.0  # TODO

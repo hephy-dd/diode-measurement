@@ -1,9 +1,9 @@
-import time
 import logging
+import time
 from collections.abc import Mapping
-from typing import Any, Final, Optional
+from typing import Any, Final
 
-from ..core.driver import Resource, BaseDriver, InstrumentError, handle_exception
+from ..core.driver import BaseDriver, InstrumentError, Resource, handle_exception
 
 __all__ = ["K237"]
 
@@ -55,7 +55,7 @@ class K237(BaseDriver):
     def clear(self) -> None:
         self.resource.clear()
 
-    def next_error(self) -> Optional[InstrumentError]:
+    def next_error(self) -> InstrumentError | None:
         result = self._query("U1X").strip()[3:]
         for index, value in enumerate(result):
             if value == "1":

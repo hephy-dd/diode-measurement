@@ -2,14 +2,13 @@ import math
 import os
 import time
 from collections.abc import Iterable, Mapping
-from typing import Any, Optional
-from queue import Queue, Empty
-
-from PySide6 import QtCharts, QtCore, QtWidgets
+from queue import Empty, Queue
+from typing import Any
 
 from comet.utils import auto_scale
+from PySide6 import QtCharts, QtCore, QtWidgets
 
-from ..state import IVReading, CVReading
+from ..state import CVReading, IVReading
 
 __all__ = [
     "IVPlotWidget",
@@ -54,7 +53,7 @@ class DynamicValueAxis(QtCharts.QValueAxis):
 
 
 class LimitsAggregator(QtCore.QObject):
-    def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._minimum: float = 0.0
         self._maximum: float = 0.0
@@ -85,13 +84,13 @@ class LimitsAggregator(QtCore.QObject):
 
 
 class PlotToolButton(QtWidgets.QPushButton):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setFixedSize(18, 18)
 
 
 class PlotWidget(QtCharts.QChartView):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         chart = QtCharts.QChart()
         chart.setMargins(QtCore.QMargins(4, 4, 4, 4))
@@ -153,8 +152,12 @@ class PlotWidget(QtCharts.QChartView):
                 filename = f"{filename}.png"
             try:
                 self.grab().save(filename)
-            except Exception:
-                pass
+            except Exception as exc:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Save Failed",
+                    f"Could not save the image to:\n\n{filename}\n\nReason: {exc}",
+                )
 
     def clear(self) -> None:
         for series in self.chart().series():
@@ -163,10 +166,12 @@ class PlotWidget(QtCharts.QChartView):
 
     def is_reverse(self) -> bool:
         for series in self.chart().series():
-            if isinstance(series, QtCharts.QXYSeries):
-                if series.count():
-                    if series.at(series.count() - 1).x() < series.at(0).x():
-                        return True
+            if (
+                isinstance(series, QtCharts.QXYSeries)
+                and series.count()
+                and series.at(series.count() - 1).x() < series.at(0).x()
+            ):
+                return True
         return False
 
     def replace_series(self, name: str, points: list[QtCore.QPointF]) -> None:
@@ -176,7 +181,7 @@ class PlotWidget(QtCharts.QChartView):
 
 
 class IVPlotWidget(PlotWidget):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("I vs. V")
 
@@ -280,7 +285,7 @@ class IVPlotWidget(PlotWidget):
 class ItPlotWidget(PlotWidget):
     MAX_POINTS: int = 60 * 60 * 24
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("I vs. t")
 
@@ -386,7 +391,7 @@ class ItPlotWidget(PlotWidget):
 
 
 class CVPlotWidget(PlotWidget):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("C vs. V")
 
@@ -448,7 +453,7 @@ class CVPlotWidget(PlotWidget):
 
 
 class CV2PlotWidget(PlotWidget):
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.chart().setTitle("1/C^2 vs. V")
 
@@ -509,7 +514,7 @@ class IVPlotsDataWidget(QtWidgets.QWidget):
         self,
         iv_reading_queue: Queue[IVReading],
         it_reading_queue: Queue[IVReading],
-        parent: Optional[QtWidgets.QWidget] = None,
+        parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.iv_reading_queue = iv_reading_queue
@@ -692,7 +697,7 @@ class CVPlotsDataWidget(QtWidgets.QWidget):
     def __init__(
         self,
         cv_reading_queue: Queue[CVReading],
-        parent: Optional[QtWidgets.QWidget] = None,
+        parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.cv_reading_queue = cv_reading_queue

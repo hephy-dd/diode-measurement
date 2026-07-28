@@ -1,12 +1,14 @@
 import logging
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import convert
 from ..core.measurement import MeasurementParameters
+from ..utils import convert
 
 __all__ = ["GeneralWidget"]
+
+logger = logging.getLogger(__name__)
 
 
 class GeneralWidget(QtWidgets.QWidget):
@@ -16,7 +18,7 @@ class GeneralWidget(QtWidgets.QWidget):
     waiting_time_continuous_changed = QtCore.Signal(float)
     change_voltage_clicked = QtCore.Signal()
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("General")
 
@@ -237,16 +239,18 @@ class GeneralWidget(QtWidgets.QWidget):
     def add_measurement(self, spec: MeasurementParameters) -> None:
         self.measurement_combo_box.addItem(spec.title, spec)
 
-    def current_measurement(self) -> Optional[MeasurementParameters]:
+    def current_measurement(self) -> MeasurementParameters | None:
         return self.measurement_combo_box.currentData()
 
     def set_current_measurement(self, measurement_id: str) -> None:
         for index in range(self.measurement_combo_box.count()):
             parameters = self.measurement_combo_box.itemData(index)
-            if isinstance(parameters, MeasurementParameters):
-                if parameters.id == measurement_id:
-                    self.measurement_combo_box.setCurrentIndex(index)
-                    return
+            if (
+                isinstance(parameters, MeasurementParameters)
+                and parameters.id == measurement_id
+            ):
+                self.measurement_combo_box.setCurrentIndex(index)
+                return
 
     def add_role(self, role: str, title: str) -> None:
         if role not in self.role_check_boxes:
@@ -257,7 +261,7 @@ class GeneralWidget(QtWidgets.QWidget):
             self.instrument_layout.insertWidget(index, check_box)
             self.role_check_boxes[role] = check_box
         else:
-            logging.warning("add_role(): role already exists: %r", role)
+            logger.warning("add_role(): role already exists: %r", role)
 
     def set_role_enabled(self, role: str, active: bool) -> None:
         check_box = self.role_check_boxes.get(role)
@@ -265,14 +269,14 @@ class GeneralWidget(QtWidgets.QWidget):
             check_box.setEnabled(active)
             check_box.setVisible(active)
         else:
-            logging.warning("set_role_enabled(): no such role: %r", role)
+            logger.warning("set_role_enabled(): no such role: %r", role)
 
     def is_role_checked(self, role: str) -> bool:
         check_box = self.role_check_boxes.get(role)
         if check_box is not None:
             return check_box.isChecked()
         else:
-            logging.warning("is_role_checked(): no such role: %r", role)
+            logger.warning("is_role_checked(): no such role: %r", role)
             return False
 
     def set_role_checked(self, role: str, enabled: bool) -> None:
@@ -280,12 +284,12 @@ class GeneralWidget(QtWidgets.QWidget):
         if check_box is not None:
             check_box.setChecked(enabled)
         else:
-            logging.warning("set_role_checked(): no such role: %r", role)
+            logger.warning("set_role_checked(): no such role: %r", role)
 
     def set_measurement_roles(self, roles: Iterable[str]) -> None:
         for role in roles:
             if role not in self.role_check_boxes:
-                logging.warning("set_measurement_roles(): no such role: %r", role)
+                logger.warning("set_measurement_roles(): no such role: %r", role)
         for role in self.role_check_boxes:
             self.set_role_checked(role, role in roles)
 

@@ -4,19 +4,21 @@ from collections.abc import Callable
 
 __all__ = ["EventHandler"]
 
+logger = logging.getLogger(__name__)
+
 
 class EventHandler:
     def __init__(self) -> None:
-        self.handlers: list[Callable] = []
-        self.lock = threading.RLock()
+        self._handlers: list[Callable] = []
+        self._lock = threading.RLock()
 
     def subscribe(self, handler: Callable) -> None:
-        self.handlers.append(handler)
+        self._handlers.append(handler)
 
     def __call__(self, *args, **kwargs) -> None:
-        with self.lock:
-            for handler in self.handlers:
+        with self._lock:
+            for handler in self._handlers:
                 try:
                     handler(*args, **kwargs)
-                except Exception as exc:
-                    logging.exception(exc)
+                except Exception:
+                    logger.exception("failed to handle event")

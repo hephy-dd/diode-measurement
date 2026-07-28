@@ -36,10 +36,10 @@ class Reader:
                 break
             m = re.match(r"(\w+)(?:\[(\w+)\])?\:\s*(.*)\s*", row[0])
             if not m:
-                raise RuntimeError(f"Invalid meta entry: {repr(row[0])}")
+                raise RuntimeError(f"Invalid meta entry: {row[0]!r}")
             key = m.group(1)
             if key in meta:
-                raise RuntimeError(f"Duplicate meta entry: {repr(key)}")
+                raise RuntimeError(f"Duplicate meta entry: {key!r}")
             unit = m.group(2)
             value = m.group(3)
             if unit:

@@ -1,8 +1,6 @@
-from typing import Optional
-
 from PySide6 import QtCore, QtWidgets
 
-from ..panel import InstrumentPanel, WidgetParameter, MethodParameter
+from ..panel import InstrumentPanel, MethodParameter, WidgetParameter
 
 __all__ = ["K4215Panel", "K4215CorrectionDialog"]
 
@@ -10,7 +8,7 @@ __all__ = ["K4215Panel", "K4215CorrectionDialog"]
 class K4215Panel(InstrumentPanel):
     perform_correction_clicked = QtCore.Signal()
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("K4215", parent)
 
         # AC amplitude
@@ -378,7 +376,7 @@ class K4215CorrectionDialog(QtWidgets.QDialog):
         data = self.combo_box.currentData()
         return data == "short"
 
-    def get_load_correction(self) -> Optional[int]:
+    def get_load_correction(self) -> int | None:
         data = self.combo_box.currentData()
         if data == "load":
             return self.load_spin_box.value()

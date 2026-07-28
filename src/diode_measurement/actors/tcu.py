@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from typing import Any
 
-from ..core.actor import Actor
+from ..core.actor import ThreadingActor
 from ..core.driver import TCU
 from ..core.timers import IntervalTimer
 
@@ -11,7 +11,7 @@ __all__ = ["TCUActor"]
 logger = logging.getLogger(__name__)
 
 
-class TCUActor(Actor):
+class TCUActor(ThreadingActor):
     def __init__(self, tcu: TCU, event_bus, abort_event: Event) -> None:
         super().__init__(abort_event=abort_event)
         self.tcu = tcu

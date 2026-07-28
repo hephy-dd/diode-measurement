@@ -11,12 +11,12 @@ def test_format_metric():
 
 
 def test_format_switch():
-    assert utils.format_switch(0) == "OFF"
-    assert utils.format_switch(1) == "ON"
+    assert utils.format_switch(False) == "OFF"
+    assert utils.format_switch(True) == "ON"
 
 
 def test_limits():
-    assert utils.limits([]) == tuple()
+    assert utils.limits([]) == ()
     assert utils.limits([[4, 2]]) == (4, 4, 2, 2)
     assert utils.limits([[4, 5], [4, 3], [-1, 2]]) == (-1, 4, 2, 5)
     assert utils.limits([[-1, 2], [4, 5], [4, 3]]) == (-1, 4, 2, 5)
