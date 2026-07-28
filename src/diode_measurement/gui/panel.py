@@ -61,13 +61,19 @@ class MethodParameter:
 
 
 class InstrumentPanel(QtWidgets.QWidget):
-    def __init__(self, model: str, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self, model: str, title: str, parent: QtWidgets.QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self._parameters: dict[str, Parameter] = {}
         self._model = model
+        self._title = title
 
     def model(self) -> str:
         return self._model
+
+    def title(self) -> str:
+        return self._title
 
     def restore_defaults(self) -> None: ...
 

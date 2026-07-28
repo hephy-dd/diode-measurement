@@ -9,7 +9,7 @@ class K4215Panel(InstrumentPanel):
     perform_correction_clicked = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("K4215", parent)
+        super().__init__("K4215", "Keithley 4215 CVU", parent)
 
         # AC amplitude
 
