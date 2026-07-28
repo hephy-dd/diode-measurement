@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Moved test resource connection and resource detection to background jobs (#168).
+- Modernized the codebase and dropped support for Python 3.9 and 3.10 (#170).
 
 ## [0.27.2] - 2026-05-07
 
@@ -39,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- It plot displayed IV plot data caused by a wrong data source (#165). 
+- It plot displayed IV plot data caused by a wrong data source (#165).
 
 ## [0.26.0] - 2026-04-29
 

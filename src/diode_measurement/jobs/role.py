@@ -1,7 +1,7 @@
 import logging
 import time
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from ..core.resource import Resource, ResourceConfig, list_resources
 from ..drivers import K4215, driver_factory
