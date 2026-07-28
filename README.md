@@ -201,7 +201,7 @@ procedure call) version 2.0 interface using a TCP server.
 Start notification starts a new measurement.
 
 ```json
-{"jsonrpc": "2.0", "method": "start"}
+{ "jsonrpc": "2.0", "method": "start" }
 ```
 
 Optional parameters are:
@@ -237,7 +237,7 @@ Optional parameters are:
 Stop notification stops an active measurement.
 
 ```json
-{"jsonrpc": "2.0", "method": "stop"}
+{ "jsonrpc": "2.0", "method": "stop" }
 ```
 
 #### Change voltage
@@ -270,7 +270,7 @@ Optional parameters are:
 Request an application state snapshot.
 
 ```json
-{"jsonrpc": "2.0", "method": "state", "id": 0}
+{ "jsonrpc": "2.0", "method": "state", "id": 0 }
 ```
 
 This returns application state parameters.
@@ -329,7 +329,7 @@ This returns the current model's instrument options.
       "filter.mode": "REP",
       "nplc": 1.0,
       "route.terminals": "REAR",
-      "system.breakdown.protection": false,
+      "system.breakdown.protection": "AUTO"
     }
   },
   "id": 1
@@ -342,7 +342,6 @@ This returns the current model's instrument options.
 
 Update current instrument options using method `instrument.update`.
 
-
 Required parameters are:
 
 - `instrument` (str, one of `smu`, `smu2`, `elm`, `elm2`, `lcr`, `dmm`, `tcu`, `switch`)
@@ -354,9 +353,9 @@ Required parameters are:
   "method": "instrument.update",
   "params": {
     "instrument": "smu",
-    "options" : {
+    "options": {
       "filter.enable": true,
-      "filter.count": 25,
+      "filter.count": 25
     }
   },
   "id": 2
@@ -377,7 +376,7 @@ This returns the current model's updated instrument options.
       "filter.mode": "REP",
       "nplc": 1.0,
       "route.terminals": "REAR",
-      "system.breakdown.protection": false,
+      "system.breakdown.protection": "AUTO"
     }
   },
   "id": 2

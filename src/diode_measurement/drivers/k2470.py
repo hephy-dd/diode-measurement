@@ -44,7 +44,7 @@ class K2470(BaseDriver):
         nplc = options.get("nplc", 1.0)
         self.set_sense_current_nplc(nplc)
 
-        system_breakdown_protection = options.get("system.breakdown.protection.v2", "OFF")
+        system_breakdown_protection = options.get("system.breakdown.protection", "AUTO")
         self.set_system_breakdown_protection(system_breakdown_protection)
 
     def get_output_enabled(self) -> bool:
@@ -112,8 +112,10 @@ class K2470(BaseDriver):
         self._write(f":SENS:CURR:NPLC {nplc:E}")
 
     def set_system_breakdown_protection(self, value: str) -> None:
-        if value not in ["AUTO", "OFF", "ON"]:
-            raise ValueError("Breakdown protection must be one of: 'AUTO', 'OFF' or 'ON'")
+        if value not in ("AUTO", "OFF", "ON"):
+            raise ValueError(
+                "Breakdown protection must be one of: 'AUTO', 'OFF' or 'ON'"
+            )
         self._write(f":SYST:BRE:PROT {value}")
 
     def is_interlock(self) -> bool:
