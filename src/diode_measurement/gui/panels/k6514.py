@@ -8,7 +8,7 @@ __all__ = ["K6514Panel"]
 
 class K6514Panel(InstrumentPanel):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("K6514", parent)
+        super().__init__("K6514", "Keithley 6514", parent)
 
         # Range
 

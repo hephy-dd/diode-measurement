@@ -7,7 +7,7 @@ __all__ = ["AC3Panel"]
 
 class AC3Panel(InstrumentPanel):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("AC3", parent)
+        super().__init__("AC3", "ERS AC3 Fusion", parent)
 
         self.setpoint_group_box = QtWidgets.QGroupBox("Setpoint")
 

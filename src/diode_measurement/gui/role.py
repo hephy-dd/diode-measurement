@@ -122,7 +122,7 @@ class RoleWidget(QtWidgets.QWidget):
         self.restore_defaults_button.setEnabled(not state)
 
     def add_instrument_panel(self, widget: InstrumentPanel) -> None:
-        self.resource_widget.add_model(widget.model())
+        self.resource_widget.add_model(widget.model(), widget.title())
         self.stacked_widget.addWidget(widget)
 
     def instrument_panels(self) -> list[InstrumentPanel]:

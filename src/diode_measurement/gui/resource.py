@@ -161,15 +161,15 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.reset_instrument_check_box.setEnabled(not state)
 
     def model(self) -> str:
-        return self.model_combo_box.currentText()
+        return self.model_combo_box.currentData()
 
     def set_model(self, model: str) -> None:
-        index = self.model_combo_box.findText(model)
+        index = self.model_combo_box.findData(model)
         self.model_combo_box.setCurrentIndex(max(0, index))
-        self.model_changed.emit(self.model_combo_box.itemText(max(0, index)))
+        self.model_changed.emit(self.model_combo_box.itemData(max(0, index)))
 
-    def add_model(self, model: str) -> None:
-        self.model_combo_box.addItem(model)
+    def add_model(self, model: str, title: str) -> None:
+        self.model_combo_box.addItem(title, model)
 
     def resource_name(self) -> str:
         return self.resource_line_edit.text().strip()

@@ -1,7 +1,5 @@
-from collections.abc import Mapping
 from typing import Any
 
-from numpy.ma.extras import isin
 from PySide6 import QtWidgets
 
 from ..panel import InstrumentPanel, WidgetParameter
@@ -11,7 +9,7 @@ __all__ = ["K2470Panel"]
 
 class K2470Panel(InstrumentPanel):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("K2470", parent)
+        super().__init__("K2470", "Keithley 2470", parent)
 
         # Filter
 

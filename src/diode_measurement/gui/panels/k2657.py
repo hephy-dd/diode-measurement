@@ -7,7 +7,7 @@ __all__ = ["K2657APanel"]
 
 class K2657APanel(InstrumentPanel):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("K2657A", parent)
+        super().__init__("K2657A", "Keithley 2657A", parent)
 
         self.filter_group_box = QtWidgets.QGroupBox()
         self.filter_group_box.setTitle("Filter")

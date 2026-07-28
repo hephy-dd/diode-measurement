@@ -11,7 +11,7 @@ class BrandBoxPanel(InstrumentPanel):
     CHANNELS: tuple[str, ...] = ("A1", "B1", "C1", "A2", "B2", "C2")
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("BrandBox", parent)
+        super().__init__("BrandBox", "HEPHY Brandbox", parent)
 
         # Channels
 

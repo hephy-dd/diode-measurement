@@ -7,7 +7,7 @@ __all__ = ["E4980APanel"]
 
 class E4980APanel(InstrumentPanel):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__("E4980A", parent)
+        super().__init__("E4980A", "Keysight E4980A", parent)
 
         # AC amplitude
 
