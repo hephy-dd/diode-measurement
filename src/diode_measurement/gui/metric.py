@@ -62,57 +62,78 @@ class MetricWidget(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self._valueSpinBox = QtWidgets.QDoubleSpinBox(self)
-        self._valueSpinBox.setStepType(
+
+        self._minimum = float("-inf")
+        self._maximum = float("+inf")
+
+        self._value_spin_box = QtWidgets.QDoubleSpinBox(self)
+        self._value_spin_box.setStepType(
             QtWidgets.QAbstractSpinBox.StepType.AdaptiveDecimalStepType
         )
-        self._unitComboBox = QtWidgets.QComboBox(self)
+        self._unit_combo_box = QtWidgets.QComboBox(self)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._value_spin_box, 1)
+        layout.addWidget(self._unit_combo_box, 0)
+
         self.setUnit("")
         self.setDecimals(0)
         self.setRange(float("-inf"), float("+inf"))
         self.setPrefixes("YZEPTGMk1munpfazy")
         self.setValue(0)
-        self._valueSpinBox.valueChanged.connect(
+
+        self._value_spin_box.valueChanged.connect(
             lambda _: self.valueChanged.emit(self.value())
         )
-        self._valueSpinBox.editingFinished.connect(self.editingFinished.emit)
-        self._unitComboBox.currentIndexChanged.connect(
+        self._value_spin_box.editingFinished.connect(self.editingFinished.emit)
+
+        self._unit_combo_box.currentIndexChanged.connect(self._update_spin_box_range)
+        self._unit_combo_box.currentIndexChanged.connect(
             lambda _: self.valueChanged.emit(self.value())
         )
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._valueSpinBox, 1)
-        layout.addWidget(self._unitComboBox, 0)
+    def _selected_base(self) -> float:
+        item = self._unit_combo_box.currentData()
+        return item.metric.base if isinstance(item, MetricItem) else 1.0
+
+    def _update_spin_box_range(self) -> None:
+        base = self._selected_base()
+        self._value_spin_box.setRange(
+            self._minimum / base,
+            self._maximum / base,
+        )
 
     def setRange(self, minimum: float, maximum: float) -> None:
-        self._valueSpinBox.setRange(minimum, maximum)
+        self._minimum = minimum
+        self._maximum = maximum
+        self._update_spin_box_range()
 
     def value(self) -> float:
-        index = self._unitComboBox.currentIndex()
-        item = self._unitComboBox.itemData(index)
+        index = self._unit_combo_box.currentIndex()
+        item = self._unit_combo_box.itemData(index)
         if isinstance(item, MetricItem):
             base = item.metric.base
         else:
             base = 1.0
-        return self._valueSpinBox.value() * base
+        return self._value_spin_box.value() * base
 
     def setValue(self, value: float) -> None:
         metric = MetricUnits.get(value)
-        for index in range(self._unitComboBox.count()):
-            item = self._unitComboBox.itemData(index)
+        for index in range(self._unit_combo_box.count()):
+            item = self._unit_combo_box.itemData(index)
             if isinstance(item, MetricItem) and item.metric.base == metric.base:
-                self._unitComboBox.setCurrentIndex(index)
-        index = self._unitComboBox.currentIndex()
-        item = self._unitComboBox.itemData(index)
+                self._unit_combo_box.setCurrentIndex(index)
+        index = self._unit_combo_box.currentIndex()
+        item = self._unit_combo_box.itemData(index)
         if isinstance(item, MetricItem):
-            self._valueSpinBox.setValue(value / item.metric.base)
+            self._value_spin_box.setValue(value / item.metric.base)
 
     def decimals(self) -> int:
-        return self._valueSpinBox.decimals()
+        return self._value_spin_box.decimals()
 
     def setDecimals(self, decimals: int) -> None:
-        self._valueSpinBox.setDecimals(decimals)
+        self._value_spin_box.setDecimals(decimals)
 
     def unit(self) -> str:
         return self._unit
@@ -122,14 +143,14 @@ class MetricWidget(QtWidgets.QWidget):
 
     def prefixes(self) -> str:
         prefixes = ""
-        for index in range(self._unitComboBox.count()):
-            value = self._unitComboBox.itemData(index)
+        for index in range(self._unit_combo_box.count()):
+            value = self._unit_combo_box.itemData(index)
             prefixes += value.metric.prefix
         return prefixes
 
     def setPrefixes(self, prefixes: str) -> None:
-        self._unitComboBox.clear()
+        self._unit_combo_box.clear()
         for metric in MetricUnits.metric_units:
             item = MetricItem(metric, self._unit)
             if (metric.prefix and metric.prefix in prefixes) or "1" in prefixes:
-                self._unitComboBox.addItem(str(item), item)
+                self._unit_combo_box.addItem(str(item), item)

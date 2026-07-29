@@ -32,6 +32,17 @@ class K2470(BaseDriver):
 
         self.set_sense_function("CURR")
 
+        sense_range = options.get("sense.range", 1e-08)
+        self.set_sense_current_range(sense_range)
+
+        sense_auto_range_lower_limit = options.get(
+            "sense.auto_range.lower_limit", 1e-08
+        )
+        self.set_sense_current_range_auto_lower_limit(sense_auto_range_lower_limit)
+
+        sense_auto_range = options.get("sense.auto_range", True)
+        self.set_sense_current_range_auto(sense_auto_range)
+
         filter_mode = options.get("filter.mode", "MOV")
         self.set_sense_current_average_tcontrol(filter_mode)
 
@@ -98,6 +109,15 @@ class K2470(BaseDriver):
         if function not in {"CURR", "RES", "VOLT"}:
             raise ValueError(f"Invalid sense function: {function}")
         self._write(f':SENS:FUNC "{function}"')
+
+    def set_sense_current_range(self, level: float) -> None:
+        self._write(f":SENS:CURR:RANG {level:E}")
+
+    def set_sense_current_range_auto(self, enabled: bool) -> None:
+        self._write(f":SENS:CURR:RANG:AUTO {enabled:d}")
+
+    def set_sense_current_range_auto_lower_limit(self, limit: float) -> None:
+        self._write(f":SENS:CURR:RANG:AUTO:LLIM {limit:E}")
 
     def set_sense_current_average_tcontrol(self, tcontrol: str) -> None:
         self._write(f":SENS:CURR:AVER:TCON {tcontrol}")
