@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Moved test resource connection and resource detection to background jobs (#168).
 - Modernized the codebase and dropped support for Python 3.9 and 3.10 (#170).
+- Move shared pytest fixture to `conftest.py` (#173).
 
 ## [0.27.2] - 2026-05-07
 
