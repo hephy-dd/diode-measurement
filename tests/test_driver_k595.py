@@ -2,8 +2,6 @@ import math
 
 from diode_measurement.drivers.k595 import K595
 
-from . import res
-
 
 def test_driver_k595(res):
     d = K595(res)

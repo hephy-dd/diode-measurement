@@ -1,8 +1,4 @@
-import pytest
-
 from diode_measurement.drivers.a4284a import A4284A
-
-from . import res
 
 
 def test_driver_a4284a(res):

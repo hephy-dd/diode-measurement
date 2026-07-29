@@ -1,7 +1,5 @@
 from diode_measurement.drivers.k6514 import K6514
 
-from . import res
-
 
 def test_driver_k6514(res):
     d = K6514(res)
