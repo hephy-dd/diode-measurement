@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Option `AUTO` for Keithley 2470 breakdown protection (#124, #171).
 - More descriptive instrument model names e.g. `Keithley 4215 CVU` (#172).
-- Curren sense range optiosn for Keithley 2470 SMU (#174).
+- Current sense range options for Keithley 2470 SMU (#174).
 
 ### Changed
 
