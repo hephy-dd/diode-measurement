@@ -64,7 +64,7 @@ class ResourceWidget(QtWidgets.QGroupBox):
 
         self.model_combo_box = QtWidgets.QComboBox(self)
         self.model_combo_box.setStatusTip("Instrument model.")
-        self.model_combo_box.currentTextChanged.connect(self.on_model_text_changed)
+        self.model_combo_box.currentIndexChanged.connect(self.on_model_index_changed)
 
         self.resource_label = QtWidgets.QLabel("Resource", self)
 
@@ -161,12 +161,16 @@ class ResourceWidget(QtWidgets.QGroupBox):
         self.reset_instrument_check_box.setEnabled(not state)
 
     def model(self) -> str:
-        return self.model_combo_box.currentData()
+        model = self.model_combo_box.currentData()
+        if isinstance(model, str):
+            return model
+        return ""
 
     def set_model(self, model: str) -> None:
         index = self.model_combo_box.findData(model)
-        self.model_combo_box.setCurrentIndex(max(0, index))
-        self.model_changed.emit(self.model_combo_box.itemData(max(0, index)))
+        index = max(0, index)
+        self.model_combo_box.setCurrentIndex(index)
+        self.model_changed.emit(self.model_combo_box.itemData(index))
 
     def add_model(self, model: str, title: str) -> None:
         self.model_combo_box.addItem(title, model)
@@ -216,8 +220,8 @@ class ResourceWidget(QtWidgets.QGroupBox):
                 self.resource_line_edit.setText(selected_resource)
 
     @QtCore.Slot(str)
-    def on_model_text_changed(self, text: str) -> None:
-        self.model_changed.emit(text)
+    def on_model_index_changed(self, index: int) -> None:
+        self.model_changed.emit(self.model())
 
     @QtCore.Slot()
     def on_update_baud_rate_visibility(self) -> None:
