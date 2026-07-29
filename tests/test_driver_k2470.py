@@ -2,8 +2,6 @@ import pytest
 
 from diode_measurement.drivers.k2470 import K2470
 
-from . import res
-
 
 def test_driver_k2470(res):
     d = K2470(res)

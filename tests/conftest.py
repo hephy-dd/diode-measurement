@@ -1,9 +1,11 @@
+from dataclasses import dataclass
+
 import pytest
 
 
+@dataclass(slots=True)
 class FakeResource:
-    def __init__(self) -> None:
-        self.buffer: list[str] = []
+    buffer: list[str]
 
     def write(self, message: str) -> int:
         self.buffer.append(message)
@@ -18,4 +20,4 @@ class FakeResource:
 
 @pytest.fixture
 def res():
-    return FakeResource()
+    return FakeResource([])

@@ -1,7 +1,5 @@
 from diode_measurement.drivers.e4980a import E4980A
 
-from . import res
-
 
 def test_driver_e4980a(res):
     d = E4980A(res)

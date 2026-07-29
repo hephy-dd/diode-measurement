@@ -2,8 +2,6 @@ import pytest
 
 from diode_measurement.drivers.k4215 import K4215
 
-from . import res
-
 
 def test_driver_k4215_basic_operations(res):
     """Test basic driver operations."""

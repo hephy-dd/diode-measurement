@@ -1,7 +1,5 @@
 from diode_measurement.drivers.k237 import K237
 
-from . import res
-
 
 def test_driver_k237(res):
     d = K237(res)
