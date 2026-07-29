@@ -107,6 +107,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.contentsAction)
+        self.helpMenu.addSeparator()
         self.helpMenu.addAction(self.aboutQtAction)
         self.helpMenu.addAction(self.aboutAction)
 
