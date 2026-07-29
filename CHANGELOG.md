@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-07-29
+
 ### Added
 
 - Option `AUTO` for Keithley 2470 breakdown protection (#124, #171).
 - More descriptive instrument model names e.g. `Keithley 4215 CVU` (#172).
+- Curren sense range optiosn for Keithley 2470 SMU (#174).
 
 ### Changed
 
@@ -607,7 +610,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.27.2...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.28.0...HEAD
+[0.28.0]: https://github.com/hephy-dd/diode-measurement/compare/0.27.2...0.28.0
 [0.27.2]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...0.27.2
 [0.27.1]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/hephy-dd/diode-measurement/compare/0.26.1...0.27.0
