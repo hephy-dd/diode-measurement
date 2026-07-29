@@ -1,11 +1,12 @@
 import logging
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 from queue import Queue
 from typing import Any
 
+from .core.events import EventBus
 from .core.role import Role
 
 __all__ = ["State"]
@@ -53,26 +54,6 @@ class CVReading(Reading):
     c_lcr: float
     c2_lcr: float
     r_lcr: float
-
-
-class EventBus:
-    def __init__(self) -> None:
-        self._lock = threading.RLock()
-        self._event_registry: dict[str, list[Callable]] = {}
-
-    def register_callback(self, event_name: str, event_callback: Callable) -> None:
-        with self._lock:
-            self._event_registry.setdefault(event_name, []).append(event_callback)
-
-    def submit(self, event_name: str, *args) -> None:
-        with self._lock:
-            callbacks = tuple(self._event_registry.get(event_name, ()))
-
-        for callback in callbacks:
-            try:
-                callback(*args)
-            except Exception:
-                logger.exception("Failed to submit event: %r", event_name)
 
 
 class State:
