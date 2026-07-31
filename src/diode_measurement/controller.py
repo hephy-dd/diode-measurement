@@ -235,17 +235,12 @@ class Controller(QtCore.QObject):
         )
 
         general_widget = main_window.general_widget
-        general_widget.add_source_role(Roles.SMU, "SMU")
-        general_widget.add_source_role(Roles.SMU2, "SMU2")
-        general_widget.add_bias_source_role(Roles.SMU, "SMU")
-        general_widget.add_bias_source_role(Roles.SMU2, "SMU2")
 
         for spec in self.measurement_registry:
             general_widget.add_measurement(spec)
 
-        general_widget.measurement_combo_box.currentIndexChanged.connect(
-            self.on_measurement_changed
-        )
+        general_widget.measurement_changed.connect(self.on_measurement_changed)
+        general_widget.instruments_changed.connect(self.on_instruments_changed)
 
         general_widget.output_line_edit.editingFinished.connect(
             self.on_output_editing_finished
@@ -259,26 +254,6 @@ class Controller(QtCore.QObject):
         general_widget.waiting_time_continuous_changed.connect(
             self.on_waiting_time_continuous_changed
         )
-
-        general_widget.instruments_changed.connect(self.on_instruments_changed)
-
-        self.on_instruments_changed()
-
-        for role in self._roles:
-            general_widget.role_check_boxes[role].toggled.connect(
-                partial(self.set_role_enabled, role)
-            )
-
-        self.set_role_enabled("smu", True)
-        self.set_role_enabled("smu2", False)
-        self.set_role_enabled("elm", False)
-        self.set_role_enabled("elm2", False)
-        self.set_role_enabled("lcr", False)
-        self.set_role_enabled("dmm", False)
-        self.set_role_enabled("tcu", False)
-        self.set_role_enabled("switch", False)
-
-        self.on_measurement_changed(0)
 
         main_window.clear_message()
         main_window.clear_progress()
@@ -318,6 +293,8 @@ class Controller(QtCore.QObject):
         self.state_machine.addState(self.stopping_state)
         self.state_machine.setInitialState(self.idle_state)
         self.state_machine.start()
+
+        self.on_measurement_changed(0)
 
     def snapshot(self) -> Snapshot:
         """Return thread save application state snapshot."""
@@ -417,15 +394,14 @@ class Controller(QtCore.QObject):
             )
             config.update({"options": role.current_config()})
 
-        if general_widget.is_role_checked(Roles.SMU):
-            state["source_role"] = general_widget.source_role()
-        elif general_widget.is_role_checked(Roles.ELM):
-            state["source_role"] = Roles.ELM
-        elif general_widget.is_role_checked(Roles.LCR):
-            state["source_role"] = Roles.LCR
+        source_role = general_widget.source_role()
+        bias_source_role = general_widget.bias_source_role()
 
-        if general_widget.is_role_checked(Roles.SMU2):
-            state["bias_source_role"] = general_widget.bias_source_role()
+        if source_role == bias_source_role:
+            raise RuntimeError("Bias needs a different source role")
+
+        state["source_role"] = source_role
+        state["bias_source_role"] = bias_source_role
 
         for role in self._roles:
             roles.setdefault(role, {}).update(
@@ -452,8 +428,6 @@ class Controller(QtCore.QObject):
         geometry = settings.value("mainwindow/geometry")
         if isinstance(geometry, QtCore.QByteArray) and not geometry.isEmpty():
             self.main_window.restoreGeometry(geometry)
-        else:
-            self.main_window.resize(800, 600)
 
         state = settings.value("mainwindow/state")
         if isinstance(state, QtCore.QByteArray) and not state.isEmpty():
@@ -642,14 +616,8 @@ class Controller(QtCore.QObject):
                     continuous_data = reader.read_data()
 
                 # Meta
-                general_widget.measurement_combo_box.setCurrentIndex(-1)
-                measurement_type = meta.get("measurement_type")
-                if measurement_type:
-                    for index in range(general_widget.measurement_combo_box.count()):
-                        spec = general_widget.measurement_combo_box.itemData(index)
-                        if spec.type == measurement_type:
-                            general_widget.measurement_combo_box.setCurrentIndex(index)
-                            break
+                measurement_type = meta.get("measurement_type", "")
+                general_widget.set_current_measurement(measurement_type)
 
                 if (sample := meta.get("sample")) is not None:
                     general_widget.set_sample_name(sample)
@@ -867,10 +835,10 @@ class Controller(QtCore.QObject):
 
         general_widget = self.main_window.general_widget
 
-        for role in self._roles:
-            checked = role in spec.default_roles
-            general_widget.set_role_checked(role, checked)
-            self.set_role_enabled(role, checked)
+        # for role in self._roles:
+        #     checked = role in spec.default_roles
+        #     general_widget.set_role_checked(role, checked)
+        #     self.set_role_enabled(role, checked)
 
         general_widget.set_voltage_unit(spec.voltage_unit)
         general_widget.set_begin_voltage(spec.default_begin_voltage)
@@ -886,6 +854,36 @@ class Controller(QtCore.QObject):
     @QtCore.Slot()
     def on_instruments_changed(self) -> None:
         general_widget = self.main_window.general_widget
+
+        prev_source_role = general_widget.source_role()
+        prev_bias_source_role = general_widget.bias_source_role()
+
+        general_widget.clear_sources()
+
+        checked_roles = general_widget.checked_roles()
+
+        spec = general_widget.current_measurement()
+        if spec is not None:
+            # Bias source roles
+            bias_source_roles = get_bias_source_roles(spec.id, checked_roles)
+            for role in bias_source_roles:
+                general_widget.add_bias_source_role(role, str(role).upper())
+            # Source roles
+            source_roles = get_source_roles(spec.id, checked_roles)
+            for role in source_roles:
+                general_widget.add_source_role(role, str(role).upper())
+
+        for role in self._roles:
+            enabled = role in checked_roles
+            self.main_window.set_status_enabled(role, enabled)
+            self.iv_plots_data_windget.set_series_visible(role, enabled)
+            self.cv_plots_data_windget.set_series_visible(role, enabled)
+
+        if prev_bias_source_role:
+            general_widget.set_bias_source_role(prev_bias_source_role)
+        if prev_source_role:
+            general_widget.set_source_role(prev_source_role)
+
         general_widget.set_current_compliance_locked(False)
         #
         # HACK Not all instruments support compliance!
@@ -1081,6 +1079,7 @@ class Controller(QtCore.QObject):
             logger.exception("measurement failed")
             self.failed.emit(exc)
             self.aborted.emit()
+            self.main_window.start_button.setChecked(False)
 
     def request_change_voltage(self, parameters: ChangeVoltageParameters) -> None:
         state = self.snapshot().state
@@ -1277,3 +1276,36 @@ class TestConnectionController(QtCore.QObject):
         QtWidgets.QMessageBox.information(
             self.main_window, f"Connection Test ({role})", str(identity)
         )
+
+
+def get_source_roles(
+    measurement_id: str,
+    enabled_roles: list[str],
+) -> list[Roles]:
+    roles = []
+    if Roles.SMU in enabled_roles:
+        roles.append(Roles.SMU)
+    if Roles.SMU2 in enabled_roles:
+        roles.append(Roles.SMU2)
+    if not roles:
+        if Roles.ELM in enabled_roles:
+            roles.append(Roles.ELM)
+        if Roles.ELM2 in enabled_roles:
+            roles.append(Roles.ELM2)
+    if not roles:  # noqa
+        if Roles.LCR in enabled_roles:
+            roles.append(Roles.LCR)
+    return roles
+
+
+def get_bias_source_roles(
+    measurement_id: str,
+    enabled_roles: list[str],
+) -> list[Roles]:
+    roles = []
+    if measurement_id == "iv_bias":
+        if Roles.SMU in enabled_roles:
+            roles.append(Roles.SMU)
+        if Roles.SMU2 in enabled_roles:
+            roles.append(Roles.SMU2)
+    return roles

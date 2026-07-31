@@ -275,9 +275,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_role_enabled(self, role: str, enabled: bool) -> None:
         self.general_widget.set_role_enabled(role, enabled)
+
+    def set_status_enabled(self, role: str, enabled: bool) -> None:
         status = self.status_group_boxes.get(role)
         if status is not None:
             status.setEnabled(enabled)
+            status.setVisible(enabled)
 
     def clear(self) -> None:
         """Clear displayed data in plots and inputs."""

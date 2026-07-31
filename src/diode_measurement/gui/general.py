@@ -15,6 +15,9 @@ def on_combo_changed(changed, other):
     if changed.currentIndex() != other.currentIndex():
         return
 
+    if other.count() <= 0:
+        return
+
     # Pick another item (the next one, wrapping around)
     new_index = (other.currentIndex() + 1) % other.count()
 
@@ -23,7 +26,9 @@ def on_combo_changed(changed, other):
 
 
 class GeneralWidget(QtWidgets.QWidget):
+    measurement_changed = QtCore.Signal(int)
     instruments_changed = QtCore.Signal()
+    source_changed = QtCore.Signal()
     current_compliance_changed = QtCore.Signal(float)
     continue_in_compliance_changed = QtCore.Signal(bool)
     waiting_time_continuous_changed = QtCore.Signal(float)
@@ -40,6 +45,9 @@ class GeneralWidget(QtWidgets.QWidget):
 
     def _create_widgets(self) -> None:
         self.measurement_combo_box = QtWidgets.QComboBox(self)
+        self.measurement_combo_box.currentIndexChanged.connect(
+            self.measurement_changed.emit
+        )
 
         self.role_check_boxes: dict[str, QtWidgets.QCheckBox] = {}
 
@@ -238,7 +246,9 @@ class GeneralWidget(QtWidgets.QWidget):
         self.end_voltage_spin_box.setEnabled(True)
         self.step_voltage_spin_box.setEnabled(True)
         self.waiting_time_spin_box.setEnabled(True)
+        self.source_combo_box.setEnabled(True)
         self.bias_voltage_spin_box.setEnabled(True)
+        self.bias_source_combo_box.setEnabled(True)
         self.change_voltage_button.setEnabled(False)
         self.current_compliance_spin_box.setEnabled(not self._current_compliance_locked)
         self.continue_in_compliance_check_box.setEnabled(True)
@@ -251,7 +261,9 @@ class GeneralWidget(QtWidgets.QWidget):
         self.end_voltage_spin_box.setEnabled(False)
         self.step_voltage_spin_box.setEnabled(False)
         self.waiting_time_spin_box.setEnabled(False)
+        self.source_combo_box.setEnabled(False)
         self.bias_voltage_spin_box.setEnabled(False)
+        self.bias_source_combo_box.setEnabled(False)
 
     def set_stopping_state(self):
         self.change_voltage_button.setEnabled(False)
@@ -273,6 +285,7 @@ class GeneralWidget(QtWidgets.QWidget):
             ):
                 self.measurement_combo_box.setCurrentIndex(index)
                 return
+        self.measurement_combo_box.setCurrentIndex(-1)
 
     def add_role(self, role: str, title: str) -> None:
         if role not in self.role_check_boxes:
@@ -296,7 +309,7 @@ class GeneralWidget(QtWidgets.QWidget):
     def is_role_checked(self, role: str) -> bool:
         check_box = self.role_check_boxes.get(role)
         if check_box is not None:
-            return check_box.isChecked()
+            return check_box.isEnabled() and check_box.isChecked()
         else:
             logger.warning("is_role_checked(): no such role: %r", role)
             return False
@@ -314,6 +327,22 @@ class GeneralWidget(QtWidgets.QWidget):
                 logger.warning("set_measurement_roles(): no such role: %r", role)
         for role in self.role_check_boxes:
             self.set_role_checked(role, role in roles)
+
+    def enabled_roles(self) -> list[str]:
+        """Return list of enabled roles."""
+        return [
+            role
+            for role, group_box in self.role_check_boxes.items()
+            if group_box.isEnabled()
+        ]
+
+    def checked_roles(self) -> list[str]:
+        """Return list of checked roles."""
+        return [
+            role
+            for role, group_box in self.role_check_boxes.items()
+            if group_box.isEnabled() and group_box.isChecked()
+        ]
 
     def is_output_enabled(self):
         return self.output_group_box.isChecked()
@@ -393,9 +422,14 @@ class GeneralWidget(QtWidgets.QWidget):
         if index >= 0:
             self.source_combo_box.setCurrentIndex(index)
 
+    def clear_sources(self) -> None:
+        self.source_combo_box.clear()
+        self.bias_source_combo_box.clear()
+
     @QtCore.Slot(int)
     def on_set_source(self, index: int) -> None:
         on_combo_changed(self.source_combo_box, self.bias_source_combo_box)
+        self.source_changed.emit()
 
     def bias_voltage(self) -> float:
         value = self.bias_voltage_spin_box.value()
@@ -423,6 +457,7 @@ class GeneralWidget(QtWidgets.QWidget):
     @QtCore.Slot(int)
     def on_set_bias_source(self, index: int) -> None:
         on_combo_changed(self.bias_source_combo_box, self.source_combo_box)
+        self.source_changed.emit()
 
     def set_current_compliance_unit(self, unit: str) -> None:
         self.current_compliance_spin_box.setSuffix(f" {unit}")
