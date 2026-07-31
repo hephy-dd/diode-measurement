@@ -427,9 +427,6 @@ class Controller(QtCore.QObject):
         if general_widget.is_role_checked(Roles.SMU2):
             state["bias_source_role"] = general_widget.bias_source_role()
 
-        logger.error("source_role: %s", state["source_role"])
-        logger.error("bias_source_role: %s", state["bias_source_role"])
-
         for role in self._roles:
             roles.setdefault(role, {}).update(
                 {"enabled": general_widget.is_role_checked(role)}

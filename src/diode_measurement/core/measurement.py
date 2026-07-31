@@ -308,17 +308,6 @@ class RangeMeasurement(Measurement):
             else:
                 raise RuntimeError("No bias source instrument set")
 
-        logger.error(
-            "!!!!!!!!!!!!!!!!!! source_role %s %s",
-            self.state.source_role,
-            self.source_instrument,
-        )
-        logger.error(
-            "!!!!!!!!!!!!!!!!!! source_role %s %s",
-            self.state.bias_source_role,
-            self.bias_source_instrument,
-        )
-
         logger.debug("querying context identities...")
         for key, context in self.station.instruments.items():
             logger.debug("reading %s identity...", key.upper())
