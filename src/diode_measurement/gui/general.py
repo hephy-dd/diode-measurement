@@ -11,6 +11,17 @@ __all__ = ["GeneralWidget"]
 logger = logging.getLogger(__name__)
 
 
+def on_combo_changed(changed, other):
+    if changed.currentIndex() != other.currentIndex():
+        return
+
+    # Pick another item (the next one, wrapping around)
+    new_index = (other.currentIndex() + 1) % other.count()
+
+    with QtCore.QSignalBlocker(other):
+        other.setCurrentIndex(new_index)
+
+
 class GeneralWidget(QtWidgets.QWidget):
     instruments_changed = QtCore.Signal()
     current_compliance_changed = QtCore.Signal(float)
@@ -50,10 +61,16 @@ class GeneralWidget(QtWidgets.QWidget):
         self.waiting_time_spin_box = QtWidgets.QDoubleSpinBox(self)
         self.waiting_time_spin_box.setSuffix(" s")
 
+        self.source_combo_box = QtWidgets.QComboBox(self)
+        self.source_combo_box.currentIndexChanged.connect(self.on_set_source)
+
         self.bias_voltage_spin_box = QtWidgets.QDoubleSpinBox(self)
         self.bias_voltage_spin_box.setDecimals(3)
         self.bias_voltage_spin_box.setRange(-3030.0, +3030.0)
         self.bias_voltage_spin_box.setSuffix(" V")
+
+        self.bias_source_combo_box = QtWidgets.QComboBox(self)
+        self.bias_source_combo_box.currentIndexChanged.connect(self.on_set_bias_source)
 
         self.current_compliance_spin_box = QtWidgets.QDoubleSpinBox(self)
         self.current_compliance_spin_box.setDecimals(3)
@@ -128,7 +145,7 @@ class GeneralWidget(QtWidgets.QWidget):
         self.ramp_group_box.setTitle("Ramp")
 
         self.bias_group_box = QtWidgets.QGroupBox(self)
-        self.bias_group_box.setTitle("Bias Voltage (SMU2)")
+        self.bias_group_box.setTitle("Bias")
 
         self.compliance_group_box = QtWidgets.QGroupBox(self)
         self.compliance_group_box.setTitle("Compliance")
@@ -166,9 +183,14 @@ class GeneralWidget(QtWidgets.QWidget):
         vbox_layout.addWidget(self.step_voltage_spin_box)
         vbox_layout.addWidget(QtWidgets.QLabel("Waiting Time"))
         vbox_layout.addWidget(self.waiting_time_spin_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Source"))
+        vbox_layout.addWidget(self.source_combo_box)
 
         vbox_layout = QtWidgets.QVBoxLayout(self.bias_group_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Voltage"))
         vbox_layout.addWidget(self.bias_voltage_spin_box)
+        vbox_layout.addWidget(QtWidgets.QLabel("Source"))
+        vbox_layout.addWidget(self.bias_source_combo_box)
         vbox_layout.addStretch()
 
         vbox_layout = QtWidgets.QVBoxLayout(self.compliance_group_box)
@@ -357,6 +379,24 @@ class GeneralWidget(QtWidgets.QWidget):
     def set_waiting_time(self, waiting_time: float) -> None:
         self.waiting_time_spin_box.setValue(waiting_time)
 
+    def add_source_role(self, role: str, title: str) -> None:
+        self.source_combo_box.addItem(title, role)
+
+    def source_role(self) -> str:
+        role = self.source_combo_box.currentData()
+        if role is not None:
+            return role
+        return ""
+
+    def set_source_role(self, role: str) -> None:
+        index = self.source_combo_box.findData(role)
+        if index >= 0:
+            self.source_combo_box.setCurrentIndex(index)
+
+    @QtCore.Slot(int)
+    def on_set_source(self, index: int) -> None:
+        on_combo_changed(self.source_combo_box, self.bias_source_combo_box)
+
     def bias_voltage(self) -> float:
         value = self.bias_voltage_spin_box.value()
         unit = self.bias_voltage_spin_box.suffix().strip()
@@ -365,6 +405,24 @@ class GeneralWidget(QtWidgets.QWidget):
     def set_bias_voltage(self, bias_voltage: float) -> None:
         unit = self.bias_voltage_spin_box.suffix().strip()
         self.bias_voltage_spin_box.setValue(convert(bias_voltage, "V", unit))
+
+    def add_bias_source_role(self, role: str, title: str) -> None:
+        self.bias_source_combo_box.addItem(title, role)
+
+    def bias_source_role(self) -> str:
+        role = self.bias_source_combo_box.currentData()
+        if role is not None:
+            return role
+        return ""
+
+    def set_bias_source_role(self, role: str) -> None:
+        index = self.bias_source_combo_box.findData(role)
+        if index >= 0:
+            self.bias_source_combo_box.setCurrentIndex(index)
+
+    @QtCore.Slot(int)
+    def on_set_bias_source(self, index: int) -> None:
+        on_combo_changed(self.bias_source_combo_box, self.source_combo_box)
 
     def set_current_compliance_unit(self, unit: str) -> None:
         self.current_compliance_spin_box.setSuffix(f" {unit}")

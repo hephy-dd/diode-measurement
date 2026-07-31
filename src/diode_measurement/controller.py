@@ -235,6 +235,10 @@ class Controller(QtCore.QObject):
         )
 
         general_widget = main_window.general_widget
+        general_widget.add_source_role(Roles.SMU, "SMU")
+        general_widget.add_source_role(Roles.SMU2, "SMU2")
+        general_widget.add_bias_source_role(Roles.SMU, "SMU")
+        general_widget.add_bias_source_role(Roles.SMU2, "SMU2")
 
         for spec in self.measurement_registry:
             general_widget.add_measurement(spec)
@@ -414,14 +418,17 @@ class Controller(QtCore.QObject):
             config.update({"options": role.current_config()})
 
         if general_widget.is_role_checked(Roles.SMU):
-            state["source_role"] = Roles.SMU
+            state["source_role"] = general_widget.source_role()
         elif general_widget.is_role_checked(Roles.ELM):
             state["source_role"] = Roles.ELM
         elif general_widget.is_role_checked(Roles.LCR):
             state["source_role"] = Roles.LCR
 
         if general_widget.is_role_checked(Roles.SMU2):
-            state["bias_source_role"] = Roles.SMU2
+            state["bias_source_role"] = general_widget.bias_source_role()
+
+        logger.error("source_role: %s", state["source_role"])
+        logger.error("bias_source_role: %s", state["bias_source_role"])
 
         for role in self._roles:
             roles.setdefault(role, {}).update(
@@ -505,6 +512,12 @@ class Controller(QtCore.QObject):
         waiting_time_continuous = get_float(settings.value("waitingTimeContinuous"), 1)
         general_widget.set_waiting_time_continuous(waiting_time_continuous)
 
+        source_role = get_str(settings.value("sourceRole"), Roles.SMU)
+        general_widget.set_source_role(source_role)
+
+        bias_source_role = get_str(settings.value("biasSourceRole"), Roles.SMU2)
+        general_widget.set_bias_source_role(bias_source_role)
+
         settings.endGroup()
 
         settings.beginGroup("roles")
@@ -583,6 +596,12 @@ class Controller(QtCore.QObject):
 
         waiting_time_continuous = general_widget.waiting_time_continuous()
         settings.setValue("waitingTimeContinuous", waiting_time_continuous)
+
+        source_role = general_widget.source_role()
+        settings.setValue("sourceRole", source_role)
+
+        bias_source_role = general_widget.bias_source_role()
+        settings.setValue("biasSourceRole", bias_source_role)
 
         settings.endGroup()
 
