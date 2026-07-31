@@ -274,6 +274,8 @@ class Controller(QtCore.QObject):
         self.set_role_enabled("tcu", False)
         self.set_role_enabled("switch", False)
 
+        self.on_measurement_changed(0)
+
         main_window.clear_message()
         main_window.clear_progress()
 
