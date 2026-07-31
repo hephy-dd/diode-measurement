@@ -2,7 +2,7 @@ import logging
 import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from queue import Queue
 from typing import Any
 
@@ -14,12 +14,23 @@ __all__ = ["State"]
 logger = logging.getLogger(__name__)
 
 
-class FSMState(str, Enum):
+class FSMState(StrEnum):
     IDLE = "idle"
     CONFIGURE = "configure"
     RAMPING = "ramping"
     CONTINUOUS = "continuous"
     STOPPING = "stopping"
+
+
+class Roles(StrEnum):
+    SMU = "smu"
+    SMU2 = "smu2"
+    ELM = "elm"
+    ELM2 = "elm2"
+    LCR = "lcr"
+    DMM = "dmm"
+    SWITCH = "switch"
+    TCU = "tcu"
 
 
 @dataclass(frozen=True, slots=True)

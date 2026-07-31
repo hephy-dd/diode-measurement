@@ -3,6 +3,8 @@ import math
 from collections.abc import Iterable, Mapping
 from typing import Any, TextIO
 
+from .state import Roles
+
 __all__ = ["Writer"]
 
 
@@ -85,7 +87,7 @@ class Writer:
         self.flush()
 
     def write_meta_lcr(self, data: Mapping[str, Any]) -> None:
-        lcr = data.get("roles", {}).get("lcr", {})
+        lcr = data.get("roles", {}).get(Roles.LCR, {})
         if lcr.get("enabled"):
             lcr_options = lcr.get("options", {})
             # lcr.options.voltage

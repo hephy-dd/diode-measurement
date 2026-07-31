@@ -12,6 +12,7 @@ class MetricUnit:
     name: str
 
 
+@dataclass(frozen=True, slots=True)
 class MetricUnits:
     default_unit = MetricUnit(1e0, "", "")
 
@@ -57,8 +58,8 @@ class MetricItem:
 class MetricWidget(QtWidgets.QWidget):
     """Metric input widget."""
 
-    valueChanged = QtCore.Signal(float)
-    editingFinished = QtCore.Signal()
+    value_changed = QtCore.Signal(float)
+    editing_finished = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -77,26 +78,27 @@ class MetricWidget(QtWidgets.QWidget):
         layout.addWidget(self._value_spin_box, 1)
         layout.addWidget(self._unit_combo_box, 0)
 
-        self.setUnit("")
-        self.setDecimals(0)
-        self.setRange(float("-inf"), float("+inf"))
-        self.setPrefixes("YZEPTGMk1munpfazy")
-        self.setValue(0)
+        self.set_unit("")
+        self.set_decimals(0)
+        self.set_range(float("-inf"), float("+inf"))
+        self.set_prefixes("YZEPTGMk1munpfazy")
+        self.set_value(0)
 
         self._value_spin_box.valueChanged.connect(
-            lambda _: self.valueChanged.emit(self.value())
+            lambda _: self.value_changed.emit(self.value())
         )
-        self._value_spin_box.editingFinished.connect(self.editingFinished.emit)
+        self._value_spin_box.editingFinished.connect(self.editing_finished.emit)
 
         self._unit_combo_box.currentIndexChanged.connect(self._update_spin_box_range)
         self._unit_combo_box.currentIndexChanged.connect(
-            lambda _: self.valueChanged.emit(self.value())
+            lambda _: self.value_changed.emit(self.value())
         )
 
     def _selected_base(self) -> float:
         item = self._unit_combo_box.currentData()
         return item.metric.base if isinstance(item, MetricItem) else 1.0
 
+    @QtCore.Slot()
     def _update_spin_box_range(self) -> None:
         base = self._selected_base()
         self._value_spin_box.setRange(
@@ -104,7 +106,7 @@ class MetricWidget(QtWidgets.QWidget):
             self._maximum / base,
         )
 
-    def setRange(self, minimum: float, maximum: float) -> None:
+    def set_range(self, minimum: float, maximum: float) -> None:
         self._minimum = minimum
         self._maximum = maximum
         self._update_spin_box_range()
@@ -118,7 +120,7 @@ class MetricWidget(QtWidgets.QWidget):
             base = 1.0
         return self._value_spin_box.value() * base
 
-    def setValue(self, value: float) -> None:
+    def set_value(self, value: float) -> None:
         metric = MetricUnits.get(value)
         for index in range(self._unit_combo_box.count()):
             item = self._unit_combo_box.itemData(index)
@@ -132,13 +134,13 @@ class MetricWidget(QtWidgets.QWidget):
     def decimals(self) -> int:
         return self._value_spin_box.decimals()
 
-    def setDecimals(self, decimals: int) -> None:
+    def set_decimals(self, decimals: int) -> None:
         self._value_spin_box.setDecimals(decimals)
 
     def unit(self) -> str:
         return self._unit
 
-    def setUnit(self, unit: str) -> None:
+    def set_unit(self, unit: str) -> None:
         self._unit = unit
 
     def prefixes(self) -> str:
@@ -148,7 +150,7 @@ class MetricWidget(QtWidgets.QWidget):
             prefixes += value.metric.prefix
         return prefixes
 
-    def setPrefixes(self, prefixes: str) -> None:
+    def set_prefixes(self, prefixes: str) -> None:
         self._unit_combo_box.clear()
         for metric in MetricUnits.metric_units:
             item = MetricItem(metric, self._unit)

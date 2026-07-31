@@ -6,7 +6,7 @@ from dataclasses import asdict
 from comet.utils import inverse_square
 
 from ..core.measurement import RangeMeasurement
-from ..state import CVReading
+from ..state import CVReading, Roles
 
 __all__ = ["CVMeasurement"]
 
@@ -20,9 +20,9 @@ class CVMeasurement(RangeMeasurement):
             writer.write_cv_row(asdict(reading))
 
     def acquire_cv_reading_data(self, source_voltage: float) -> CVReading:
-        smu = self.station.instruments.get("smu")
-        lcr = self.station.instruments.get("lcr")
-        dmm = self.station.instruments.get("dmm")
+        smu = self.station.instruments.get(Roles.SMU)
+        lcr = self.station.instruments.get(Roles.LCR)
+        dmm = self.station.instruments.get(Roles.DMM)
         c_lcr, r_lcr = lcr.measure_impedance() if lcr else (math.nan, math.nan)
         # Calcualte 1c^2 as c2_lcr
         c2_lcr = inverse_square(c_lcr) if math.isfinite(c_lcr) else math.nan

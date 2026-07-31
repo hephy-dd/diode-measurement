@@ -9,7 +9,7 @@ from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..actors import TCUActor
-from ..state import FSMState, IVReading, State
+from ..state import FSMState, IVReading, Roles, State
 from ..writer import Writer
 from .driver import VoltageMeasurable
 from .station import Station
@@ -375,7 +375,7 @@ class RangeMeasurement(Measurement):
             self.check_interlock(instrument)
 
         # TCU (optional)
-        tcu = self.station.instruments.get("tcu")
+        tcu = self.station.instruments.get(Roles.TCU)
         if tcu is not None:
             self.tcu_actor = TCUActor(
                 tcu=tcu,
@@ -410,18 +410,18 @@ class RangeMeasurement(Measurement):
         self.apply_settle_waiting_time()
 
     def initialize_elms(self) -> None:
-        elm = self.station.instruments.get("elm")
+        elm = self.station.instruments.get(Roles.ELM)
         if elm is not None:
             elm.set_zero_check_enabled(False)
             logger.info("ELM zero check: off")
 
-        elm2 = self.station.instruments.get("elm2")
+        elm2 = self.station.instruments.get(Roles.ELM2)
         if elm2 is not None:
             elm2.set_zero_check_enabled(False)
             logger.info("ELM2 zero check: off")
 
     def initialize_switch(self) -> None:
-        switch = self.station.instruments.get("switch")
+        switch = self.station.instruments.get(Roles.SWITCH)
         if switch is not None:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")
@@ -522,23 +522,23 @@ class RangeMeasurement(Measurement):
             )
 
     def finalize_elms(self) -> None:
-        elm = self.station.instruments.get("elm")
+        elm = self.station.instruments.get(Roles.ELM)
         if elm is not None:
             elm.set_zero_check_enabled(True)
             logger.info("ELM zero check: on")
 
-        elm2 = self.station.instruments.get("elm2")
+        elm2 = self.station.instruments.get(Roles.ELM2)
         if elm2 is not None:
             elm2.set_zero_check_enabled(True)
             logger.info("ELM2 zero check: on")
 
     def finalize_lcr(self) -> None:
-        lcr = self.station.instruments.get("lcr")
+        lcr = self.station.instruments.get(Roles.LCR)
         if lcr is not None and hasattr(lcr, "finalize"):
             lcr.finalize()
 
     def finalize_switch(self) -> None:
-        switch = self.station.instruments.get("switch")
+        switch = self.station.instruments.get(Roles.SWITCH)
         if switch:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")

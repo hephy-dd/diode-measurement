@@ -41,7 +41,7 @@ class WidgetParameter:
             index = widget.findData(value)
             widget.setCurrentIndex(index)
         elif isinstance(widget, MetricWidget):
-            widget.setValue(value)
+            widget.set_value(value)
         else:
             raise TypeError(f"Invalid widget type: {widget!r}")
 

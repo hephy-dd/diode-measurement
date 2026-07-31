@@ -18,10 +18,10 @@ class K2470Panel(InstrumentPanel):
         self.range_group_box.setTitle("Sense Range")
 
         self.sense_range_metric = MetricWidget()
-        self.sense_range_metric.setDecimals(3)
-        self.sense_range_metric.setRange(10e-09, 1.0)
-        self.sense_range_metric.setUnit("A")
-        self.sense_range_metric.setPrefixes("mun")
+        self.sense_range_metric.set_decimals(3)
+        self.sense_range_metric.set_range(10e-09, 1.0)
+        self.sense_range_metric.set_unit("A")
+        self.sense_range_metric.set_prefixes("mun")
 
         self.auto_range_check_box = QtWidgets.QCheckBox("Auto Range")
         self.auto_range_check_box.toggled.connect(self.on_auto_range_check_changed)
@@ -29,10 +29,10 @@ class K2470Panel(InstrumentPanel):
         self.auto_range_llimit_label = QtWidgets.QLabel("Lower Limit")
 
         self.auto_range_llimit_metric = MetricWidget()
-        self.auto_range_llimit_metric.setDecimals(3)
-        self.auto_range_llimit_metric.setRange(10e-09, 100e-03)
-        self.auto_range_llimit_metric.setUnit("A")
-        self.auto_range_llimit_metric.setPrefixes("mun")
+        self.auto_range_llimit_metric.set_decimals(3)
+        self.auto_range_llimit_metric.set_range(10e-09, 100e-03)
+        self.auto_range_llimit_metric.set_unit("A")
+        self.auto_range_llimit_metric.set_prefixes("mun")
 
         range_layout = QtWidgets.QVBoxLayout(self.range_group_box)
         range_layout.addWidget(self.sense_range_metric)
@@ -158,9 +158,9 @@ class K2470Panel(InstrumentPanel):
         self.restore_defaults()
 
     def restore_defaults(self) -> None:
-        self.sense_range_metric.setValue(1e-08)
+        self.sense_range_metric.set_value(1e-08)
         self.auto_range_check_box.setChecked(True)
-        self.auto_range_llimit_metric.setValue(1e-08)
+        self.auto_range_llimit_metric.set_value(1e-08)
         self.filter_enable_check_box.setChecked(False)
         self.filter_count_spin_box.setValue(10)
         self.filter_mode_combo_box.setCurrentIndex(0)

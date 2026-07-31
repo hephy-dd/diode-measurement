@@ -1,5 +1,6 @@
 from .core.measurement import MeasurementParameters
 from .measurements import CVMeasurement, IVBiasMeasurement, IVMeasurement
+from .state import Roles
 
 __all__ = ["measurement_registry"]
 
@@ -10,8 +11,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="iv",
         title="IV",
         measurement_cls=IVMeasurement,
-        supported_roles=["smu", "elm", "elm2"],
-        default_roles=["smu"],
+        supported_roles=[Roles.SMU, Roles.ELM, Roles.ELM2],
+        default_roles=[Roles.SMU],
         default_begin_voltage=0.0,
         default_end_voltage=-300.0,
         default_step_voltage=5.0,
@@ -26,8 +27,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="iv_bias",
         title="IV Bias",
         measurement_cls=IVBiasMeasurement,
-        supported_roles=["smu", "smu2", "elm", "elm2"],
-        default_roles=["smu", "smu2"],
+        supported_roles=[Roles.SMU, Roles.SMU2, Roles.ELM, Roles.ELM2],
+        default_roles=[Roles.SMU, Roles.SMU2],
         default_begin_voltage=0.0,
         default_end_voltage=-300.0,
         default_step_voltage=5.0,
@@ -43,8 +44,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="cv",
         title="CV Diode",
         measurement_cls=CVMeasurement,
-        supported_roles=["smu", "lcr"],
-        default_roles=["smu", "lcr"],
+        supported_roles=[Roles.SMU, Roles.LCR],
+        default_roles=[Roles.SMU, Roles.LCR],
         default_begin_voltage=0.0,
         default_end_voltage=50.0,
         default_step_voltage=1.0,
@@ -58,8 +59,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="cv",
         title="CV MOS",
         measurement_cls=CVMeasurement,
-        supported_roles=["lcr"],
-        default_roles=["lcr"],
+        supported_roles=[Roles.LCR],
+        default_roles=[Roles.LCR],
         default_begin_voltage=-10.0,
         default_end_voltage=10.0,
         default_step_voltage=1.0,

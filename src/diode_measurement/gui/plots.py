@@ -8,7 +8,7 @@ from typing import Any
 from comet.utils import auto_scale
 from PySide6 import QtCharts, QtCore, QtWidgets
 
-from ..state import CVReading, IVReading
+from ..state import CVReading, IVReading, Roles
 
 __all__ = [
     "IVPlotWidget",
@@ -235,10 +235,10 @@ class IVPlotWidget(PlotWidget):
         self.i_limits = LimitsAggregator(self)
         self.v_limits = LimitsAggregator(self)
 
-        self._series["smu"] = self.smu_series
-        self._series["smu2"] = self.smu2_series
-        self._series["elm"] = self.elm_series
-        self._series["elm2"] = self.elm2_series
+        self._series[Roles.SMU] = self.smu_series
+        self._series[Roles.SMU2] = self.smu2_series
+        self._series[Roles.ELM] = self.elm_series
+        self._series[Roles.ELM2] = self.elm2_series
 
     def fit_v_axis(self) -> None:
         self.v_axis.setReverse(self.is_reverse())
@@ -339,10 +339,10 @@ class ItPlotWidget(PlotWidget):
         self.i_limits = LimitsAggregator(self)
         self.t_limits = LimitsAggregator(self)
 
-        self._series["smu"] = self.smu_series
-        self._series["smu2"] = self.smu2_series
-        self._series["elm"] = self.elm_series
-        self._series["elm2"] = self.elm2_series
+        self._series[Roles.SMU] = self.smu_series
+        self._series[Roles.SMU2] = self.smu2_series
+        self._series[Roles.ELM] = self.elm_series
+        self._series[Roles.ELM2] = self.elm2_series
 
     def fitTAxis(self) -> None:
         if self.t_limits.is_valid():
@@ -421,7 +421,7 @@ class CVPlotWidget(PlotWidget):
         self.c_limits = LimitsAggregator(self)
         self.v_limits = LimitsAggregator(self)
 
-        self._series["lcr"] = self.lcr_series
+        self._series[Roles.LCR] = self.lcr_series
 
     def fit(self) -> None:
         if self.chart().isZoomed():
@@ -481,7 +481,7 @@ class CV2PlotWidget(PlotWidget):
         self.c_limits = LimitsAggregator(self)
         self.v_limits = LimitsAggregator(self)
 
-        self._series["lcr"] = self.lcr_series
+        self._series[Roles.LCR] = self.lcr_series
 
     def fit(self) -> None:
         if self.chart().isZoomed():
@@ -550,16 +550,16 @@ class IVPlotsDataWidget(QtWidgets.QWidget):
         self.it_plot_widget.reset()
 
     def set_series_visible(self, name: str, visible: bool) -> None:
-        if name == "smu":
+        if name == Roles.SMU:
             self.iv_plot_widget.smu_series.setVisible(visible)
             self.it_plot_widget.smu_series.setVisible(visible)
-        elif name == "smu2":
+        elif name == Roles.SMU2:
             self.iv_plot_widget.smu2_series.setVisible(visible)
             self.it_plot_widget.smu2_series.setVisible(visible)
-        elif name == "elm":
+        elif name == Roles.ELM:
             self.iv_plot_widget.elm_series.setVisible(visible)
             self.it_plot_widget.elm_series.setVisible(visible)
-        elif name == "elm2":
+        elif name == Roles.ELM2:
             self.iv_plot_widget.elm2_series.setVisible(visible)
             self.it_plot_widget.elm2_series.setVisible(visible)
 
@@ -586,13 +586,13 @@ class IVPlotsDataWidget(QtWidgets.QWidget):
         i_elm: float = reading.i_elm
         i_elm2: float = reading.i_elm2
         if math.isfinite(voltage) and math.isfinite(i_smu):
-            self.iv_plot_widget.append("smu", voltage, i_smu)
+            self.iv_plot_widget.append(Roles.SMU, voltage, i_smu)
         if math.isfinite(voltage) and math.isfinite(i_smu2):
-            self.iv_plot_widget.append("smu2", voltage, i_smu2)
+            self.iv_plot_widget.append(Roles.SMU2, voltage, i_smu2)
         if math.isfinite(voltage) and math.isfinite(i_elm):
-            self.iv_plot_widget.append("elm", voltage, i_elm)
+            self.iv_plot_widget.append(Roles.ELM, voltage, i_elm)
         if math.isfinite(voltage) and math.isfinite(i_elm2):
-            self.iv_plot_widget.append("elm2", voltage, i_elm2)
+            self.iv_plot_widget.append(Roles.ELM2, voltage, i_elm2)
 
     def on_load_iv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         smu_points: list[QtCore.QPointF] = []
@@ -623,10 +623,10 @@ class IVPlotsDataWidget(QtWidgets.QWidget):
                 elm2_points.append(QtCore.QPointF(voltage, i_elm2))
                 widget.i_limits.append(i_elm2)
                 widget.v_limits.append(voltage)
-        widget.replace_series("smu", smu_points)
-        widget.replace_series("smu2", smu2_points)
-        widget.replace_series("elm", elm_points)
-        widget.replace_series("elm2", elm2_points)
+        widget.replace_series(Roles.SMU, smu_points)
+        widget.replace_series(Roles.SMU2, smu2_points)
+        widget.replace_series(Roles.ELM, elm_points)
+        widget.replace_series(Roles.ELM2, elm2_points)
         widget.fit()
 
     @QtCore.Slot()
@@ -649,13 +649,13 @@ class IVPlotsDataWidget(QtWidgets.QWidget):
         i_elm: float = reading.i_elm
         i_elm2: float = reading.i_elm2
         if math.isfinite(timestamp) and math.isfinite(i_smu):
-            self.it_plot_widget.append("smu", timestamp, i_smu)
+            self.it_plot_widget.append(Roles.SMU, timestamp, i_smu)
         if math.isfinite(timestamp) and math.isfinite(i_smu2):
-            self.it_plot_widget.append("smu2", timestamp, i_smu2)
+            self.it_plot_widget.append(Roles.SMU2, timestamp, i_smu2)
         if math.isfinite(timestamp) and math.isfinite(i_elm):
-            self.it_plot_widget.append("elm", timestamp, i_elm)
+            self.it_plot_widget.append(Roles.ELM, timestamp, i_elm)
         if math.isfinite(timestamp) and math.isfinite(i_elm2):
-            self.it_plot_widget.append("elm2", timestamp, i_elm2)
+            self.it_plot_widget.append(Roles.ELM2, timestamp, i_elm2)
 
     def on_load_it_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         smu_points: list[QtCore.QPointF] = []
@@ -686,10 +686,10 @@ class IVPlotsDataWidget(QtWidgets.QWidget):
                 elm2_points.append(QtCore.QPointF(timestamp * 1e3, i_elm2))
                 widget.i_limits.append(i_elm2)
                 widget.t_limits.append(timestamp)
-        widget.replace_series("smu", smu_points)
-        widget.replace_series("smu2", smu2_points)
-        widget.replace_series("elm", elm_points)
-        widget.replace_series("elm2", elm2_points)
+        widget.replace_series(Roles.SMU, smu_points)
+        widget.replace_series(Roles.SMU2, smu2_points)
+        widget.replace_series(Roles.ELM, elm_points)
+        widget.replace_series(Roles.ELM2, elm2_points)
         widget.fit()
 
 
@@ -751,9 +751,9 @@ class CVPlotsDataWidget(QtWidgets.QWidget):
         c_lcr = reading.c_lcr
         c2_lcr = reading.c2_lcr
         if math.isfinite(voltage) and math.isfinite(c_lcr):
-            self.cv_plot_widget.append("lcr", voltage, c_lcr)
+            self.cv_plot_widget.append(Roles.LCR, voltage, c_lcr)
         if math.isfinite(voltage) and math.isfinite(c2_lcr):
-            self.cv2_plot_widget.append("lcr", voltage, c2_lcr)
+            self.cv2_plot_widget.append(Roles.LCR, voltage, c2_lcr)
 
     def load_cv_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
         lcr_points: list[QtCore.QPointF] = []
@@ -766,7 +766,7 @@ class CVPlotsDataWidget(QtWidgets.QWidget):
                 lcr_points.append(QtCore.QPointF(voltage, c_lcr))
                 widget.c_limits.append(c_lcr)
                 widget.v_limits.append(voltage)
-        widget.replace_series("lcr", lcr_points)
+        widget.replace_series(Roles.LCR, lcr_points)
         widget.fit()
 
     def load_cv2_readings(self, readings: Iterable[Mapping[str, Any]]) -> None:
@@ -780,5 +780,5 @@ class CVPlotsDataWidget(QtWidgets.QWidget):
                 lcr2_points.append(QtCore.QPointF(voltage, c2_lcr))
                 widget.c_limits.append(c2_lcr)
                 widget.v_limits.append(voltage)
-        widget.replace_series("lcr", lcr2_points)
+        widget.replace_series(Roles.LCR, lcr2_points)
         widget.fit()

@@ -68,7 +68,7 @@ class ScreenshotPlugin(Plugin):
         )
 
     def grab_screenshot(self) -> QtGui.QPixmap:
-        return self.context.main_window.dataStackedWidget.grab()
+        return self.context.main_window.data_stacked_widget.grab()
 
     def save_screenshot(self) -> None:
         """Save screenshot of active IV/CV plots."""

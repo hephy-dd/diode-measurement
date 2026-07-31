@@ -6,6 +6,7 @@ from dataclasses import asdict
 from comet.estimate import Estimate
 
 from ..core.measurement import IVReading, RangeMeasurement
+from ..state import Roles
 
 __all__ = ["IVMeasurement"]
 
@@ -24,10 +25,10 @@ class IVMeasurement(RangeMeasurement):
             writer.write_it_row(asdict(reading))
 
     def acquire_reading_data(self, source_voltage: float) -> IVReading:
-        smu = self.station.instruments.get("smu")
-        elm = self.station.instruments.get("elm")
-        elm2 = self.station.instruments.get("elm2")
-        dmm = self.station.instruments.get("dmm")
+        smu = self.station.instruments.get(Roles.SMU)
+        elm = self.station.instruments.get(Roles.ELM)
+        elm2 = self.station.instruments.get(Roles.ELM2)
+        dmm = self.station.instruments.get(Roles.DMM)
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
         i_elm = elm.measure_i() if elm else math.nan
         i_elm2 = elm2.measure_i() if elm2 else math.nan
