@@ -12,6 +12,7 @@ from ..actors import TCUActor
 from ..state import FSMState, IVReading, State
 from ..writer import Writer
 from .driver import VoltageMeasurable
+from .resource import drain_output_buffer
 from .station import Station
 
 __all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
@@ -353,6 +354,10 @@ class RangeMeasurement(Measurement):
             logger.info("Clear %s...", key.upper())
             instrument.clear()
             logger.info("Clear %s... done.", key.upper())
+
+        # Drain buffer
+        for key, instrument in self.station.instruments.items():
+            drain_output_buffer(instrument.resource)
 
         # Configure
         for key, instrument in self.station.instruments.items():

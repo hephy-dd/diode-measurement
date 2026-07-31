@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Literal, Self
 
 import pyvisa
+from pyvisa.constants import StatusCode
+from pyvisa.errors import VisaIOError
 from pyvisa.resources import MessageBasedResource
 
 __all__ = [
@@ -71,7 +73,7 @@ class Resource:
     def __init__(self, resource_config: ResourceConfig) -> None:
         self._resource_config = resource_config
         self._rm: pyvisa.ResourceManager | None = None
-        self._resource: pyvisa.resources.MessageBasedResource | None = None
+        self._resource: MessageBasedResource | None = None
 
     def __enter__(self) -> Self:
         try:
@@ -114,7 +116,7 @@ class Resource:
         return False
 
     @property
-    def resource(self) -> pyvisa.resources.MessageBasedResource:
+    def resource(self) -> MessageBasedResource:
         if self._resource is None:
             raise RuntimeError("no open resource")
         return self._resource
@@ -192,3 +194,29 @@ class AutoReconnectResource(Resource):
 
     def clear(self) -> None:
         return self._reconnect_retry(super().clear)
+
+
+def drain_output_buffer(
+    resource: Resource, timeout_ms: int = 100, attempts: int = 10
+) -> None:
+    visa_drain_output_buffer(resource.resource, timeout_ms, attempts)
+
+
+def visa_drain_output_buffer(
+    resource: MessageBasedResource, timeout_ms: int = 100, attempts: int = 10
+) -> None:
+    prev_timeout = resource.timeout
+    try:
+        resource.timeout = timeout_ms
+        for _ in range(attempts):
+            try:
+                data = resource.read_raw()
+                logger.info(
+                    "Discarded output buffer bytes (%d): %r", len(data), data[:1024]
+                )
+            except VisaIOError as exc:
+                if exc.error_code == StatusCode.error_timeout:
+                    break
+                raise
+    finally:
+        resource.timeout = prev_timeout
