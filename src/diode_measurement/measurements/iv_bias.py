@@ -34,7 +34,10 @@ class IVBiasMeasurement(RangeMeasurement):
         i_smu2, v_smu2 = smu2.measure_iv() if smu2 else (math.nan, math.nan)
         i_elm = elm.measure_i() if elm else math.nan
         i_elm2 = elm2.measure_i() if elm2 else math.nan
-        t_dmm = dmm.measure_temperature() if dmm else math.nan
+        t_dmm = dmm.measure_temperature() if dmm else self.tcu_temperature()
+
+        tcu_humidity = self.tcu_humidity()
+
         return IVReading(
             timestamp=time.time(),
             voltage=source_voltage,
@@ -45,6 +48,7 @@ class IVBiasMeasurement(RangeMeasurement):
             i_elm=i_elm,
             i_elm2=i_elm2,
             t_dmm=t_dmm,
+            humidity=tcu_humidity,
         )
 
     def acquire_reading(self, source_voltage: float) -> None:

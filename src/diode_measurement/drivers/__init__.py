@@ -2,6 +2,7 @@ from ..core.driver import driver_factory, driver_registry
 from .a4284a import A4284A
 from .ac3 import AC3
 from .brandbox import BrandBox
+from .cts.itc import ITCAdapter
 from .e4980a import E4980A
 
 # Drivers
@@ -33,6 +34,7 @@ driver_registry.update(
         "E4980A": E4980A,
         "A4284A": A4284A,
         "AC3": AC3,
+        "ITC": ITCAdapter,
         "BrandBox": BrandBox,
         "K707B": K707B,
         "K708B": K708B,

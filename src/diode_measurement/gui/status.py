@@ -1,3 +1,4 @@
+import math
 from typing import Any
 
 from PySide6 import QtCore, QtWidgets
@@ -218,6 +219,10 @@ class TCUStatusGroupBox(QtWidgets.QGroupBox):
         self.temperature_line_edit.setReadOnly(True)
         self.temperature_line_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
+        self.humidity_line_edit = QtWidgets.QLineEdit(self)
+        self.humidity_line_edit.setReadOnly(True)
+        self.humidity_line_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+
         self.state_line_edit = QtWidgets.QLineEdit(self)
         self.state_line_edit.setReadOnly(True)
         self.state_line_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
@@ -230,26 +235,33 @@ class TCUStatusGroupBox(QtWidgets.QGroupBox):
         layout.addLayout(vbox_layout)
 
         vbox_layout = QtWidgets.QVBoxLayout()
-        vbox_layout.addWidget(QtWidgets.QLabel("State"))
-        vbox_layout.addWidget(self.state_line_edit)
+        vbox_layout.addWidget(QtWidgets.QLabel("Humidity"))
+        vbox_layout.addWidget(self.humidity_line_edit)
         layout.addLayout(vbox_layout)
 
         vbox_layout = QtWidgets.QVBoxLayout()
-        vbox_layout.addWidget(QtWidgets.QLabel())
+        vbox_layout.addWidget(QtWidgets.QLabel("State"))
+        vbox_layout.addWidget(self.state_line_edit)
         layout.addLayout(vbox_layout)
-
-        layout.setStretch(0, 3)
-        layout.setStretch(1, 3)
-        layout.setStretch(2, 1)
 
         self.clear()
 
     def clear(self) -> None:
         self.temperature_line_edit.setText("---")
+        self.humidity_line_edit.setText("---")
         self.state_line_edit.setText("---")
 
     def set_temperature(self, temperature: float) -> None:
-        self.temperature_line_edit.setText(format_metric(temperature, "°C", 1))
+        if math.isfinite(temperature):
+            self.temperature_line_edit.setText(format_metric(temperature, "°C", 1))
+        else:
+            self.temperature_line_edit.setText("---")
+
+    def set_humidity(self, humidity: float) -> None:
+        if math.isfinite(humidity):
+            self.humidity_line_edit.setText(format_metric(humidity, "%rH", 1))
+        else:
+            self.humidity_line_edit.setText("---")
 
     def set_state(self, state: str) -> None:
         self.state_line_edit.setText(str(state))

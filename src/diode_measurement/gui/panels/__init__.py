@@ -2,6 +2,7 @@ from .a4284a import A4284APanel
 from .ac3 import AC3Panel
 from .brandbox import BrandBoxPanel
 from .e4980a import E4980APanel
+from .itc import ITCPanel
 from .k237 import K237Panel
 from .k595 import K595Panel
 from .k707b import K707BPanel
@@ -15,6 +16,11 @@ from .k6514 import K6514Panel
 from .k6517b import K6517BPanel
 
 __all__ = [
+    "A4284APanel",
+    "AC3Panel",
+    "BrandBoxPanel",
+    "E4980APanel",
+    "ITCPanel",
     "K237Panel",
     "K595Panel",
     "K2410Panel",
@@ -24,10 +30,6 @@ __all__ = [
     "K4215Panel",
     "K6514Panel",
     "K6517BPanel",
-    "A4284APanel",
-    "E4980APanel",
-    "AC3Panel",
-    "BrandBoxPanel",
     "K707BPanel",
     "K708BPanel",
 ]

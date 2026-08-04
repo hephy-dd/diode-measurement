@@ -31,6 +31,7 @@ from .gui.panels import (
     AC3Panel,
     BrandBoxPanel,
     E4980APanel,
+    ITCPanel,
     K237Panel,
     K595Panel,
     K707BPanel,
@@ -189,6 +190,7 @@ class Controller(QtCore.QObject):
         # TCU
         role = main_window.add_role(Roles.TCU, "TCU")
         role.add_instrument_panel(AC3Panel())
+        role.add_instrument_panel(ITCPanel())
 
         # Switch
         role = main_window.add_role(Roles.SWITCH, "Switch")
@@ -780,6 +782,10 @@ class Controller(QtCore.QObject):
         if (tcu_temperature := data.get("tcu_temperature")) is not None:
             self.main_window.update_tcu_temperature(tcu_temperature)
             cache.update({"tcu_temperature": tcu_temperature})
+
+        if (tcu_humidity := data.get("tcu_humidity")) is not None:
+            self.main_window.update_tcu_humidity(tcu_humidity)
+            cache.update({"tcu_humidity": tcu_humidity})
 
         if (tcu_state := data.get("tcu_state")) is not None:
             self.main_window.update_tcu_state(tcu_state)

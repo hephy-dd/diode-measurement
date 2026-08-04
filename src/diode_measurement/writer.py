@@ -115,6 +115,7 @@ class Writer:
                     "i_elm[A]",
                     "i_elm2[A]",
                     "temperature[degC]",
+                    "humidity[%rH]",
                 ]
             )
             self.reset_timestamp_offset(data)
@@ -127,6 +128,7 @@ class Writer:
                 safe_format(data.get("i_elm"), self.value_format),
                 safe_format(data.get("i_elm2"), self.value_format),
                 safe_format(data.get("t_dmm"), self.value_format),
+                safe_format(data.get("humidity"), self.value_format),
             ]
         )
         self.flush()
@@ -145,6 +147,7 @@ class Writer:
                     "i_elm[A]",
                     "i_elm2[A]",
                     "temperature[degC]",
+                    "humidity[%rH]",
                 ]
             )
             self.reset_timestamp_offset(data)
@@ -159,6 +162,7 @@ class Writer:
                 safe_format(data.get("i_elm"), self.value_format),
                 safe_format(data.get("i_elm2"), self.value_format),
                 safe_format(data.get("t_dmm"), self.value_format),
+                safe_format(data.get("humidity"), self.value_format),
             ]
         )
         self.flush()
@@ -175,6 +179,7 @@ class Writer:
                     "i_elm[A]",
                     "i_elm2[A]",
                     "temperature[degC]",
+                    "humidity[%rH]",
                 ]
             )
             self.reset_timestamp_offset(data)
@@ -187,6 +192,7 @@ class Writer:
                 safe_format(data.get("i_elm"), self.value_format),
                 safe_format(data.get("i_elm2"), self.value_format),
                 safe_format(data.get("t_dmm"), self.value_format),
+                safe_format(data.get("humidity"), self.value_format),
             ]
         )
         self.flush()
@@ -205,6 +211,7 @@ class Writer:
                     "i_elm[A]",
                     "i_elm2[A]",
                     "temperature[degC]",
+                    "humidity[%rH]",
                 ]
             )
             self.reset_timestamp_offset(data)
@@ -219,6 +226,7 @@ class Writer:
                 safe_format(data.get("i_elm"), self.value_format),
                 safe_format(data.get("i_elm2"), self.value_format),
                 safe_format(data.get("t_dmm"), self.value_format),
+                safe_format(data.get("humidity"), self.value_format),
             ]
         )
         self.flush()
@@ -236,6 +244,7 @@ class Writer:
                     "c2_lcr[1/F^2]",
                     "r_lcr[Ohm]",
                     "temperature[degC]",
+                    "humidity[%rH]",
                 ]
             )
             self.reset_timestamp_offset(data)
@@ -249,6 +258,7 @@ class Writer:
                 safe_format(data.get("c2_lcr"), self.value_format),
                 safe_format(data.get("r_lcr"), self.value_format),
                 safe_format(data.get("t_dmm"), self.value_format),
+                safe_format(data.get("humidity"), self.value_format),
             ]
         )
         self.flush()

@@ -1,3 +1,4 @@
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -16,6 +17,9 @@ class AC3(_AC3):
 
     def get_temperature(self) -> float:
         return self.temperature
+
+    def get_humidity(self) -> float:
+        return math.nan
 
     def set_target_temperature(self, temperature: float) -> None:
         self.target_temperature = temperature

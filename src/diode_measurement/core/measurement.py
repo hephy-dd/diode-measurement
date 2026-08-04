@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import math
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -63,6 +64,18 @@ class Measurement:
         error = context.next_error()
         if error is not None:
             raise RuntimeError(f"Instrument Error: {error.code}: {error.message}")
+
+    def tcu_temperature(self) -> float:
+        if self.tcu_actor is not None:
+            metrics = self.tcu_actor.cached_metrics()
+            return metrics.temperature
+        return math.nan
+
+    def tcu_humidity(self) -> float:
+        if self.tcu_actor is not None:
+            metrics = self.tcu_actor.cached_metrics()
+            return metrics.humidity
+        return math.nan
 
     def submit_update(self, data: Mapping[str, Any]) -> None:
         self.state.event_bus.submit("update", data)
@@ -516,8 +529,6 @@ class RangeMeasurement(Measurement):
                     "elm2_current": None,
                     "lcr_capacity": None,
                     "dmm_temperature": None,
-                    "tcu_temperature": None,
-                    "tcu_state": None,
                 }
             )
 
@@ -615,6 +626,9 @@ class RangeMeasurement(Measurement):
                 "elm2_current": None,
                 "lcr_capacity": None,
                 "dmm_temperature": None,
+                "tcu_temperature": None,
+                "tcu_humidity": None,
+                "tcu_state": None,
             }
         )
 
@@ -676,6 +690,9 @@ class RangeMeasurement(Measurement):
                 "elm2_current": None,
                 "lcr_capacity": None,
                 "dmm_temperature": None,
+                "tcu_temperature": None,
+                "tcu_humidity": None,
+                "tcu_state": None,
             }
         )
         ramp: LinearRange = LinearRange(bias_source_voltage, end_voltage, step_voltage)
