@@ -44,6 +44,7 @@ class ChangeVoltageParameters:
 class Reading:
     timestamp: float
     t_dmm: float
+    humidity: float
 
 
 @dataclass(frozen=True, slots=True)

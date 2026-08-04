@@ -310,6 +310,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.elm_group_box.clear()
         self.elm2_group_box.clear()
         self.lcr_group_box.clear()
+        self.dmm_group_box.clear()
+        self.tcu_group_box.clear()
         self._locked = False
 
     def set_running_state(self) -> None:
@@ -449,6 +451,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_tcu_temperature(self, temperature: float) -> None:
         self.tcu_group_box.set_temperature(temperature)
+
+    def update_tcu_humidity(self, humidity: float) -> None:
+        self.tcu_group_box.set_humidity(humidity)
 
     def update_tcu_state(self, state: str) -> None:
         self.tcu_group_box.set_state(state)

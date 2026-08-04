@@ -27,7 +27,10 @@ class CVMeasurement(RangeMeasurement):
         # Calcualte 1c^2 as c2_lcr
         c2_lcr = inverse_square(c_lcr) if math.isfinite(c_lcr) else math.nan
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
-        t_dmm = dmm.measure_temperature() if dmm else math.nan
+        t_dmm = dmm.measure_temperature() if dmm else self.tcu_temperature()
+
+        tcu_humidity = self.tcu_humidity()
+
         return CVReading(
             timestamp=time.time(),
             voltage=source_voltage,
@@ -37,6 +40,7 @@ class CVMeasurement(RangeMeasurement):
             c2_lcr=c2_lcr,
             r_lcr=r_lcr,
             t_dmm=t_dmm,
+            humidity=tcu_humidity,
         )
 
     def acquire_reading(self, source_voltage: float) -> None:
