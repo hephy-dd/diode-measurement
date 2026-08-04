@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for CTS/ITC chlimate chamber as TCU role (#84, #175).
+
 ### Changed
 
 - Refactored main window for improved maintainability.

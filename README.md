@@ -26,7 +26,7 @@ It provides a unified interface for configuring instruments, running measurement
 
 - Agilent 4284A
 - Keithley 595
-- Keithley 4215-CVU
+- Keithley 4215 CVU
 - Keysight E4980A
 
 ### Digital Multimeter (Temperature)
@@ -36,6 +36,7 @@ It provides a unified interface for configuring instruments, running measurement
 ### Temperature Control Unit (TCU)
 
 - ERS AC3 Fusion (Thermal Chuck)
+- CTS ITC (Climate Chamber)
 
 ### Switching Matrix
 
