@@ -1,6 +1,6 @@
 from .core.measurement import MeasurementParameters
+from .core.role import Role
 from .measurements import CVMeasurement, IVBiasMeasurement, IVMeasurement
-from .state import Roles
 
 __all__ = ["measurement_registry"]
 
@@ -11,8 +11,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="iv",
         title="IV",
         measurement_cls=IVMeasurement,
-        supported_roles=[Roles.SMU, Roles.ELM, Roles.ELM2],
-        default_roles=[Roles.SMU],
+        supported_roles=[Role.SMU, Role.ELM, Role.ELM2],
+        default_roles=[Role.SMU],
         default_begin_voltage=0.0,
         default_end_voltage=-300.0,
         default_step_voltage=5.0,
@@ -27,8 +27,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="iv_bias",
         title="IV Bias",
         measurement_cls=IVBiasMeasurement,
-        supported_roles=[Roles.SMU, Roles.SMU2, Roles.ELM, Roles.ELM2],
-        default_roles=[Roles.SMU, Roles.SMU2],
+        supported_roles=[Role.SMU, Role.SMU2, Role.ELM, Role.ELM2],
+        default_roles=[Role.SMU, Role.SMU2],
         default_begin_voltage=0.0,
         default_end_voltage=-300.0,
         default_step_voltage=5.0,
@@ -44,8 +44,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="cv",
         title="CV Diode",
         measurement_cls=CVMeasurement,
-        supported_roles=[Roles.SMU, Roles.LCR],
-        default_roles=[Roles.SMU, Roles.LCR],
+        supported_roles=[Role.SMU, Role.LCR],
+        default_roles=[Role.SMU, Role.LCR],
         default_begin_voltage=0.0,
         default_end_voltage=50.0,
         default_step_voltage=1.0,
@@ -59,8 +59,8 @@ measurement_registry: list[MeasurementParameters] = [
         type="cv",
         title="CV MOS",
         measurement_cls=CVMeasurement,
-        supported_roles=[Roles.LCR],
-        default_roles=[Roles.LCR],
+        supported_roles=[Role.LCR],
+        default_roles=[Role.LCR],
         default_begin_voltage=-10.0,
         default_end_voltage=10.0,
         default_step_voltage=1.0,

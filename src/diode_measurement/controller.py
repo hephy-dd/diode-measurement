@@ -3,19 +3,31 @@ import os
 import threading
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from functools import partial
 from queue import Empty, Queue
+from threading import Event
 from typing import Any
 
 from comet.utils import safe_filename
 from PySide6 import QtCore, QtStateMachine, QtWidgets
 
 from .core.cache import Cache
+from .core.events import (
+    UpdateContinueInCompliance,
+    UpdateCurrentCompliance,
+    UpdateWaitingTimeContinuous,
+)
 from .core.job import Job
-from .core.measurement import Measurement
+from .core.measurement import (
+    ChangeVoltageDoneEvent,
+    ExceptionEvent,
+    Measurement,
+    UpdateMetricsEvent,
+)
 from .core.resource import ResourceConfig, parse_resource
+from .core.role import Role, RoleConfig
 from .core.station import Station
 from .gui.dialogs import ChangeVoltageDialog
 from .gui.mainwindow import MainWindow
@@ -54,9 +66,18 @@ from .jobs import (
     MeasurementJob,
     TestConnectionJob,
 )
+from .measurements.cv import CVReadingEvent
+from .measurements.iv import ItReadingEvent, IVReadingEvent
+from .measurements.iv_bias import ItBiasReadingEvent, IVBiasReadingEvent
 from .reader import Reader
 from .settings import MeasurementParameters, measurement_registry
-from .state import ChangeVoltageParameters, FSMState, Roles, State
+from .state import (
+    ChangeVoltageParameters,
+    CVReading,
+    FSMState,
+    IVReading,
+    State,
+)
 from .utils import format_metric, get_bool, get_dict, get_float, get_int, get_str
 
 __all__ = ["Controller"]
@@ -77,7 +98,9 @@ class Snapshot:
     elm_current: float | None
     elm2_current: float | None
     lcr_capacity: float | None
-    temperature: float | None
+    dmm_temperature: float | None
+    tcu_temperature: float | None
+    tcu_humidity: float | None
 
 
 def get_role_config(role: RoleWidget) -> ResourceConfig:
@@ -108,39 +131,48 @@ class Controller(QtCore.QObject):
     ) -> None:
         super().__init__(parent)
 
+        self._abort_event = Event()
+        self._outbox_queue: Queue[Any] = Queue()
+        self._event_queue: Queue[Any] = Queue()
+        self._last_output_filename: str | None = None
+
         self._background_jobs = BackgroundJobsController(self)
         self._background_jobs.failed.connect(self.failed.emit)
         self._background_jobs.finished.connect(self.finished.emit)
 
         self.main_window = main_window
 
+        self.settings = QtCore.QSettings()
+
         self.is_exception_dialog_active: bool = False
 
-        self.state: State = State()
-        self.state.event_bus.register_callback(
-            "change_voltage_done", self.change_voltage_ready.emit
-        )
-        self.state.event_bus.register_callback("update", self.updated.emit)
-        self.state.event_bus.register_callback("failed", self.failed.emit)
+        self.event_poll_interval = 100
+
+        self.event_timer = QtCore.QTimer(self)
+        self.event_timer.timeout.connect(self.on_event_poll)
+        self.event_timer.start(self.event_poll_interval)
 
         self.cache: Cache = Cache()
 
         self.measurement_registry: list[MeasurementParameters] = measurement_registry
 
         # Plots
-        iv_reading_queue = self.state.create_iv_reading_queue()
-        it_reading_queue = self.state.create_it_reading_queue()
-        cv_reading_queue = self.state.create_cv_reading_queue()
+        self.iv_reading_queue: Queue[IVReading] = Queue()
+        self.it_reading_queue: Queue[IVReading] = Queue()
+        self.cv_reading_queue: Queue[CVReading] = Queue()
 
         self.iv_plots_data_windget = IVPlotsDataWidget(
-            iv_reading_queue, it_reading_queue
+            iv_reading_queue=self.iv_reading_queue,
+            it_reading_queue=self.it_reading_queue,
         )
         self.iv_plots_data_windget.start(500)
-        self.cv_plots_data_windget = CVPlotsDataWidget(cv_reading_queue)
+        self.cv_plots_data_windget = CVPlotsDataWidget(
+            cv_reading_queue=self.cv_reading_queue,
+        )
         self.cv_plots_data_windget.start(500)
 
         self.change_voltage_controller = ChangeVoltageController(
-            self.main_window, self.state, self
+            self.main_window, self._outbox_queue, self
         )
         self.change_voltage_ready.connect(
             self.change_voltage_controller.on_change_voltage_ready
@@ -149,33 +181,33 @@ class Controller(QtCore.QObject):
         self.failed.connect(self.handle_exception)
 
         # Source meter unit
-        role = main_window.add_role(Roles.SMU, "SMU")
+        role = main_window.add_role(Role.SMU, "SMU")
         role.add_instrument_panel(K237Panel())
         role.add_instrument_panel(K2410Panel())
         role.add_instrument_panel(K2470Panel())
         role.add_instrument_panel(K2657APanel())
 
         # Bias source meter unit
-        role = main_window.add_role(Roles.SMU2, "SMU2")
+        role = main_window.add_role(Role.SMU2, "SMU2")
         role.add_instrument_panel(K237Panel())
         role.add_instrument_panel(K2410Panel())
         role.add_instrument_panel(K2470Panel())
         role.add_instrument_panel(K2657APanel())
 
         # Electrometer
-        role = main_window.add_role(Roles.ELM, "ELM")
+        role = main_window.add_role(Role.ELM, "ELM")
         role.add_instrument_panel(K6514Panel())
         role.add_instrument_panel(K6517BPanel())
         role.resource_widget.model_changed.connect(self.on_instruments_changed)  # HACK
 
         # Electrometer 2
-        role = main_window.add_role(Roles.ELM2, "ELM2")
+        role = main_window.add_role(Role.ELM2, "ELM2")
         role.add_instrument_panel(K6514Panel())
         role.add_instrument_panel(K6517BPanel())
         role.resource_widget.model_changed.connect(self.on_instruments_changed)  # HACK
 
         # LCR meter
-        role = main_window.add_role(Roles.LCR, "LCR")
+        role = main_window.add_role(Role.LCR, "LCR")
         role.add_instrument_panel(K595Panel())
         role.add_instrument_panel(E4980APanel())
         role.add_instrument_panel(A4284APanel())
@@ -184,29 +216,29 @@ class Controller(QtCore.QObject):
         role.add_instrument_panel(panel)
 
         # DMM
-        role = main_window.add_role(Roles.DMM, "DMM")
+        role = main_window.add_role(Role.DMM, "DMM", optional=True)
         role.add_instrument_panel(K2700Panel())
 
         # TCU
-        role = main_window.add_role(Roles.TCU, "TCU")
+        role = main_window.add_role(Role.TCU, "TCU", optional=True)
         role.add_instrument_panel(AC3Panel())
         role.add_instrument_panel(ITCPanel())
 
         # Switch
-        role = main_window.add_role(Roles.SWITCH, "Switch")
+        role = main_window.add_role(Role.SWITCH, "Switch", optional=True)
         role.add_instrument_panel(BrandBoxPanel())
         role.add_instrument_panel(K707BPanel())
         role.add_instrument_panel(K708BPanel())
 
-        self._roles: list[Roles] = [
-            Roles.SMU,
-            Roles.SMU2,
-            Roles.ELM,
-            Roles.ELM2,
-            Roles.LCR,
-            Roles.DMM,
-            Roles.TCU,
-            Roles.SWITCH,
+        self._roles: list[Role] = [
+            Role.SMU,
+            Role.SMU2,
+            Role.ELM,
+            Role.ELM2,
+            Role.LCR,
+            Role.DMM,
+            Role.TCU,
+            Role.SWITCH,
         ]
 
         main_window.import_action.triggered.connect(self.on_import_file)
@@ -267,14 +299,14 @@ class Controller(QtCore.QObject):
                 partial(self.set_role_enabled, role)
             )
 
-        self.set_role_enabled("smu", True)
-        self.set_role_enabled("smu2", False)
-        self.set_role_enabled("elm", False)
-        self.set_role_enabled("elm2", False)
-        self.set_role_enabled("lcr", False)
-        self.set_role_enabled("dmm", False)
-        self.set_role_enabled("tcu", False)
-        self.set_role_enabled("switch", False)
+        self.set_role_enabled(Role.SMU, True)
+        self.set_role_enabled(Role.SMU2, False)
+        self.set_role_enabled(Role.ELM, False)
+        self.set_role_enabled(Role.ELM2, False)
+        self.set_role_enabled(Role.LCR, False)
+        self.set_role_enabled(Role.DMM, False)
+        self.set_role_enabled(Role.TCU, False)
+        self.set_role_enabled(Role.SWITCH, False)
 
         self.on_measurement_changed(0)
 
@@ -332,18 +364,20 @@ class Controller(QtCore.QObject):
                 elm_current=self.cache.get("elm_current"),
                 elm2_current=self.cache.get("elm2_current"),
                 lcr_capacity=self.cache.get("lcr_capacity"),
-                temperature=self.cache.get("dmm_temperature"),
+                dmm_temperature=self.cache.get("dmm_temperature"),
+                tcu_temperature=self.cache.get("tcu_temperature"),
+                tcu_humidity=self.cache.get("tcu_humidity"),
             )
 
     def get_role_model(self, role: str) -> str:
         for role_widget in self.main_window.roles():
-            if role_widget.name() == role:
+            if role_widget.role() == role:
                 return role_widget.model()
         raise KeyError("No such role: {role!r}")
 
     def get_role_config(self, role: str) -> dict[str, Any]:
         for role_widget in self.main_window.roles():
-            if role_widget.name() == role:
+            if role_widget.role() == role:
                 return role_widget.current_config()
         raise KeyError("No such role: {role!r}")
 
@@ -351,7 +385,7 @@ class Controller(QtCore.QObject):
         self, role: str, options: Mapping[str, Any]
     ) -> dict[str, Any]:
         for role_widget in self.main_window.roles():
-            if role_widget.name() == role:
+            if role_widget.role() == role:
                 config = role_widget.current_config()
                 for key in options:
                     if key not in config:
@@ -371,8 +405,11 @@ class Controller(QtCore.QObject):
     def submit_background_job(self, job: Job) -> None:
         self._background_jobs.submit_job(job)
 
-    def prepare_state(self) -> dict[str, Any]:
-        state: dict[str, Any] = {}
+    def last_output_filename(self) -> str | None:
+        return self._last_output_filename
+
+    def prepare_state(self) -> State:
+        timestamp_utc = time.time()
 
         general_widget = self.main_window.general_widget
         current_measurement = general_widget.current_measurement()
@@ -380,60 +417,80 @@ class Controller(QtCore.QObject):
         if current_measurement is None:
             raise ValueError("No measurement selected.")
 
-        state["sample"] = general_widget.sample_name()
-        state["measurement_type"] = current_measurement.type
-        state["timestamp"] = time.time()
+        source_role: Role | None = None
+        if general_widget.is_role_checked(Role.SMU):
+            source_role = Role.SMU
+        elif general_widget.is_role_checked(Role.ELM):
+            source_role = Role.ELM
+        elif general_widget.is_role_checked(Role.LCR):
+            source_role = Role.LCR
 
-        state["continuous"] = self.main_window.is_continuous()
-        state["auto_reconnect"] = self.main_window.is_auto_reconnect()
-        state["voltage_begin"] = general_widget.begin_voltage()
-        state["voltage_end"] = general_widget.end_voltage()
-        state["voltage_step"] = general_widget.step_voltage()
-        state["waiting_time"] = general_widget.waiting_time()
-        state["bias_voltage"] = general_widget.bias_voltage()
-        state["current_compliance"] = general_widget.current_compliance()
-        state["continue_in_compliance"] = general_widget.is_continue_in_compliance()
-        state["waiting_time_continuous"] = general_widget.waiting_time_continuous()
+        bias_source_role: Role | None = None
+        if general_widget.is_role_checked(Role.SMU2):
+            bias_source_role = Role.SMU2
 
-        roles: dict[str, Any] = state.setdefault("roles", {})
+        # discharge guard
+        discharge_timeout = get_float(
+            self.settings.value("misc/discharge_timeout"), 60.0
+        )
+        discharge_threshold = get_float(
+            self.settings.value("misc/discharge_threshold"), 0.5
+        )
 
-        for role in self.main_window.roles():
-            key = role.name()
-            resource = role.resource_widget.resource_name()
-            resource_name, visa_library = parse_resource(resource)
-            config = roles.setdefault(key, {})
-            config.update(
-                {
-                    "resource_name": resource_name,
-                    "visa_library": visa_library,
-                    "model": role.resource_widget.model(),
-                    "termination": role.resource_widget.termination(),
-                    "timeout": role.resource_widget.timeout(),
-                    "baud_rate": role.resource_widget.baud_rate(),
-                    "reset_instrument": role.resource_widget.is_reset_instrument(),
-                }
-            )
-            config.update({"options": role.current_config()})
+        # Filename
+        output_enabled = self.main_window.general_widget.is_output_enabled()
+        self._last_output_filename = (
+            self.create_filename(timestamp_utc) if output_enabled else None
+        )
 
-        if general_widget.is_role_checked(Roles.SMU):
-            state["source_role"] = Roles.SMU
-        elif general_widget.is_role_checked(Roles.ELM):
-            state["source_role"] = Roles.ELM
-        elif general_widget.is_role_checked(Roles.LCR):
-            state["source_role"] = Roles.LCR
+        state = State(
+            measurement_type=current_measurement.type,
+            timestamp=timestamp_utc,
+            sample=general_widget.sample_name(),
+            is_continuous=self.main_window.is_continuous(),
+            auto_reconnect=self.main_window.is_auto_reconnect(),
+            source_role=source_role,
+            bias_source_role=bias_source_role,
+            voltage_begin=general_widget.begin_voltage(),
+            voltage_end=general_widget.end_voltage(),
+            voltage_step=general_widget.step_voltage(),
+            waiting_time=general_widget.waiting_time(),
+            bias_voltage=general_widget.bias_voltage(),
+            current_compliance=general_widget.current_compliance(),
+            continue_in_compliance=general_widget.is_continue_in_compliance(),
+            waiting_time_continuous=general_widget.waiting_time_continuous(),
+            discharge_timeout=discharge_timeout,
+            discharge_threshold=discharge_threshold,
+            roles=self.prepare_roles(),
+            output_filename=self._last_output_filename,
+        )
 
-        if general_widget.is_role_checked(Roles.SMU2):
-            state["bias_source_role"] = Roles.SMU2
-
-        for role in self._roles:
-            roles.setdefault(role, {}).update(
-                {"enabled": general_widget.is_role_checked(role)}
-            )
-
-        for key, value in state.items():
+        for key, value in asdict(state).items():
             logger.info("> %s: %s", key, value)
 
         return state
+
+    def prepare_roles(self) -> dict[Role, RoleConfig]:
+        roles: dict[Role, RoleConfig] = {}
+        general_widget = self.main_window.general_widget
+
+        for role_widget in self.main_window.roles():
+            role = role_widget.role()
+            resource = role_widget.resource_widget.resource_name()
+            resource_name, visa_library = parse_resource(resource)
+
+            roles[role] = RoleConfig(
+                enabled=general_widget.is_role_checked(role),
+                model=role_widget.resource_widget.model(),
+                resource_name=resource_name,
+                visa_library=visa_library,
+                termination=role_widget.resource_widget.termination(),
+                timeout=role_widget.resource_widget.timeout(),
+                reset_instrument=role_widget.resource_widget.is_reset_instrument(),
+                options=role_widget.current_config(),
+            )
+
+        return roles
 
     def start(self) -> None:
         self._background_jobs.start()
@@ -511,19 +568,19 @@ class Controller(QtCore.QObject):
 
         settings.beginGroup("roles")
 
-        for role in self.main_window.roles():
-            name = role.name()
+        for role_widget in self.main_window.roles():
+            name = str(role_widget.role())
             settings.beginGroup(name)
-            role.set_model(get_str(settings.value("model"), ""))
-            role.set_resource_name(get_str(settings.value("resource"), ""))
-            role.set_termination(get_str(settings.value("termination"), ""))
-            role.set_timeout(get_float(settings.value("timeout"), 4.0))
-            role.set_baud_rate(get_int(settings.value("baud_rate"), 9_600))
-            role.set_reset_instrument(
+            role_widget.set_model(get_str(settings.value("model"), ""))
+            role_widget.set_resource_name(get_str(settings.value("resource"), ""))
+            role_widget.set_termination(get_str(settings.value("termination"), ""))
+            role_widget.set_timeout(get_float(settings.value("timeout"), 4.0))
+            role_widget.set_baud_rate(get_int(settings.value("baud_rate"), 9_600))
+            role_widget.set_reset_instrument(
                 get_bool(settings.value("reset_instrument"), False)
             )
-            role.set_resources(get_dict(settings.value("resources"), {}))
-            role.set_configs(get_dict(settings.value("configs"), {}))
+            role_widget.set_resources(get_dict(settings.value("resources"), {}))
+            role_widget.set_configs(get_dict(settings.value("configs"), {}))
             settings.endGroup()
 
         settings.endGroup()
@@ -590,17 +647,17 @@ class Controller(QtCore.QObject):
 
         settings.beginGroup("roles")
 
-        for role in self.main_window.roles():
-            name = role.name()
+        for role_widget in self.main_window.roles():
+            name = str(role_widget.role())
             settings.beginGroup(name)
-            settings.setValue("model", role.model())
-            settings.setValue("resource", role.resource_name())
-            settings.setValue("termination", role.termination())
-            settings.setValue("timeout", role.timeout())
-            settings.setValue("baud_rate", role.baud_rate())
-            settings.setValue("reset_instrument", role.is_reset_instrument())
-            settings.setValue("resources", role.resources())
-            settings.setValue("configs", role.configs())
+            settings.setValue("model", role_widget.model())
+            settings.setValue("resource", role_widget.resource_name())
+            settings.setValue("termination", role_widget.termination())
+            settings.setValue("timeout", role_widget.timeout())
+            settings.setValue("baud_rate", role_widget.baud_rate())
+            settings.setValue("reset_instrument", role_widget.is_reset_instrument())
+            settings.setValue("resources", role_widget.resources())
+            settings.setValue("configs", role_widget.configs())
             settings.endGroup()
 
         settings.endGroup()
@@ -664,16 +721,16 @@ class Controller(QtCore.QObject):
                 if measurement_type == "iv":
                     self.iv_plots_data_windget.on_load_iv_readings(data)
                     self.iv_plots_data_windget.on_load_it_readings(continuous_data)
-                    self.set_role_enabled(Roles.SMU, True)
-                    self.set_role_enabled(Roles.SMU2, False)
+                    self.set_role_enabled(Role.SMU, True)
+                    self.set_role_enabled(Role.SMU2, False)
                     self.set_role_enabled(
-                        Roles.ELM,
+                        Role.ELM,
                         bool(
                             self.iv_plots_data_windget.iv_plot_widget.elm_series.count()
                         ),
                     )
                     self.set_role_enabled(
-                        Roles.ELM2,
+                        Role.ELM2,
                         bool(
                             self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()
                         ),
@@ -681,16 +738,16 @@ class Controller(QtCore.QObject):
                 if measurement_type == "iv_bias":
                     self.iv_plots_data_windget.on_load_iv_readings(data)
                     self.iv_plots_data_windget.on_load_it_readings(continuous_data)
-                    self.set_role_enabled(Roles.SMU, True)
-                    self.set_role_enabled(Roles.SMU2, True)
+                    self.set_role_enabled(Role.SMU, True)
+                    self.set_role_enabled(Role.SMU2, True)
                     self.set_role_enabled(
-                        Roles.ELM,
+                        Role.ELM,
                         bool(
                             self.iv_plots_data_windget.iv_plot_widget.elm_series.count()
                         ),
                     )
                     self.set_role_enabled(
-                        Roles.ELM2,
+                        Role.ELM2,
                         bool(
                             self.iv_plots_data_windget.iv_plot_widget.elm2_series.count()
                         ),
@@ -718,7 +775,7 @@ class Controller(QtCore.QObject):
     def set_stopping_state(self) -> None:
         self.main_window.set_stopping_state()
         self.main_window.set_message("Stop requested...")
-        self.state.abort_event.set()
+        self._abort_event.set()
 
     # Slots
 
@@ -728,6 +785,33 @@ class Controller(QtCore.QObject):
             self.is_exception_dialog_active = True
             show_exception(exc, self.main_window)
             self.is_exception_dialog_active = False
+
+    @QtCore.Slot()
+    def on_event_poll(self) -> None:
+        for _ in range(1024):
+            try:
+                event = self._event_queue.get_nowait()
+            except Empty:
+                break
+            match event:
+                case ChangeVoltageDoneEvent():
+                    self.change_voltage_ready.emit()
+                case UpdateMetricsEvent(data):
+                    self.updated.emit(data)
+                case ExceptionEvent(exception):
+                    self.failed.emit(exception)
+                case IVReadingEvent(reading):
+                    self.iv_reading_queue.put(reading)
+                case ItReadingEvent(reading):
+                    self.it_reading_queue.put(reading)
+                case IVBiasReadingEvent(reading):
+                    self.iv_reading_queue.put(reading)
+                case ItBiasReadingEvent(reading):
+                    self.it_reading_queue.put(reading)
+                case CVReadingEvent(reading):
+                    self.cv_reading_queue.put(reading)
+                case _:
+                    logger.warning("unhandled event: %r", event)
 
     @QtCore.Slot(dict)
     def on_update(self, data: Mapping[str, Any]) -> None:
@@ -741,6 +825,7 @@ class Controller(QtCore.QObject):
 
         if (source_voltage := data.get("source_voltage")) is not None:
             self.main_window.update_source_voltage(source_voltage)
+            self.change_voltage_controller.set_source_voltage(source_voltage)
             cache.update({"source_voltage": source_voltage})
 
         if (bias_source_voltage := data.get("bias_source_voltage")) is not None:
@@ -826,6 +911,13 @@ class Controller(QtCore.QObject):
             logger.error("Invalid measurement spec index: %d", index)
             return
 
+        general_widget = self.main_window.general_widget
+
+        optional_roles = []
+        for role in [Role.ELM, Role.ELM2, Role.DMM, Role.TCU, Role.SWITCH]:
+            if general_widget.is_role_checked(role):
+                optional_roles.append(role)
+
         spec: MeasurementParameters = self.measurement_registry[index]
 
         if spec.type == "iv":
@@ -849,16 +941,14 @@ class Controller(QtCore.QObject):
             self.main_window.general_widget.continuous_group_box.setEnabled(False)
         self.update_continuous_option()
 
-        roles = [Roles.SMU, Roles.SMU2, Roles.ELM, Roles.ELM2, Roles.LCR]
+        roles = [Role.SMU, Role.SMU2, Role.ELM, Role.ELM2, Role.LCR]
 
         for role in roles:
             enabled = role in spec.supported_roles
             self.main_window.set_role_enabled(role, enabled)
 
-        general_widget = self.main_window.general_widget
-
         for role in self._roles:
-            checked = role in spec.default_roles
+            checked = role in spec.default_roles + optional_roles
             general_widget.set_role_checked(role, checked)
             self.set_role_enabled(role, checked)
 
@@ -881,20 +971,20 @@ class Controller(QtCore.QObject):
         # HACK Not all instruments support compliance!
         # TODO Implement instrument capabilities to lock not supported inputs
         #
-        if general_widget.is_role_checked(Roles.SMU):
+        if general_widget.is_role_checked(Role.SMU):
             ...
-        elif general_widget.is_role_checked(Roles.ELM):
-            role = self.main_window.find_role(Roles.ELM)
+        elif general_widget.is_role_checked(Role.ELM):
+            role = self.main_window.find_role(Role.ELM)
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_role_checked(Roles.ELM2):
-            role = self.main_window.find_role(Roles.ELM2)
+        elif general_widget.is_role_checked(Role.ELM2):
+            role = self.main_window.find_role(Role.ELM2)
             if role and role.resource_widget.model() in ["K6517B"]:
                 general_widget.set_current_compliance_locked(True)
                 general_widget.set_current_compliance(1.0e-3)  # fixed for K6517B
-        elif general_widget.is_role_checked(Roles.LCR):
-            role = self.main_window.find_role(Roles.LCR)
+        elif general_widget.is_role_checked(Role.LCR):
+            role = self.main_window.find_role(Role.LCR)
             if role and role.resource_widget.model() in [
                 "K595",
                 "E4980A",
@@ -903,7 +993,7 @@ class Controller(QtCore.QObject):
             ]:
                 general_widget.set_current_compliance_locked(True)
 
-    def set_role_enabled(self, role: str, enabled: bool) -> None:
+    def set_role_enabled(self, role: Role, enabled: bool) -> None:
         self.iv_plots_data_windget.set_series_visible(role, enabled)
         self.cv_plots_data_windget.set_series_visible(role, enabled)
         group_box = self.main_window.status_group_boxes.get(role)
@@ -920,17 +1010,17 @@ class Controller(QtCore.QObject):
     @QtCore.Slot(float)
     def on_current_compliance_changed(self, value: float) -> None:
         logger.info("updated current_compliance: %s", format_metric(value, "A"))
-        self.state.update({"current_compliance": value})
+        self._outbox_queue.put(UpdateCurrentCompliance(value))
 
     @QtCore.Slot(bool)
     def on_continue_in_compliance_changed(self, checked: bool) -> None:
         logger.info("updated continue_in_compliance: %s", checked)
-        self.state.update({"continue_in_compliance": checked})
+        self._outbox_queue.put(UpdateContinueInCompliance(checked))
 
     @QtCore.Slot(float)
     def on_waiting_time_continuous_changed(self, value: float) -> None:
         logger.info("updated waiting_time_continuous: %s", format_metric(value, "s"))
-        self.state.update({"waiting_time_continuous": value})
+        self._outbox_queue.put(UpdateWaitingTimeContinuous(value))
 
     def update_continuous_option(self) -> None:
         # Tweak continuous option
@@ -940,15 +1030,13 @@ class Controller(QtCore.QObject):
             enabled = measurement.provides_continuous
         self.main_window.continuous_check_box.setEnabled(enabled)
 
-    def create_filename(self) -> str:
+    def create_filename(self, timestamp: float = 0) -> str:
         path = self.main_window.general_widget.output_dir()
-        sample = self.state.sample
-        timestamp = (
-            datetime.fromtimestamp(self.state.timestamp)
-            .astimezone()
-            .strftime("%Y-%m-%dT%H-%M-%S")
+        sample = self.main_window.general_widget.sample_name()
+        formatted_timestamp = (
+            datetime.fromtimestamp(timestamp).astimezone().strftime("%Y-%m-%dT%H-%M-%S")
         )
-        filename = safe_filename(f"{sample}-{timestamp}.txt")
+        filename = safe_filename(f"{sample}-{formatted_timestamp}.txt")
         return os.path.join(path, filename)
 
     def configure(self, params: Mapping[str, Any]) -> None:
@@ -994,16 +1082,24 @@ class Controller(QtCore.QObject):
                 station = Station()
                 station.auto_reconnect = state.auto_reconnect
 
-                for role_ in self.main_window.roles():
-                    name = role_.name()
-                    role = state.find_role(name)  # TODO
-                    if role is None:
-                        raise KeyError(f"No such instrument: {name!r}")
-                    if not role.enabled:
+                for role_widget in self.main_window.roles():
+                    role = role_widget.role()
+                    role_config = state.find_role(role)  # TODO
+                    if role_config is None:
+                        raise KeyError(f"No such instrument: {role!r}")
+                    if not role_config.enabled:
                         continue
-                    station.register_instrument(name, role)
+                    station.register_instrument(role, role_config)
 
-                return spec.measurement_cls(state, station)
+                self._abort_event = Event()
+
+                return spec.measurement_cls.create(
+                    state=state,
+                    station=station,
+                    outbox_queue=self._event_queue,
+                    inbox_queue=self._outbox_queue,
+                    abort_event=self._abort_event,
+                )
 
         raise ValueError(f"No such measurement type: {measurement_type}")
 
@@ -1014,46 +1110,23 @@ class Controller(QtCore.QObject):
             state = self.prepare_state()
             logger.debug("preparing state... done.")
 
-            if not state.get("source_role"):
+            if not state.source_role:
                 raise RuntimeError("No source instrument selected.")
-
-            # Update state
-            self.state.update(state)
-            self.state.abort_event.clear()
 
             with self.cache:
                 self.cache.update(
                     {
-                        "measurement_type": state.get("measurement_type"),
-                        "sample": state.get("sample"),
+                        "measurement_type": state.measurement_type,
+                        "sample": state.sample,
                     }
                 )
 
-            # Filename
-            output_enabled = self.main_window.general_widget.is_output_enabled()
-            filename = self.create_filename() if output_enabled else None
-            self.state.update({"filename": filename})
-
             # Create and run measurement
-            measurement = self.create_measurement(self.state)
+            measurement = self.create_measurement(state)
 
             settings = QtCore.QSettings()
             timestamp_format = get_str(settings.value("writer/timestampFormat"), ".6f")
             value_format = get_str(settings.value("writer/valueFormat"), "+.3E")
-
-            # discharge guard
-            discharge_timeout = get_float(
-                settings.value("misc/discharge_timeout"), 60.0
-            )
-            discharge_threshold = get_float(
-                settings.value("misc/discharge_threshold"), 0.5
-            )
-            self.state.update(
-                {
-                    "discharge_timeout": discharge_timeout,
-                    "discharge_threshold": discharge_threshold,
-                }
-            )
 
             self.main_window.clear()
             self.iv_plots_data_windget.clear()
@@ -1082,7 +1155,7 @@ class Controller(QtCore.QObject):
 
     @QtCore.Slot()
     def on_lcr_perform_correction(self) -> None:
-        role_widget = self.main_window.find_role(Roles.LCR)
+        role_widget = self.main_window.find_role(Role.LCR)
         if role_widget is None:
             return
         model = role_widget.model()
@@ -1161,19 +1234,26 @@ class BackgroundJobsController(QtCore.QObject):
 
 class ChangeVoltageController(QtCore.QObject):
     def __init__(
-        self, main_window, context: State, parent: QtCore.QObject | None = None
+        self,
+        main_window,
+        event_queue: Queue[Any],
+        parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self.main_window = main_window
-        self.context: State = context
+        self.event_queue: Queue[Any] = event_queue
+        self._source_voltage: float | None = None
         # Connect signals
         self.main_window.prepare_change_voltage.connect(self.on_prepare_change_voltage)
 
     def source_voltage(self) -> float:
-        source_voltage = self.context.source_voltage
+        source_voltage = self._source_voltage
         if source_voltage is not None:
             return source_voltage
         return self.main_window.general_widget.end_voltage()
+
+    def set_source_voltage(self, source_voltage: float) -> None:
+        self._source_voltage = source_voltage
 
     @QtCore.Slot()
     def on_prepare_change_voltage(self) -> None:
@@ -1198,7 +1278,7 @@ class ChangeVoltageController(QtCore.QObject):
                 format_metric(parameters.step_voltage, "V"),
                 format_metric(parameters.waiting_time, "s"),
             )
-            self.context.request_change_voltage(parameters)
+            self.event_queue.put(parameters)
             self.main_window.set_change_voltage_enabled(False)
 
     @QtCore.Slot()
@@ -1217,7 +1297,7 @@ class BrowseResourcesController(QtCore.QObject):
         self.result_ready.connect(self.on_show_browse_resources)
 
     @QtCore.Slot(str)
-    def on_browse_resources(self, role: str) -> None:
+    def on_browse_resources(self, role: Role) -> None:
         role_widget = self.main_window.find_role(role)
         if role_widget is not None:
             job = ListResourcesJob(
@@ -1230,7 +1310,7 @@ class BrowseResourcesController(QtCore.QObject):
             self.job_submitted.emit(job)
 
     @QtCore.Slot(str, list)
-    def on_show_browse_resources(self, role: str, resource_names: list[str]) -> None:
+    def on_show_browse_resources(self, role: Role, resource_names: list[str]) -> None:
         role_widget = self.main_window.find_role(role)
         if role_widget is not None:
             role_widget.show_browse_resources(resource_names)
@@ -1247,7 +1327,7 @@ class TestConnectionController(QtCore.QObject):
         self.result_ready.connect(self.on_connection_identity)
 
     @QtCore.Slot(str)
-    def on_test_connection(self, role: str) -> None:
+    def on_test_connection(self, role: Role) -> None:
         role_widget = self.main_window.find_role(role)
         if role_widget is not None:
             resource_config = get_role_config(role_widget)
@@ -1263,7 +1343,7 @@ class TestConnectionController(QtCore.QObject):
             self.job_submitted.emit(job)
 
     @QtCore.Slot(str, str)
-    def on_connection_identity(self, role: str, identity: str) -> None:
+    def on_connection_identity(self, role: Role, identity: str) -> None:
         QtWidgets.QMessageBox.information(
             self.main_window, f"Connection Test ({role})", str(identity)
         )

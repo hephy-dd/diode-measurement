@@ -1,39 +1,50 @@
 import logging
 import math
 import time
-from dataclasses import asdict
+from dataclasses import dataclass
 
 from comet.estimate import Estimate
 
-from ..core.measurement import IVReading, RangeMeasurement
-from ..state import Roles
+from ..core.measurement import RangeMeasurement
+from ..core.role import Role
+from ..state import IVReading
 
 __all__ = ["IVMeasurement"]
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class IVReadingEvent:
+    reading: IVReading
+
+
+@dataclass(frozen=True, slots=True)
+class ItReadingEvent:
+    reading: IVReading
+
+
 class IVMeasurement(RangeMeasurement):
     def on_iv_reading(self, reading: IVReading) -> None:
-        self.state.append_iv_reading(reading)
+        self.context.submit_event(IVReadingEvent(reading))
         for writer in self.writers:
-            writer.write_iv_row(asdict(reading))
+            writer.write_iv_row(reading)
 
     def on_it_reading(self, reading: IVReading) -> None:
-        self.state.append_it_reading(reading)
+        self.context.submit_event(ItReadingEvent(reading))
         for writer in self.writers:
-            writer.write_it_row(asdict(reading))
+            writer.write_it_row(reading)
 
     def acquire_reading_data(self, source_voltage: float) -> IVReading:
-        smu = self.station.instruments.get(Roles.SMU)
-        elm = self.station.instruments.get(Roles.ELM)
-        elm2 = self.station.instruments.get(Roles.ELM2)
-        dmm = self.station.instruments.get(Roles.DMM)
+        smu = self.station.instruments.get(Role.SMU)
+        elm = self.station.instruments.get(Role.ELM)
+        elm2 = self.station.instruments.get(Role.ELM2)
+        dmm = self.station.instruments.get(Role.DMM)
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
         i_elm = elm.measure_i() if elm else math.nan
         i_elm2 = elm2.measure_i() if elm2 else math.nan
-        temperature = dmm.measure_temperature() if dmm else self.tcu_temperature()
-
+        t_dmm = dmm.measure_temperature() if dmm else math.nan
+        tcu_temperature = self.tcu_temperature()
         tcu_humidity = self.tcu_humidity()
 
         return IVReading(
@@ -45,8 +56,9 @@ class IVMeasurement(RangeMeasurement):
             i_smu=i_smu,
             i_elm=i_elm,
             i_elm2=i_elm2,
-            t_dmm=temperature,
-            humidity=tcu_humidity,
+            t_dmm=t_dmm,
+            tcu_temperature=tcu_temperature,
+            tcu_humidity=tcu_humidity,
         )
 
     def acquire_reading(self, source_voltage: float) -> None:
@@ -73,7 +85,7 @@ class IVMeasurement(RangeMeasurement):
 
         voltage = self.get_source_voltage()
 
-        while not self.state.stop_requested:
+        while not self.context.stop_requested:
             dt = time.monotonic() - t
 
             reading: IVReading = self.acquire_reading_data(voltage)
@@ -101,7 +113,7 @@ class IVMeasurement(RangeMeasurement):
 
                 t = time.monotonic()
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 break
 
             self.apply_waiting_time_continuous(estimate)
