@@ -5,9 +5,9 @@ from dataclasses import dataclass
 
 from comet.estimate import Estimate
 
-from ..core.measurement import RangeMeasurement
+from ..core.measurement import IVReading, RangeMeasurement, State
 from ..core.role import Role
-from ..state import IVReading
+from ..writer import Writer, safe_format
 
 __all__ = ["IVMeasurement"]
 
@@ -25,15 +25,18 @@ class ItReadingEvent:
 
 
 class IVMeasurement(RangeMeasurement):
+    def on_write_begin(self, writer: Writer) -> None:
+        write_meta(writer, self.state)
+
     def on_iv_reading(self, reading: IVReading) -> None:
         self.context.submit_event(IVReadingEvent(reading))
         for writer in self.writers:
-            writer.write_iv_row(reading)
+            write_iv_reading(writer, reading)
 
     def on_it_reading(self, reading: IVReading) -> None:
         self.context.submit_event(ItReadingEvent(reading))
         for writer in self.writers:
-            writer.write_it_row(reading)
+            write_it_reading(writer, reading)
 
     def acquire_reading_data(self, source_voltage: float) -> IVReading:
         smu = self.station.instruments.get(Role.SMU)
@@ -120,3 +123,94 @@ class IVMeasurement(RangeMeasurement):
             self.update_estimate_message_continuous("Reading...", estimate)
 
             estimate.advance()
+
+
+def write_meta(writer: Writer, state: State) -> None:
+    writer._current_table = None
+    writer.write_tag("sample", state.sample)
+    writer.write_tag("measurement_type", state.measurement_type)
+    writer.write_tag(
+        "voltage_begin[V]", safe_format(state.voltage_begin, writer.value_format)
+    )
+    writer.write_tag(
+        "voltage_end[V]", safe_format(state.voltage_end, writer.value_format)
+    )
+    writer.write_tag(
+        "voltage_step[V]", safe_format(state.voltage_step, writer.value_format)
+    )
+    writer.write_tag(
+        "waiting_time[s]", safe_format(state.waiting_time, writer.value_format)
+    )
+    writer.write_tag(
+        "current_compliance[A]",
+        safe_format(state.current_compliance, writer.value_format),
+    )
+    writer.flush()
+
+
+def write_iv_reading(writer: Writer, reading: IVReading) -> None:
+    timestamp_utc = reading.timestamp
+    if writer._current_table != "iv":
+        writer._current_table = "iv"
+        header = (
+            [
+                "timestamp[s]",
+                "voltage[V]",
+                "v_smu[V]",
+                "i_smu[A]",
+                "i_elm[A]",
+                "i_elm2[A]",
+            ]
+            + writer.dmm_header()
+            + writer.tcu_header()
+        )
+        writer.write_table_header(header)
+        writer.reset_timestamp_offset(timestamp_utc)
+    row = (
+        [
+            safe_format(writer.get_timestamp(timestamp_utc), writer.timestamp_format),
+            safe_format(reading.voltage, writer.value_format),
+            safe_format(reading.v_smu, writer.value_format),
+            safe_format(reading.i_smu, writer.value_format),
+            safe_format(reading.i_elm, writer.value_format),
+            safe_format(reading.i_elm2, writer.value_format),
+        ]
+        + writer.dmm_data(reading)
+        + writer.tcu_data(reading)
+    )
+    writer.write_table_row(row)
+    writer.flush()
+
+
+def write_it_reading(writer: Writer, reading: IVReading) -> None:
+    timestamp_utc = reading.timestamp
+    if writer._current_table != "it":
+        writer._current_table = "it"
+        header = (
+            [
+                "timestamp[s]",
+                "voltage[V]",
+                "v_smu[V]",
+                "i_smu[A]",
+                "i_elm[A]",
+                "i_elm2[A]",
+            ]
+            + writer.dmm_header()
+            + writer.tcu_header()
+        )
+        writer.write_table_header(header)
+        writer.reset_timestamp_offset(timestamp_utc)
+    row = (
+        [
+            safe_format(writer.get_timestamp(timestamp_utc), writer.timestamp_format),
+            safe_format(reading.voltage, writer.value_format),
+            safe_format(reading.v_smu, writer.value_format),
+            safe_format(reading.i_smu, writer.value_format),
+            safe_format(reading.i_elm, writer.value_format),
+            safe_format(reading.i_elm2, writer.value_format),
+        ]
+        + writer.dmm_data(reading)
+        + writer.tcu_data(reading)
+    )
+    writer.write_table_row(row)
+    writer.flush()

@@ -9,6 +9,14 @@ __all__ = [
 
 
 @dataclass(frozen=True, slots=True)
+class Reading:
+    timestamp: float
+    t_dmm: float
+    tcu_temperature: float
+    tcu_humidity: float
+
+
+@dataclass(frozen=True, slots=True)
 class ExceptionEvent:
     exception: Exception
 

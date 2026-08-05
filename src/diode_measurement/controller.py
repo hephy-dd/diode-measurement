@@ -22,8 +22,10 @@ from .core.events import (
 from .core.job import Job
 from .core.measurement import (
     ChangeVoltageDoneEvent,
+    ChangeVoltageParameters,
     ExceptionEvent,
     Measurement,
+    State,
     UpdateMetricsEvent,
 )
 from .core.resource import ResourceConfig, parse_resource
@@ -66,17 +68,13 @@ from .jobs import (
     MeasurementJob,
     TestConnectionJob,
 )
-from .measurements.cv import CVReadingEvent
-from .measurements.iv import ItReadingEvent, IVReadingEvent
+from .measurements.cv import CVReading, CVReadingEvent
+from .measurements.iv import ItReadingEvent, IVReading, IVReadingEvent
 from .measurements.iv_bias import ItBiasReadingEvent, IVBiasReadingEvent
 from .reader import Reader
 from .settings import MeasurementParameters, measurement_registry
 from .state import (
-    ChangeVoltageParameters,
-    CVReading,
     FSMState,
-    IVReading,
-    State,
 )
 from .utils import format_metric, get_bool, get_dict, get_float, get_int, get_str
 

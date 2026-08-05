@@ -5,13 +5,24 @@ from dataclasses import dataclass
 
 from comet.utils import inverse_square
 
-from ..core.measurement import RangeMeasurement
+from ..core.events import Reading
+from ..core.measurement import RangeMeasurement, State
 from ..core.role import Role
-from ..state import CVReading
+from ..writer import Writer, safe_format
 
 __all__ = ["CVMeasurement"]
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class CVReading(Reading):
+    voltage: float
+    v_smu: float
+    i_smu: float
+    c_lcr: float
+    c2_lcr: float
+    r_lcr: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,10 +31,13 @@ class CVReadingEvent:
 
 
 class CVMeasurement(RangeMeasurement):
+    def on_write_begin(self, writer: Writer) -> None:
+        write_meta(writer, self.state)
+
     def on_cv_reading(self, reading: CVReading) -> None:
         self.context.submit_event(CVReadingEvent(reading))
         for writer in self.writers:
-            writer.write_cv_row(reading)
+            write_cv_reading(writer, reading)
 
     def acquire_cv_reading_data(self, source_voltage: float) -> CVReading:
         smu = self.station.instruments.get(Role.SMU)
@@ -61,3 +75,81 @@ class CVMeasurement(RangeMeasurement):
             }
         )
         self.on_cv_reading(reading)
+
+
+def write_meta(writer: Writer, state: State) -> None:
+    writer._current_table = None
+    writer.write_tag("sample", state.sample)
+    writer.write_tag("measurement_type", state.measurement_type)
+    writer.write_tag(
+        "voltage_begin[V]", safe_format(state.voltage_begin, writer.value_format)
+    )
+    writer.write_tag(
+        "voltage_end[V]", safe_format(state.voltage_end, writer.value_format)
+    )
+    writer.write_tag(
+        "voltage_step[V]", safe_format(state.voltage_step, writer.value_format)
+    )
+    writer.write_tag(
+        "waiting_time[s]", safe_format(state.waiting_time, writer.value_format)
+    )
+    writer.write_tag(
+        "current_compliance[A]",
+        safe_format(state.current_compliance, writer.value_format),
+    )
+    write_meta_lcr(writer, state)
+    writer.flush()
+
+
+def write_meta_lcr(writer: Writer, state: State) -> None:
+    lcr = state.roles.get(Role.LCR)
+    if lcr and lcr.enabled:
+        lcr_options = lcr.options
+        # lcr.options.voltage
+        voltage = lcr_options.get("voltage")
+        if voltage is not None:
+            writer.write_tag(
+                "lcr_ac_amplitude[V]", safe_format(voltage, writer.value_format)
+            )
+        # lcr.options.frequency
+        frequency = lcr_options.get("frequency")
+        if frequency is not None:
+            writer.write_tag(
+                "lcr_ac_frequency[Hz]", safe_format(frequency, writer.value_format)
+            )
+
+
+def write_cv_reading(writer: Writer, reading: CVReading) -> None:
+    timestamp_utc = reading.timestamp
+    if writer._current_table != "cv":
+        writer._current_table = "cv"
+        header = (
+            [
+                "timestamp[s]",
+                "voltage[V]",
+                "v_smu[V]",
+                "i_smu[A]",
+                "c_lcr[F]",
+                "c2_lcr[1/F^2]",
+                "r_lcr[Ohm]",
+            ]
+            + writer.dmm_header()
+            + writer.tcu_header()
+        )
+        writer.write_table_header(header)
+        writer.reset_timestamp_offset(timestamp_utc)
+    row = (
+        [
+            safe_format(writer.get_timestamp(timestamp_utc), writer.timestamp_format),
+            safe_format(reading.voltage, writer.value_format),
+            safe_format(reading.v_smu, writer.value_format),
+            safe_format(reading.i_smu, writer.value_format),
+            safe_format(reading.c_lcr, writer.value_format),
+            safe_format(reading.c2_lcr, writer.value_format),
+            safe_format(reading.r_lcr, writer.value_format),
+        ]
+        + writer.dmm_data(reading)
+        + writer.tcu_data(reading)
+    )
+    writer.write_table_row(row)
+    writer.flush()

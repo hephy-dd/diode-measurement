@@ -3,7 +3,7 @@ import logging
 import math
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from queue import Empty, Queue
 from threading import Event
 from typing import Any, Self
@@ -12,17 +12,19 @@ from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..actors import TCUActor
-from ..state import ChangeVoltageParameters, FSMState, IVReading, Role, State
+from ..state import FSMState
 from ..writer import Writer
 from .driver import VoltageMeasurable
 from .events import (
     ChangeVoltageDoneEvent,
     ExceptionEvent,
+    Reading,
     UpdateContinueInCompliance,
     UpdateCurrentCompliance,
     UpdateMetricsEvent,
     UpdateWaitingTimeContinuous,
 )
+from .role import Role, RoleConfig
 from .station import Station
 
 __all__ = [
@@ -32,6 +34,17 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class IVReading(Reading):
+    voltage: float
+    v_smu: float
+    i_smu: float
+    v_smu2: float
+    i_smu2: float
+    i_elm: float
+    i_elm2: float
 
 
 @dataclass(slots=True)
@@ -52,6 +65,42 @@ class MeasurementParameters:
     default_bias_voltage: float = 0.0
     default_waiting_time_continuous: float = 1.0
     provides_continuous: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeVoltageParameters:
+    end_voltage: float
+    step_voltage: float
+    waiting_time: float
+
+
+@dataclass(frozen=True, slots=True)
+class State:
+    measurement_type: str = ""
+    timestamp: float = 0.0
+    sample: str = ""
+    auto_reconnect: bool = False
+    is_continuous: bool = False
+    continue_in_compliance: bool = False
+    waiting_time: float = 1.0
+    waiting_time_continuous: float = 1.0
+    source_voltage: float | None = None
+    bias_voltage: float = 0.0
+    voltage_begin: float = 0.0
+    voltage_end: float = 0.0
+    voltage_step: float = 1.0
+    current_compliance: float = 0.0
+    source_role: Role | None = None
+    bias_source_role: Role | None = None
+    discharge_timeout: float = 60.0
+    discharge_threshold: float = 0.5
+    roles: dict[Role, RoleConfig] = field(default_factory=dict)
+    output_filename: str | None = None
+    settle_waiting_time: float = 1.0
+    tcu_poll_interval: float = 5.0
+
+    def find_role(self, role: Role) -> RoleConfig | None:
+        return self.roles.get(role)
 
 
 @dataclass(slots=True)
@@ -131,12 +180,17 @@ class Measurement:
     def add_writer(self, writer: Writer) -> None:
         self.writers.append(writer)
 
+    def on_write_begin(self, writer: Writer) -> None: ...
+
+    def on_write_end(self, writer: Writer) -> None: ...
+
     def on_started(self) -> None:
         for writer in self.writers:
-            writer.write_meta(self.state)
+            self.on_write_begin(writer)
 
     def on_finished(self) -> None:
         for writer in self.writers:
+            self.on_write_end(writer)
             writer.flush()
 
     def check_error_state(self, context) -> None:

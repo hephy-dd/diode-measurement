@@ -9,7 +9,8 @@ from comet.utils import auto_scale
 from PySide6 import QtCharts, QtCore, QtWidgets
 
 from ..core.role import Role
-from ..state import CVReading, IVReading
+from ..measurements.cv import CVReading
+from ..measurements.iv import IVReading
 
 __all__ = [
     "IVPlotWidget",
