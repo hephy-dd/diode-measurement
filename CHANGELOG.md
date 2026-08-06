@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Refactored main window for improved maintainability.
+- Refactored measurement state into a type-safe model with dedicated I/O queues (#177).
+- Added optional DMM/TCU output fields (#177).
 
 ## [0.28.0] - 2026-07-29
 
