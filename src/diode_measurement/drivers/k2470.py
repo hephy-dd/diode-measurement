@@ -58,6 +58,12 @@ class K2470(BaseDriver):
         system_breakdown_protection = options.get("system.breakdown.protection", "AUTO")
         self.set_system_breakdown_protection(system_breakdown_protection)
 
+        source_delay_auto = options.get("source.delay.auto", True)
+        self.set_source_voltage_delay_auto(source_delay_auto)
+
+        sense_azero = options.get("sense.azero", True)
+        self.set_sense_current_azero(sense_azero)
+
     def get_output_enabled(self) -> bool:
         return self._query(":OUTP:STAT?") == "1"
 
@@ -141,6 +147,12 @@ class K2470(BaseDriver):
     def is_interlock(self) -> bool:
         """Return status of the interlock."""
         return bool(int(self._query(":OUTP:INT:TRIP?")))
+
+    def set_source_voltage_delay_auto(self, enabled: bool) -> None:
+        self._write(f":SOUR:VOLT:DEL:AUTO {enabled:d}")
+
+    def set_sense_current_azero(self, enabled: bool) -> None:
+        self._write(f":SENS:CURR:AZER {enabled:d}")
 
     @handle_exception
     def _write(self, message: str) -> None:
