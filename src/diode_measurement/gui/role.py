@@ -4,6 +4,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
+from ..core.role import Role
 from .panel import InstrumentPanel
 from .resource import ResourceWidget
 
@@ -16,9 +17,9 @@ class RoleWidget(QtWidgets.QWidget):
     browse_resources = QtCore.Signal()
     test_connection = QtCore.Signal()
 
-    def __init__(self, name: str, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, role: Role, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self._name: str = name
+        self._role: Role = role
         self._resources: dict[str, Any] = {}  # TODO
 
         self.resource_widget = ResourceWidget(self)
@@ -39,11 +40,8 @@ class RoleWidget(QtWidgets.QWidget):
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 2)
 
-    def name(self) -> str:
-        return self._name
-
-    def set_name(self, name: str) -> None:
-        self._name = name
+    def role(self) -> Role:
+        return self._role
 
     def model(self) -> str:
         return self.resource_widget.model()

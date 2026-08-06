@@ -24,6 +24,11 @@ class MeasurementJob:
         # Configure writer
         writer.timestamp_format = self.timestamp_format
         writer.value_format = self.value_format
+        writer.optional_roles = [
+            role
+            for role, role_config in self.measurement.state.roles.items()
+            if role_config.enabled
+        ]
         return writer
 
     def __call__(self) -> None:
@@ -34,7 +39,7 @@ class MeasurementJob:
 
     def run_measurement(self) -> None:
         measurement = self.measurement
-        filename = measurement.state.get("filename")
+        filename = measurement.state.output_filename
         with contextlib.ExitStack() as stack:
             if filename:
                 logger.info("preparing output file: %s", filename)

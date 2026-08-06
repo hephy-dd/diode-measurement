@@ -3,21 +3,45 @@ import logging
 import math
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from enum import StrEnum
+from queue import Empty, Queue
+from threading import Event
+from typing import Any, Self
 
 from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..actors import TCUActor
-from ..state import FSMState, IVReading, Roles, State
 from ..writer import Writer
 from .driver import VoltageMeasurable
+from .events import (
+    ChangeVoltageDoneEvent,
+    ExceptionEvent,
+    Reading,
+    UpdateContinueInCompliance,
+    UpdateCurrentCompliance,
+    UpdateMetricsEvent,
+    UpdateWaitingTimeContinuous,
+)
+from .role import Role, RoleConfig
 from .station import Station
 
-__all__ = ["MeasurementParameters", "Measurement", "RangeMeasurement"]
+__all__ = [
+    "MeasurementParameters",
+    "Measurement",
+    "RangeMeasurement",
+]
 
 logger = logging.getLogger(__name__)
+
+
+class FSMState(StrEnum):
+    IDLE = "idle"
+    CONFIGURE = "configure"
+    RAMPING = "ramping"
+    CONTINUOUS = "continuous"
+    STOPPING = "stopping"
 
 
 @dataclass(slots=True)
@@ -36,28 +60,145 @@ class MeasurementParameters:
     voltage_unit: str
     current_compliance_unit: str
     default_bias_voltage: float = 0.0
-    default_waiting_time_continuous: float = 0.0
+    default_waiting_time_continuous: float = 1.0
     provides_continuous: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class IVReading(Reading):
+    voltage: float
+    v_smu: float
+    i_smu: float
+    v_smu2: float
+    i_smu2: float
+    i_elm: float
+    i_elm2: float
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeVoltageParameters:
+    end_voltage: float
+    step_voltage: float
+    waiting_time: float
+
+
+@dataclass(frozen=True, slots=True)
+class State:
+    measurement_type: str = ""
+    timestamp: float = 0.0
+    sample: str = ""
+    auto_reconnect: bool = False
+    is_continuous: bool = False
+    continue_in_compliance: bool = False
+    waiting_time: float = 1.0
+    waiting_time_continuous: float = 1.0
+    source_voltage: float | None = None
+    bias_voltage: float = 0.0
+    voltage_begin: float = 0.0
+    voltage_end: float = 0.0
+    voltage_step: float = 1.0
+    current_compliance: float = 0.0
+    source_role: Role | None = None
+    bias_source_role: Role | None = None
+    discharge_timeout: float = 60.0
+    discharge_threshold: float = 0.5
+    roles: dict[Role, RoleConfig] = field(default_factory=dict)
+    output_filename: str | None = None
+    settle_waiting_time: float = 1.0
+    tcu_poll_interval: float = 5.0
+
+    def find_role(self, role: Role) -> RoleConfig | None:
+        return self.roles.get(role)
+
+
+@dataclass(slots=True)
+class Context:
+    state: State
+    station: Station
+    outbox_queue: Queue[Any]
+    inbox_queue: Queue[Any]
+    abort_event: Event
+
+    def submit_event(self, event: Any) -> None:
+        self.outbox_queue.put(event)
+
+    @property
+    def stop_requested(self) -> bool:
+        return self.abort_event.is_set()
+
+
+@dataclass(slots=True)
+class RuntimeState:
+    current_compliance: float
+    continue_in_compliance: bool
+    waiting_time_continuous: float
+    change_voltage_request: ChangeVoltageParameters | None = None
+
+    def pop_change_voltage_request(self) -> ChangeVoltageParameters | None:
+        parameters = self.change_voltage_request
+        self.change_voltage_request = None
+        return parameters
+
+
 class Measurement:
-    def __init__(self, state: State, station: Station) -> None:
-        self.state: State = state
-        self.station: Station = station
+    def __init__(self, context: Context) -> None:
+        self.context: Context = context
+        self.state: State = context.state
+        self.station: Station = context.station
 
         self.tcu_actor: TCUActor | None = None
 
         self.writers: list[Writer] = []
 
+        self.runtime_state = RuntimeState(
+            current_compliance=self.state.current_compliance,
+            continue_in_compliance=self.state.continue_in_compliance,
+            waiting_time_continuous=self.state.waiting_time_continuous,
+        )
+
+    @classmethod
+    def create(
+        cls,
+        state: State,
+        station: Station,
+        outbox_queue: Queue[Any],
+        inbox_queue: Queue[Any],
+        abort_event: Event,
+    ) -> Self:
+        return cls(Context(state, station, outbox_queue, inbox_queue, abort_event))
+
+    def process_inbox(self) -> None:
+        for _ in range(1024):
+            try:
+                event = self.context.inbox_queue.get_nowait()
+            except Empty:
+                break
+            match event:
+                case UpdateCurrentCompliance(compliance):
+                    self.runtime_state.current_compliance = compliance
+                case UpdateContinueInCompliance(is_continue):
+                    self.runtime_state.continue_in_compliance = is_continue
+                case UpdateWaitingTimeContinuous(waiting_time):
+                    self.runtime_state.waiting_time_continuous = waiting_time
+                case ChangeVoltageParameters() as parameters:
+                    self.runtime_state.change_voltage_request = parameters
+                case _:
+                    logger.warning("unhandled inbox event: %r", event)
+
     def add_writer(self, writer: Writer) -> None:
         self.writers.append(writer)
 
+    def on_write_begin(self, writer: Writer) -> None: ...
+
+    def on_write_end(self, writer: Writer) -> None: ...
+
     def on_started(self) -> None:
         for writer in self.writers:
-            writer.write_meta(dict(self.state))
+            self.on_write_begin(writer)
 
     def on_finished(self) -> None:
         for writer in self.writers:
+            self.on_write_end(writer)
             writer.flush()
 
     def check_error_state(self, context) -> None:
@@ -78,7 +219,7 @@ class Measurement:
         return math.nan
 
     def submit_update(self, data: Mapping[str, Any]) -> None:
-        self.state.event_bus.submit("update", data)
+        self.context.submit_event(UpdateMetricsEvent(dict(data)))
 
     def set_fsm_state(self, state: FSMState) -> None:
         self.submit_update({"fsm_state": state})
@@ -98,12 +239,7 @@ class Measurement:
             logger.debug("handle started callbacks... done.")
             with contextlib.ExitStack() as stack:
                 logger.debug("creating instrument contexts...")
-                for key, (cls, resource) in self.station.instrument_registry.items():
-                    logger.debug(
-                        "creating instrument context %s: %s...", key, cls.__name__
-                    )
-                    context = cls(stack.enter_context(resource))
-                    self.station.instruments[key] = context
+                self.station.create_instruments(stack)
                 logger.debug("creating instrument contexts... done.")
                 try:
                     logger.debug("initialize...")
@@ -114,7 +250,7 @@ class Measurement:
                     logger.debug("measure... done.")
                 except Exception as exc:
                     logger.exception("failed to initialize measurement")
-                    self.state.event_bus.submit("failed", exc)
+                    self.context.submit_event(ExceptionEvent(exc))
                 finally:
                     logger.debug("finalize...")
                     self.set_fsm_state(FSMState.STOPPING)
@@ -122,7 +258,7 @@ class Measurement:
                     logger.debug("finalize... done.")
         except Exception as exc:
             logger.exception("failed to run measurement")
-            self.state.event_bus.submit("failed", exc)
+            self.context.submit_event(ExceptionEvent(exc))
         finally:
             logger.debug("handle finished callbacks...")
             self.on_finished()
@@ -150,7 +286,6 @@ class RangeMeasurement(Measurement):
         logger.info("Source output state: %s", state)
         self.source_instrument.set_output_enabled(state)  # type: ignore
         self.submit_update({"source_output_state": state})
-        self.state.update({"source_output_state": state})
 
     def get_source_voltage(self) -> float:
         return self.source_instrument.get_voltage_level()  # type: ignore
@@ -159,7 +294,6 @@ class RangeMeasurement(Measurement):
         logger.info("Source voltage level: %gV", voltage)
         self.source_instrument.set_voltage_level(voltage)  # type: ignore
         self.submit_update({"source_voltage": voltage})
-        self.state.update({"source_voltage": voltage})
 
     def set_source_voltage_range(self, voltage: float) -> None:
         logger.info("Source voltage range: %gV", voltage)
@@ -174,7 +308,6 @@ class RangeMeasurement(Measurement):
         logger.info("Bias source output state: %s", state)
         self.bias_source_instrument.set_output_enabled(state)  # type: ignore
         self.submit_update({"bias_source_output_state": state})
-        self.state.update({"bias_source_output_state": state})
 
     def get_bias_source_voltage(self) -> float:
         return self.bias_source_instrument.get_voltage_level()  # type: ignore
@@ -183,7 +316,6 @@ class RangeMeasurement(Measurement):
         logger.info("Bias source voltage level: %gV", voltage)
         self.bias_source_instrument.set_voltage_level(voltage)  # type: ignore
         self.submit_update({"bias_source_voltage": voltage})
-        self.state.update({"bias_source_voltage": voltage})
 
     def set_bias_source_voltage_range(self, voltage: float) -> None:
         logger.info("Bias source voltage range: %gV", voltage)
@@ -193,15 +325,18 @@ class RangeMeasurement(Measurement):
         """Raise exception if current compliance tripped and continue in
         compliance option is not active.
         """
+        self.process_inbox()
         if (
-            not self.state.continue_in_compliance
-            and self.source_instrument.compliance_tripped()  # type: ignore
+            not self.runtime_state.continue_in_compliance
+            and self.source_instrument is not None
+            and self.source_instrument.compliance_tripped()
         ):
             raise RuntimeError("Source compliance tripped!")
 
     def update_current_compliance(self) -> None:
         """Update current compliance if value changed."""
-        current_compliance = self.state.current_compliance
+        self.process_inbox()
+        current_compliance = self.runtime_state.current_compliance
         if self.current_compliance != current_compliance:  # type: ignore
             self.current_compliance = current_compliance
             self.set_source_compliance(self.current_compliance)
@@ -219,15 +354,18 @@ class RangeMeasurement(Measurement):
         """Raise exception if biascurrent compliance tripped and continue in
         compliance option is not active.
         """
+        self.process_inbox()
         if (
-            not self.state.continue_in_compliance
-            and self.bias_source_instrument.compliance_tripped()  # type: ignore
+            not self.runtime_state.continue_in_compliance
+            and self.bias_source_instrument is not None
+            and self.bias_source_instrument.compliance_tripped()
         ):
             raise RuntimeError("Source compliance tripped!")
 
     def update_bias_current_compliance(self) -> None:
         """Update current compliance if value changed."""
-        current_compliance = self.state.current_compliance
+        self.process_inbox()
+        current_compliance = self.runtime_state.current_compliance
         if self.bias_current_compliance != current_compliance:  # type: ignore
             self.bias_current_compliance = current_compliance
             self.set_bias_source_compliance(self.bias_current_compliance)
@@ -239,7 +377,8 @@ class RangeMeasurement(Measurement):
         time.sleep(waiting_time)
 
     def apply_waiting_time_continuous(self, estimate: Estimate) -> None:
-        waiting_time: float = self.state.waiting_time_continuous
+        self.process_inbox()
+        waiting_time: float = self.runtime_state.waiting_time_continuous
         interval: float = 1.0
         logger.info("Waiting for %.2f sec", waiting_time)
         if waiting_time < interval:
@@ -248,10 +387,12 @@ class RangeMeasurement(Measurement):
             now: float = time.monotonic()
             threshold: float = now + waiting_time
             while now < threshold:
-                if self.state.stop_requested:
+                if self.context.stop_requested:
                     self.update_message("Stopping...")
                     break
-                if self.state.is_change_voltage_continuous:
+                # Abort waiting in case change voltsage request arrives
+                self.process_inbox()
+                if self.runtime_state.change_voltage_request is not None:
                     break
                 remaining: float = round(threshold - now)
                 self.update_estimate_message_continuous(
@@ -261,7 +402,8 @@ class RangeMeasurement(Measurement):
                 now = time.monotonic()
 
     def apply_change_voltage(self):
-        parameters = self.state.pop_change_voltage_continuous()
+        self.process_inbox()
+        parameters = self.runtime_state.pop_change_voltage_request()
         if parameters is not None:
             self.set_fsm_state(FSMState.RAMPING)
             self.ramp_to_continuous(
@@ -269,9 +411,24 @@ class RangeMeasurement(Measurement):
                 step_voltage=parameters.step_voltage,
                 waiting_time=parameters.waiting_time,
             )
-            if not self.state.stop_requested:  # hack
+            if not self.context.stop_requested:  # hack
                 self.set_fsm_state(FSMState.CONTINUOUS)
-            self.state.event_bus.submit("change_voltage_done")
+            self.context.submit_event(ChangeVoltageDoneEvent())
+
+    def tcu_start(self) -> None:
+        if self.tcu_actor is not None:
+            self.tcu_actor.start()
+
+    def tcu_stop(self) -> None:
+        if self.tcu_actor is not None:
+            self.tcu_actor.stop()
+
+    def tcu_ensure_setpoint(self) -> None:
+        if self.tcu_actor is not None:
+            if not self.tcu_actor.is_within_setpoint():
+                self.update_message("Waiting for TCU to reach setpoint...")
+                self.update_progress(0, 0, 0)
+            self.tcu_actor.ensure_setpoint()
 
     def update_message(self, message: str) -> None:
         """Emit update message event."""
@@ -305,28 +462,30 @@ class RangeMeasurement(Measurement):
         self.update_progress(0, estimate.total, estimate.passed)
 
     def initialize(self) -> None:
-        source = self.state.source_role
-        if source in self.station.instruments:
-            self.source_instrument = self.station.instruments.get(source)
-        else:
+        source_role = self.state.source_role
+        if source_role is None:
+            raise RuntimeError("No source instrument set")
+        self.source_instrument = self.station.instruments.get(source_role)
+        if self.source_instrument is None:
             raise RuntimeError("No source instrument set")
 
         # Bias
 
         self.bias_source_instrument = None
         if self.state.measurement_type in ["iv_bias"]:  # TODO
-            bias_source = self.state.bias_source_role
-            if bias_source in self.station.instruments:
-                self.bias_source_instrument = self.station.instruments.get(bias_source)
-            else:
+            bias_source_role = self.state.bias_source_role
+            if bias_source_role is None:
+                raise RuntimeError("No bias source instrument set")
+            self.bias_source_instrument = self.station.instruments.get(bias_source_role)
+            if self.bias_source_instrument is None:
                 raise RuntimeError("No bias source instrument set")
 
         logger.debug("querying context identities...")
-        for key, context in self.station.instruments.items():
-            logger.debug("reading %s identity...", key.upper())
-            identity: str = context.identify()
-            logger.debug("reading %s identity... done.", key.upper())
-            logger.info("%s IDN: %s", key.upper(), identity)
+        for role, instrument in self.station.instruments.items():
+            logger.debug("reading %s identity...", role.upper())
+            identity: str = instrument.identify()
+            logger.debug("reading %s identity... done.", role.upper())
+            logger.info("%s IDN: %s", role.upper(), identity)
         logger.debug("querying context identities... done.")
 
         logger.debug("get source output state...")
@@ -354,32 +513,32 @@ class RangeMeasurement(Measurement):
         self.initialize_switch()
 
         # Reset (optional)
-        for key, instrument in self.station.instruments.items():
-            role = self.state.find_role(key)
-            if role and role.reset_instrument:
-                logger.info("Reset %s...", key.upper())
+        for role, instrument in self.station.instruments.items():
+            role_config = self.state.find_role(role)
+            if role_config and role_config.reset_instrument:
+                logger.info("Reset %s...", role.upper())
                 instrument.reset()
-                logger.info("Reset %s... done.", key.upper())
+                logger.info("Reset %s... done.", role.upper())
 
         # Clear state
-        for key, instrument in self.station.instruments.items():
-            logger.info("Clear %s...", key.upper())
+        for role, instrument in self.station.instruments.items():
+            logger.info("Clear %s...", role.upper())
             instrument.clear()
-            logger.info("Clear %s... done.", key.upper())
+            logger.info("Clear %s... done.", role.upper())
 
         # Configure
-        for key, instrument in self.station.instruments.items():
-            logger.info("Configure %s...", key.upper())
-            role = self.state.find_role(key)
-            if role is not None:
-                for name, value in role.options.items():
+        for role, instrument in self.station.instruments.items():
+            logger.info("Configure %s...", role.upper())
+            role_config = self.state.find_role(role)
+            if role_config is not None:
+                for name, value in role_config.options.items():
                     logger.info("%s: %r", name, value)
-                instrument.configure(role.options)
+                instrument.configure(role_config.options)
                 self.check_error_state(instrument)
-            logger.info("Configure %s... done.", key.upper())
+            logger.info("Configure %s... done.", role.upper())
 
         # Compliance
-        self.current_compliance = self.state.current_compliance
+        self.current_compliance = self.runtime_state.current_compliance
         self.set_source_compliance(self.current_compliance)
         self.check_error_state(self.source_instrument)
 
@@ -388,22 +547,18 @@ class RangeMeasurement(Measurement):
             self.check_interlock(instrument)
 
         # TCU (optional)
-        tcu = self.station.instruments.get(Roles.TCU)
+        tcu = self.station.instruments.get(Role.TCU)
         if tcu is not None:
             self.tcu_actor = TCUActor(
                 tcu=tcu,
-                event_bus=self.state.event_bus,
-                abort_event=self.state.abort_event,
+                event_queue=self.context.outbox_queue,
+                abort_event=self.context.abort_event,
             )
 
-        if self.tcu_actor is not None:
-            self.tcu_actor.start()
-            if not self.tcu_actor.is_within_setpoint():
-                self.update_message("Waiting for TCU to reach setpoint...")
-                self.update_progress(0, 0, 0)
-            self.tcu_actor.ensure_setpoint()
+        self.tcu_start()
+        self.tcu_ensure_setpoint()
 
-        self.bias_current_compliance = self.state.current_compliance
+        self.bias_current_compliance = self.runtime_state.current_compliance
         if self.bias_source_instrument:
             self.set_bias_source_compliance(self.bias_current_compliance)
             self.check_error_state(self.bias_source_instrument)
@@ -423,25 +578,25 @@ class RangeMeasurement(Measurement):
         self.apply_settle_waiting_time()
 
     def initialize_elms(self) -> None:
-        elm = self.station.instruments.get(Roles.ELM)
+        elm = self.station.instruments.get(Role.ELM)
         if elm is not None:
             elm.set_zero_check_enabled(False)
             logger.info("ELM zero check: off")
 
-        elm2 = self.station.instruments.get(Roles.ELM2)
+        elm2 = self.station.instruments.get(Role.ELM2)
         if elm2 is not None:
             elm2.set_zero_check_enabled(False)
             logger.info("ELM2 zero check: off")
 
     def initialize_switch(self) -> None:
-        switch = self.station.instruments.get(Roles.SWITCH)
+        switch = self.station.instruments.get(Role.SWITCH)
         if switch is not None:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")
 
     def apply_settle_waiting_time(self) -> None:
         """Wait after output enable/ramp"""
-        waiting_time_settle: float = self.state.get("settle_waiting_time", 1.0)
+        waiting_time_settle: float = self.state.settle_waiting_time
         logger.debug("apply settle time...")
         time.sleep(waiting_time_settle)
         logger.debug("apply settle time... done.")
@@ -462,7 +617,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 self.update_message("Stopping...")
                 return
             self.set_source_voltage(voltage)
@@ -482,7 +637,7 @@ class RangeMeasurement(Measurement):
 
         self.update_message("")
 
-        if self.state.stop_requested:
+        if self.context.stop_requested:
             self.update_message("Stopping...")
             return
 
@@ -493,8 +648,7 @@ class RangeMeasurement(Measurement):
 
     def finalize(self) -> None:
         try:
-            if self.tcu_actor is not None:
-                self.tcu_actor.stop()
+            self.tcu_stop()
 
             self.finalize_elms()
 
@@ -533,23 +687,23 @@ class RangeMeasurement(Measurement):
             )
 
     def finalize_elms(self) -> None:
-        elm = self.station.instruments.get(Roles.ELM)
+        elm = self.station.instruments.get(Role.ELM)
         if elm is not None:
             elm.set_zero_check_enabled(True)
             logger.info("ELM zero check: on")
 
-        elm2 = self.station.instruments.get(Roles.ELM2)
+        elm2 = self.station.instruments.get(Role.ELM2)
         if elm2 is not None:
             elm2.set_zero_check_enabled(True)
             logger.info("ELM2 zero check: on")
 
     def finalize_lcr(self) -> None:
-        lcr = self.station.instruments.get(Roles.LCR)
+        lcr = self.station.instruments.get(Role.LCR)
         if lcr is not None and hasattr(lcr, "finalize"):
             lcr.finalize()
 
     def finalize_switch(self) -> None:
-        switch = self.station.instruments.get(Roles.SWITCH)
+        switch = self.station.instruments.get(Role.SWITCH)
         if switch:
             switch.open_all_channels()
             logger.info("Switch: opened ALL channels")
@@ -608,7 +762,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 break
             self.set_source_voltage(voltage)
             time.sleep(waiting_time)
@@ -668,7 +822,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp bias to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 break
             self.set_bias_source_voltage(voltage)
             time.sleep(waiting_time)
@@ -723,7 +877,7 @@ class RangeMeasurement(Measurement):
             self.update_estimate_message(f"Ramp to {ramp.end} V", estimate)
             self.update_estimate_progress(estimate)
 
-            if self.state.stop_requested:
+            if self.context.stop_requested:
                 self.update_message("Stopping...")
                 return
 

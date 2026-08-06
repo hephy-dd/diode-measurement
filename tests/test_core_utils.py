@@ -2,25 +2,7 @@ from types import MappingProxyType
 
 import pytest
 
-from diode_measurement import utils
-
-
-def test_format_metric():
-    assert utils.format_metric(0.0042, "A") == "4.200 mA"
-    assert utils.format_metric(0.0042, "A", 1) == "4.2 mA"
-
-
-def test_format_switch():
-    assert utils.format_switch(False) == "OFF"
-    assert utils.format_switch(True) == "ON"
-
-
-def test_limits():
-    assert utils.limits([]) == ()
-    assert utils.limits([[4, 2]]) == (4, 4, 2, 2)
-    assert utils.limits([[4, 5], [4, 3], [-1, 2]]) == (-1, 4, 2, 5)
-    assert utils.limits([[-1, 2], [4, 5], [4, 3]]) == (-1, 4, 2, 5)
-    assert utils.limits([[1, -2], [4, -5], [4, -3]]) == (1, 4, -5, -2)
+from diode_measurement.core import utils
 
 
 @pytest.mark.parametrize(

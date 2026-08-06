@@ -3,11 +3,13 @@ import math
 import time
 from copy import copy
 from dataclasses import dataclass
+from queue import Queue
 from threading import Event, RLock
 from typing import Any
 
 from ..core.actor import ThreadingActor
 from ..core.driver import TCU
+from ..core.events import UpdateMetricsEvent
 
 __all__ = ["TCUActor"]
 
@@ -23,10 +25,10 @@ class TCUMetrics:
 
 
 class TCUActor(ThreadingActor):
-    def __init__(self, tcu: TCU, event_bus, abort_event: Event) -> None:
+    def __init__(self, tcu: TCU, event_queue: Queue, abort_event: Event) -> None:
         super().__init__(abort_event=abort_event)
         self.tcu = tcu
-        self.event_bus = event_bus
+        self.event_queue: Queue[Any] = event_queue
         self.poll_interval: float = 5.0
         self.query_timeout: float = 10.0
         self._next_poll_at: float = 0.0
@@ -60,13 +62,14 @@ class TCUActor(ThreadingActor):
         except Exception:
             logger.exception("Failed to read TCU state")
 
-        self.event_bus.submit(
-            "update",
-            {
-                "tcu_temperature": temperature,
-                "tcu_humidity": humidity,
-                "tcu_state": state,
-            },
+        self.event_queue.put(
+            UpdateMetricsEvent(
+                {
+                    "tcu_temperature": temperature,
+                    "tcu_humidity": humidity,
+                    "tcu_state": state,
+                },
+            )
         )
 
         with self._metrics_lock:

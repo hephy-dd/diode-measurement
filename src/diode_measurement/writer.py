@@ -1,9 +1,10 @@
 import csv
 import math
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import Any, TextIO
 
-from .state import Roles
+from .core.events import Reading
+from .core.role import Role
 
 __all__ = ["Writer"]
 
@@ -22,25 +23,67 @@ class Writer:
     def __init__(self, fp: TextIO) -> None:
         self._fp: TextIO = fp
         self._writer = csv.writer(fp, delimiter=self.delimiter)
-        self._current_table: str | None = None
         self._timestamp_offset: float = 0.0
+        self.current_table: str | None = None
         self.relative_timestamp: bool = False
         self.timestamp_format: str = ".6f"
         self.value_format: str = "+.3E"
+        self.optional_roles: list[Role] = []
 
-    def get_timestamp(self, data: Mapping[str, Any]) -> float | None:
+    def get_timestamp(self, timestamp: float) -> float:
         """Return absolute or relative timestamp based on configuration."""
-        timestamp = data.get("timestamp")
         if timestamp is not None and self.relative_timestamp:
             timestamp -= self._timestamp_offset
         return timestamp
 
-    def reset_timestamp_offset(self, data: Mapping[str, Any]) -> None:
+    def reset_timestamp_offset(self, timestamp: float = 0.0) -> None:
         """Reset timestamp offset for relative timestamps."""
         if self.relative_timestamp:
-            self._timestamp_offset = data.get("timestamp", 0.0)
+            self._timestamp_offset = timestamp
         else:
             self._timestamp_offset = 0.0
+
+    def dmm_header(self) -> list[str]:
+        header = []
+        if Role.DMM in self.optional_roles:
+            header.extend(
+                [
+                    "dmm_temperature[degC]",
+                ]
+            )
+        return header
+
+    def dmm_data(self, reading: Reading) -> list[str]:
+        row = []
+        if Role.DMM in self.optional_roles:
+            row.extend(
+                [
+                    safe_format(reading.t_dmm, self.value_format),
+                ]
+            )
+        return row
+
+    def tcu_header(self) -> list[str]:
+        header = []
+        if Role.TCU in self.optional_roles:
+            header.extend(
+                [
+                    "tcu_temperature[degC]",
+                    "tcu_humidity[%rH]",
+                ]
+            )
+        return header
+
+    def tcu_data(self, reading: Reading) -> list[str]:
+        row = []
+        if Role.TCU in self.optional_roles:
+            row.extend(
+                [
+                    safe_format(reading.tcu_temperature, self.value_format),
+                    safe_format(reading.tcu_humidity, self.value_format),
+                ]
+            )
+        return row
 
     def flush(self) -> None:
         self._fp.flush()
@@ -56,209 +99,3 @@ class Writer:
 
     def write_table_row(self, columns: Iterable[str]) -> None:
         self._writer.writerow(columns)
-
-    def write_meta(self, data: Mapping[str, Any]) -> None:
-        self._current_table = None
-        self.write_tag("sample", data.get("sample"))
-        self.write_tag("measurement_type", data.get("measurement_type"))
-        if "bias_voltage" in data:
-            self.write_tag(
-                "bias_voltage[V]",
-                safe_format(data.get("bias_voltage"), self.value_format),
-            )
-        self.write_tag(
-            "voltage_begin[V]",
-            safe_format(data.get("voltage_begin"), self.value_format),
-        )
-        self.write_tag(
-            "voltage_end[V]", safe_format(data.get("voltage_end"), self.value_format)
-        )
-        self.write_tag(
-            "voltage_step[V]", safe_format(data.get("voltage_step"), self.value_format)
-        )
-        self.write_tag(
-            "waiting_time[s]", safe_format(data.get("waiting_time"), self.value_format)
-        )
-        self.write_tag(
-            "current_compliance[A]",
-            safe_format(data.get("current_compliance"), self.value_format),
-        )
-        self.write_meta_lcr(data)
-        self.flush()
-
-    def write_meta_lcr(self, data: Mapping[str, Any]) -> None:
-        lcr = data.get("roles", {}).get(Roles.LCR, {})
-        if lcr.get("enabled"):
-            lcr_options = lcr.get("options", {})
-            # lcr.options.voltage
-            voltage = lcr_options.get("voltage")
-            if voltage is not None:
-                self.write_tag(
-                    "lcr_ac_amplitude[V]", safe_format(voltage, self.value_format)
-                )
-            # lcr.options.frequency
-            frequency = lcr_options.get("frequency")
-            if frequency is not None:
-                self.write_tag(
-                    "lcr_ac_frequency[Hz]", safe_format(frequency, self.value_format)
-                )
-
-    def write_iv_row(self, data: Mapping[str, Any]) -> None:
-        if self._current_table != "iv":
-            self._current_table = "iv"
-            self.write_table_header(
-                [
-                    "timestamp[s]",
-                    "voltage[V]",
-                    "v_smu[V]",
-                    "i_smu[A]",
-                    "i_elm[A]",
-                    "i_elm2[A]",
-                    "temperature[degC]",
-                    "humidity[%rH]",
-                ]
-            )
-            self.reset_timestamp_offset(data)
-        self.write_table_row(
-            [
-                safe_format(self.get_timestamp(data), self.timestamp_format),
-                safe_format(data.get("voltage"), self.value_format),
-                safe_format(data.get("v_smu"), self.value_format),
-                safe_format(data.get("i_smu"), self.value_format),
-                safe_format(data.get("i_elm"), self.value_format),
-                safe_format(data.get("i_elm2"), self.value_format),
-                safe_format(data.get("t_dmm"), self.value_format),
-                safe_format(data.get("humidity"), self.value_format),
-            ]
-        )
-        self.flush()
-
-    def write_iv_bias_row(self, data: Mapping[str, Any]) -> None:
-        if self._current_table != "iv":
-            self._current_table = "iv"
-            self.write_table_header(
-                [
-                    "timestamp[s]",
-                    "voltage[V]",
-                    "v_smu[V]",
-                    "i_smu[A]",
-                    "v_smu2[V]",
-                    "i_smu2[A]",
-                    "i_elm[A]",
-                    "i_elm2[A]",
-                    "temperature[degC]",
-                    "humidity[%rH]",
-                ]
-            )
-            self.reset_timestamp_offset(data)
-        self.write_table_row(
-            [
-                safe_format(self.get_timestamp(data), self.timestamp_format),
-                safe_format(data.get("voltage"), self.value_format),
-                safe_format(data.get("v_smu"), self.value_format),
-                safe_format(data.get("i_smu"), self.value_format),
-                safe_format(data.get("v_smu2"), self.value_format),
-                safe_format(data.get("i_smu2"), self.value_format),
-                safe_format(data.get("i_elm"), self.value_format),
-                safe_format(data.get("i_elm2"), self.value_format),
-                safe_format(data.get("t_dmm"), self.value_format),
-                safe_format(data.get("humidity"), self.value_format),
-            ]
-        )
-        self.flush()
-
-    def write_it_row(self, data: Mapping[str, Any]) -> None:
-        if self._current_table != "it":
-            self._current_table = "it"
-            self.write_table_header(
-                [
-                    "timestamp[s]",
-                    "voltage[V]",
-                    "v_smu[V]",
-                    "i_smu[A]",
-                    "i_elm[A]",
-                    "i_elm2[A]",
-                    "temperature[degC]",
-                    "humidity[%rH]",
-                ]
-            )
-            self.reset_timestamp_offset(data)
-        self.write_table_row(
-            [
-                safe_format(self.get_timestamp(data), self.timestamp_format),
-                safe_format(data.get("voltage"), self.value_format),
-                safe_format(data.get("v_smu"), self.value_format),
-                safe_format(data.get("i_smu"), self.value_format),
-                safe_format(data.get("i_elm"), self.value_format),
-                safe_format(data.get("i_elm2"), self.value_format),
-                safe_format(data.get("t_dmm"), self.value_format),
-                safe_format(data.get("humidity"), self.value_format),
-            ]
-        )
-        self.flush()
-
-    def write_it_bias_row(self, data: Mapping[str, Any]) -> None:
-        if self._current_table != "it":
-            self._current_table = "it"
-            self.write_table_header(
-                [
-                    "timestamp[s]",
-                    "voltage[V]",
-                    "v_smu[V]",
-                    "i_smu[A]",
-                    "v_smu2[V]",
-                    "i_smu2[A]",
-                    "i_elm[A]",
-                    "i_elm2[A]",
-                    "temperature[degC]",
-                    "humidity[%rH]",
-                ]
-            )
-            self.reset_timestamp_offset(data)
-        self.write_table_row(
-            [
-                safe_format(self.get_timestamp(data), self.timestamp_format),
-                safe_format(data.get("voltage"), self.value_format),
-                safe_format(data.get("v_smu"), self.value_format),
-                safe_format(data.get("i_smu"), self.value_format),
-                safe_format(data.get("v_smu2"), self.value_format),
-                safe_format(data.get("i_smu2"), self.value_format),
-                safe_format(data.get("i_elm"), self.value_format),
-                safe_format(data.get("i_elm2"), self.value_format),
-                safe_format(data.get("t_dmm"), self.value_format),
-                safe_format(data.get("humidity"), self.value_format),
-            ]
-        )
-        self.flush()
-
-    def write_cv_row(self, data: Mapping[str, Any]) -> None:
-        if self._current_table != "cv":
-            self._current_table = "cv"
-            self.write_table_header(
-                [
-                    "timestamp[s]",
-                    "voltage[V]",
-                    "v_smu[V]",
-                    "i_smu[A]",
-                    "c_lcr[F]",
-                    "c2_lcr[1/F^2]",
-                    "r_lcr[Ohm]",
-                    "temperature[degC]",
-                    "humidity[%rH]",
-                ]
-            )
-            self.reset_timestamp_offset(data)
-        self.write_table_row(
-            [
-                safe_format(self.get_timestamp(data), self.timestamp_format),
-                safe_format(data.get("voltage"), self.value_format),
-                safe_format(data.get("v_smu"), self.value_format),
-                safe_format(data.get("i_smu"), self.value_format),
-                safe_format(data.get("c_lcr"), self.value_format),
-                safe_format(data.get("c2_lcr"), self.value_format),
-                safe_format(data.get("r_lcr"), self.value_format),
-                safe_format(data.get("t_dmm"), self.value_format),
-                safe_format(data.get("humidity"), self.value_format),
-            ]
-        )
-        self.flush()

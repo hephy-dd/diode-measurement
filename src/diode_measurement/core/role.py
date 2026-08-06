@@ -1,11 +1,23 @@
 from dataclasses import dataclass, field
-from typing import Any, Self
+from enum import StrEnum
+from typing import Any
 
-__all__ = ["Role"]
+__all__ = ["RoleConfig", "Role"]
+
+
+class Role(StrEnum):
+    SMU = "smu"
+    SMU2 = "smu2"
+    ELM = "elm"
+    ELM2 = "elm2"
+    LCR = "lcr"
+    DMM = "dmm"
+    SWITCH = "switch"
+    TCU = "tcu"
 
 
 @dataclass(frozen=True, slots=True)
-class Role:
+class RoleConfig:
     enabled: bool
     model: str
     resource_name: str
@@ -14,16 +26,3 @@ class Role:
     timeout: float
     reset_instrument: bool
     options: dict[str, Any] = field(default_factory=dict)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Self:
-        return cls(
-            enabled=data.get("enabled", False),
-            model=data.get("model", ""),
-            resource_name=data.get("resource_name", ""),
-            visa_library=data.get("visa_library", "@py"),
-            termination=data.get("termination", "\n"),
-            timeout=float(data.get("timeout", 4.0)),
-            reset_instrument=data.get("reset_instrument", False),
-            options=dict(data.get("options", {})),
-        )

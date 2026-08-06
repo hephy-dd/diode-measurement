@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from PySide6 import QtCore, QtWidgets
 
 from ..core.measurement import MeasurementParameters
-from ..utils import convert
+from ..core.utils import convert
 
 __all__ = ["GeneralWidget"]
 
@@ -143,9 +143,12 @@ class GeneralWidget(QtWidgets.QWidget):
         vbox_layout.addWidget(QtWidgets.QLabel("Instruments"))
         self.instrument_widget = QtWidgets.QWidget()
         vbox_layout.addWidget(self.instrument_widget)
-        self.instrument_layout = QtWidgets.QHBoxLayout(self.instrument_widget)
+        self.instrument_layout = QtWidgets.QHBoxLayout()
         self.instrument_layout.addStretch()
         self.instrument_layout.setContentsMargins(0, 0, 0, 0)
+        instruments_layout = QtWidgets.QVBoxLayout(self.instrument_widget)
+        instruments_layout.setContentsMargins(0, 0, 0, 0)
+        instruments_layout.addLayout(self.instrument_layout)
 
         vbox_layout = QtWidgets.QVBoxLayout(self.output_group_box)
         vbox_layout.addWidget(QtWidgets.QLabel("Sample Name"))
@@ -252,12 +255,12 @@ class GeneralWidget(QtWidgets.QWidget):
                 self.measurement_combo_box.setCurrentIndex(index)
                 return
 
-    def add_role(self, role: str, title: str) -> None:
+    def add_role(self, role: str, title: str, optional: bool = False) -> None:
         if role not in self.role_check_boxes:
             check_box = QtWidgets.QCheckBox(self)
             check_box.setText(title)
             check_box.checkStateChanged.connect(self.instruments_changed)
-            index = len(self.role_check_boxes)
+            index = self.instrument_layout.count() - 1
             self.instrument_layout.insertWidget(index, check_box)
             self.role_check_boxes[role] = check_box
         else:

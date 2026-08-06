@@ -1,44 +1,45 @@
-import logging
-from collections.abc import Callable
-from threading import RLock
+from dataclasses import dataclass
+from typing import Any
 
-__all__ = ["EventHandler", "EventBus"]
-
-logger = logging.getLogger(__name__)
-
-
-class EventHandler:
-    def __init__(self) -> None:
-        self._handlers: list[Callable] = []
-        self._lock = RLock()
-
-    def subscribe(self, handler: Callable) -> None:
-        self._handlers.append(handler)
-
-    def __call__(self, *args, **kwargs) -> None:
-        with self._lock:
-            for handler in self._handlers:
-                try:
-                    handler(*args, **kwargs)
-                except Exception:
-                    logger.exception("failed to handle event")
+__all__ = [
+    "ExceptionEvent",
+    "ChangeVoltageDoneEvent",
+    "UpdateMetricsEvent",
+]
 
 
-class EventBus:
-    def __init__(self) -> None:
-        self._lock = RLock()
-        self._event_registry: dict[str, list[Callable]] = {}
+@dataclass(frozen=True, slots=True)
+class Reading:
+    timestamp: float
+    t_dmm: float
+    tcu_temperature: float
+    tcu_humidity: float
 
-    def register_callback(self, event_name: str, event_callback: Callable) -> None:
-        with self._lock:
-            self._event_registry.setdefault(event_name, []).append(event_callback)
 
-    def submit(self, event_name: str, *args) -> None:
-        with self._lock:
-            callbacks = tuple(self._event_registry.get(event_name, ()))
+@dataclass(frozen=True, slots=True)
+class ExceptionEvent:
+    exception: Exception
 
-        for callback in callbacks:
-            try:
-                callback(*args)
-            except Exception:
-                logger.exception("Failed to submit event: %r", event_name)
+
+@dataclass(frozen=True, slots=True)
+class ChangeVoltageDoneEvent: ...
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateMetricsEvent:
+    data: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateContinueInCompliance:
+    is_continue: bool
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateCurrentCompliance:
+    current_compliance: float
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateWaitingTimeContinuous:
+    waiting_time: float

@@ -113,6 +113,12 @@ value pairs and one or more CSV data tables with headers using `\t` separators.
 IV measurement data consist of up to two CSV tables with the second (optional)
 table containing continuous measurement data.
 
+Optional table columns are:
+
+- `dmm_temperature[degC]`
+- `tcu_temperature[degC]`
+- `tcu_humidity[%rH]`
+
 #### Example
 
 ```csv
@@ -124,23 +130,29 @@ voltage_step[V]: +1.000E+00
 waiting_time[s]: +1.000E-01
 current_compliance[A]: +1.000E-06
 
-timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	i_elm[A]	i_elm2[A]	temperature[degC]
-1629455368.29	+5.000E+00	+5.038E+00	+4.261E-08	+3.740E-08	+NAN	+NAN
-1629455369.71	+4.000E+00	+4.065E+00	+7.708E-08	+9.495E-08	+NAN	+NAN
-1629455370.49	+3.000E+00	+3.007E+00	+3.460E-08	+6.264E-08	+NAN	+NAN
-...          	...       	...       	...       	...       	...       	...
+timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	i_elm[A]	i_elm2[A]
+1629455368.29	+5.000E+00	+5.038E+00	+4.261E-08	+3.740E-08	+NAN
+1629455369.71	+4.000E+00	+4.065E+00	+7.708E-08	+9.495E-08	+NAN
+1629455370.49	+3.000E+00	+3.007E+00	+3.460E-08	+6.264E-08	+NAN
+...          	...       	...       	...       	...       	...
 
-timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	i_elm[A]	i_elm2[A]	temperature[degC]
-1629455385.69	+3.000E+00	+3.046E+00	+3.996E-04	+7.137E-08	+NAN	+NAN
-1629455387.65	+3.000E+00	+3.034E+00	+7.353E-04	+3.079E-08	+NAN	+NAN
-1629455389.56	+3.000E+00	+3.021E+00	+9.081E-04	+1.266E-08	+NAN	+NAN
-...          	...       	...       	...       	...       	...       	...
+timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	i_elm[A]	i_elm2[A]
+1629455385.69	+3.000E+00	+3.046E+00	+3.996E-04	+7.137E-08	+NAN
+1629455387.65	+3.000E+00	+3.034E+00	+7.353E-04	+3.079E-08	+NAN
+1629455389.56	+3.000E+00	+3.021E+00	+9.081E-04	+1.266E-08	+NAN
+...          	...       	...       	...       	...       	...
 ```
 
 ### IV Bias
 
 IV bias measurement data consist of up to two CSV tables with the second
 (optional) table containing continuous bias measurement data.
+
+Optional table columns are:
+
+- `dmm_temperature[degC]`
+- `tcu_temperature[degC]`
+- `tcu_humidity[%rH]`
 
 #### Example
 
@@ -154,23 +166,29 @@ voltage_step[V]: +1.000E+00
 waiting_time[s]: +1.000E-01
 current_compliance[A]: +1.000E-06
 
-timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	v_smu2[V]	i_smu2[A]	i_elm[A]	i_elm2[A]	temperature[degC]
-1629455368.29	+5.000E+00	+5.038E+00	+4.261E-08	+1.063E+01	+3.723E-08	+3.740E-08	+NAN	+NAN
-1629455369.71	+4.000E+00	+4.065E+00	+7.708E-08	+1.051E+01	+6.513E-08	+9.495E-08	+NAN	+NAN
-1629455370.49	+3.000E+00	+3.007E+00	+3.460E-08	+1.058E+01	+2.410E-08	+6.264E-08	+NAN	+NAN
-...          	...       	...       	...       	...       	...       	...       	...       	...
+timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	v_smu2[V]	i_smu2[A]	i_elm[A]	i_elm2[A]
+1629455368.29	+5.000E+00	+5.038E+00	+4.261E-08	+1.063E+01	+3.723E-08	+3.740E-08	+NAN
+1629455369.71	+4.000E+00	+4.065E+00	+7.708E-08	+1.051E+01	+6.513E-08	+9.495E-08	+NAN
+1629455370.49	+3.000E+00	+3.007E+00	+3.460E-08	+1.058E+01	+2.410E-08	+6.264E-08	+NAN
+...          	...       	...       	...       	...       	...       	...       	...
 
-timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	v_smu2[V]	i_smu2[A]	i_elm[A]	i_elm2[A]	temperature[degC]
-1629455385.69	+3.000E+00	+3.046E+00	+3.996E-08	+1.063E+01	+2.657E-08	+7.137E-08	+NAN	+NAN
-1629455387.65	+3.000E+00	+3.034E+00	+7.353E-08	+1.063E+01	+6.154E-08	+3.079E-08	+NAN	+NAN
-1629455389.56	+3.000E+00	+3.021E+00	+9.081E-08	+1.063E+01	+8.426E-08	+1.266E-08	+NAN	+NAN
-...          	...       	...       	...       	...       	...       	...       	...       	...
+timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	v_smu2[V]	i_smu2[A]	i_elm[A]	i_elm2[A]
+1629455385.69	+3.000E+00	+3.046E+00	+3.996E-08	+1.063E+01	+2.657E-08	+7.137E-08	+NAN
+1629455387.65	+3.000E+00	+3.034E+00	+7.353E-08	+1.063E+01	+6.154E-08	+3.079E-08	+NAN
+1629455389.56	+3.000E+00	+3.021E+00	+9.081E-08	+1.063E+01	+8.426E-08	+1.266E-08	+NAN
+...          	...       	...       	...       	...       	...       	...       	...
 ```
 
 ### CV
 
 CV measurement data consist of a single CSV table containing the measurement
 data.
+
+Optional table columns are:
+
+- `dmm_temperature[degC]`
+- `tcu_temperature[degC]`
+- `tcu_humidity[%rH]`
 
 #### Example
 
@@ -183,10 +201,10 @@ voltage_step[V]: +1.000E+00
 waiting_time[s]: +1.000E-01
 current_compliance[A]: +1.000E-08
 
-timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	c_lcr[F]	c2_lcr[F]	r_lcr[Ohm]	temperature[degC]
-1629455368.29	+5.000E+00	+5.065E+00	+4.261E-08	+3.740E-05	7.149E+08	3.459932E-01	+NAN
-1629455369.71	+4.000E+00	+4.037E+00	+7.708E-08	+9.495E-05	1.109E+08	3.015286E-01	+NAN
-1629455370.49	+3.000E+00	+3.043E+00	+3.460E-08	+6.264E-05	2.549E+08	2.482018E-01	+NAN
+timestamp[s]	voltage[V]	v_smu[V]	i_smu[A]	c_lcr[F]	c2_lcr[F]	r_lcr[Ohm]
+1629455368.29	+5.000E+00	+5.065E+00	+4.261E-08	+3.740E-05	7.149E+08	3.459932E-01
+1629455369.71	+4.000E+00	+4.037E+00	+7.708E-08	+9.495E-05	1.109E+08	3.015286E-01
+1629455370.49	+3.000E+00	+3.043E+00	+3.460E-08	+6.264E-05	2.549E+08	2.482018E-01
 ...          	...       	...       	...       	...      	...      	...
 ```
 
@@ -291,7 +309,9 @@ This returns application state parameters.
     "elm_current": 0.0021,
     "elm2_current": null,
     "lcr_capacity": null,
-    "temperature": 24.031
+    "dmm_temperature": null,
+    "tcu_temperature": 24.031,
+    "tcu_humidity": 53.6
   },
   "id": 0
 }

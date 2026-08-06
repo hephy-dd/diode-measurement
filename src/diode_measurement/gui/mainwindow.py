@@ -4,7 +4,7 @@ import webbrowser
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from .. import __version__ as APP_VERSION
-from ..state import Roles
+from ..core.role import Role
 from .general import GeneralWidget
 from .logwindow import LogWidget
 from .preferences import PreferencesDialog
@@ -140,7 +140,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.change_voltage_action.trigger
         )
 
-        self.role_widgets: dict[str, RoleWidget] = {}
+        self.role_widgets: dict[Role, RoleWidget] = {}
 
         self.control_tab_widget = QtWidgets.QTabWidget()
         self.control_tab_widget.addTab(
@@ -169,13 +169,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tcu_group_box.setTitle("TCU Status")
 
         self.status_group_boxes: dict[str, QtWidgets.QGroupBox] = {}
-        self.status_group_boxes[Roles.SMU] = self.smu_group_box
-        self.status_group_boxes[Roles.SMU2] = self.smu2_group_box
-        self.status_group_boxes[Roles.ELM] = self.elm_group_box
-        self.status_group_boxes[Roles.ELM2] = self.elm2_group_box
-        self.status_group_boxes[Roles.LCR] = self.lcr_group_box
-        self.status_group_boxes[Roles.DMM] = self.dmm_group_box
-        self.status_group_boxes[Roles.TCU] = self.tcu_group_box
+        self.status_group_boxes[Role.SMU] = self.smu_group_box
+        self.status_group_boxes[Role.SMU2] = self.smu2_group_box
+        self.status_group_boxes[Role.ELM] = self.elm_group_box
+        self.status_group_boxes[Role.ELM2] = self.elm2_group_box
+        self.status_group_boxes[Role.LCR] = self.lcr_group_box
+        self.status_group_boxes[Role.DMM] = self.dmm_group_box
+        self.status_group_boxes[Role.TCU] = self.tcu_group_box
 
         self.tcu_temperature_line_edit = QtWidgets.QLineEdit("---")
         self.tcu_temperature_line_edit.setReadOnly(True)
@@ -256,10 +256,10 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         self.data_stacked_widget.addWidget(widget)
 
-    def add_role(self, role: str, title: str) -> RoleWidget:
+    def add_role(self, role: Role, title: str, optional: bool = False) -> RoleWidget:
         if role in self.role_widgets:
             raise KeyError(f"No such role: {role!r}")
-        self.general_widget.add_role(role, title)
+        self.general_widget.add_role(role, title, optional)
         widget = RoleWidget(role)
         widget.browse_resources.connect(
             lambda role=role: self.role_browse_resources.emit(role)
@@ -271,7 +271,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.control_tab_widget.addTab(widget, title)
         return widget
 
-    def find_role(self, role: str) -> RoleWidget | None:
+    def find_role(self, role: Role) -> RoleWidget | None:
         return self.role_widgets.get(role)
 
     def roles(self) -> list[RoleWidget]:
