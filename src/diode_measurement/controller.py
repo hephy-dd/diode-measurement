@@ -15,6 +15,7 @@ from PySide6 import QtCore, QtStateMachine, QtWidgets
 
 from .core.cache import Cache
 from .core.events import (
+    ChangeTargetTemperature,
     UpdateContinueInCompliance,
     UpdateCurrentCompliance,
     UpdateWaitingTimeContinuous,
@@ -219,7 +220,9 @@ class Controller(QtCore.QObject):
         # TCU
         role = main_window.add_role(Role.TCU, "TCU", optional=True)
         role.add_instrument_panel(AC3Panel())
-        role.add_instrument_panel(ITCPanel())
+        panel = ITCPanel()
+        panel.target_temperature_changed.connect(self.on_target_temperature_changed)
+        role.add_instrument_panel(panel)
 
         # Switch
         role = main_window.add_role(Role.SWITCH, "Switch", optional=True)
@@ -945,9 +948,16 @@ class Controller(QtCore.QObject):
             self.main_window.set_role_enabled(role, enabled)
 
         for role in self._roles:
-            checked = role in spec.default_roles + optional_roles
+            checked = role in spec.default_roles
             general_widget.set_role_checked(role, checked)
             self.set_role_enabled(role, checked)
+
+        for role in optional_roles:
+            enabled = True
+            if role in spec.supported_roles:
+                enabled = False
+            general_widget.set_role_checked(role, enabled)
+            self.set_role_enabled(role, enabled)
 
         general_widget.set_voltage_unit(spec.voltage_unit)
         general_widget.set_begin_voltage(spec.default_begin_voltage)
@@ -1182,6 +1192,10 @@ class Controller(QtCore.QObject):
             self.main_window.set_message("Performing open correction...")
 
             self.submit_background_job(job)
+
+    @QtCore.Slot()
+    def on_target_temperature_changed(self, target_temperature: float) -> None:
+        self._outbox_queue.put(ChangeTargetTemperature(target_temperature))
 
 
 class BackgroundJobsController(QtCore.QObject):
