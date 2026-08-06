@@ -34,11 +34,21 @@ class K2470Panel(InstrumentPanel):
         self.auto_range_llimit_metric.set_unit("A")
         self.auto_range_llimit_metric.set_prefixes("mun")
 
+        self.source_delay_auto_check_box = QtWidgets.QCheckBox("Auto Source Delay")
+        self.source_delay_auto_check_box.setStatusTip(
+            "Set :SOURce:VOLTage:DELay:AUTO ON/OFF"
+        )
+
+        self.sense_azero_check_box = QtWidgets.QCheckBox("Auto Zero")
+        self.sense_azero_check_box.setStatusTip("Set :SENSe:CURRent:AZERo ON/OFF")
+
         range_layout = QtWidgets.QVBoxLayout(self.range_group_box)
         range_layout.addWidget(self.sense_range_metric)
         range_layout.addWidget(self.auto_range_check_box)
         range_layout.addWidget(self.auto_range_llimit_label)
         range_layout.addWidget(self.auto_range_llimit_metric)
+        range_layout.addWidget(self.sense_azero_check_box)
+        range_layout.addWidget(self.source_delay_auto_check_box)
 
         # Filter
 
@@ -142,6 +152,14 @@ class K2470Panel(InstrumentPanel):
             WidgetParameter(self.auto_range_llimit_metric),
         )
         self.bind_parameter(
+            "source.delay.auto",
+            WidgetParameter(self.source_delay_auto_check_box),
+        )
+        self.bind_parameter(
+            "sense.azero",
+            WidgetParameter(self.sense_azero_check_box),
+        )
+        self.bind_parameter(
             "filter.enable", WidgetParameter(self.filter_enable_check_box)
         )
         self.bind_parameter("filter.count", WidgetParameter(self.filter_count_spin_box))
@@ -161,6 +179,8 @@ class K2470Panel(InstrumentPanel):
         self.sense_range_metric.set_value(1e-08)
         self.auto_range_check_box.setChecked(True)
         self.auto_range_llimit_metric.set_value(1e-08)
+        self.source_delay_auto_check_box.setChecked(True)
+        self.sense_azero_check_box.setChecked(True)
         self.filter_enable_check_box.setChecked(False)
         self.filter_count_spin_box.setValue(10)
         self.filter_mode_combo_box.setCurrentIndex(0)
@@ -172,6 +192,8 @@ class K2470Panel(InstrumentPanel):
         self.sense_range_metric.setEnabled(not state)
         self.auto_range_check_box.setEnabled(not state)
         self.auto_range_llimit_metric.setEnabled(not state)
+        self.source_delay_auto_check_box.setEnabled(not state)
+        self.sense_azero_check_box.setEnabled(not state)
         self.filter_enable_check_box.setEnabled(not state)
         self.filter_count_spin_box.setEnabled(not state)
         self.filter_mode_combo_box.setEnabled(not state)
