@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for CTS/ITC chlimate chamber as TCU role (#84, #175).
+- Options to select log level and to write a logfile to the use home directory (#176).
 
 ### Changed
 
