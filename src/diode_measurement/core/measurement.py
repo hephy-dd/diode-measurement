@@ -4,6 +4,7 @@ import math
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 from queue import Empty, Queue
 from threading import Event
 from typing import Any, Self
@@ -12,7 +13,6 @@ from comet.estimate import Estimate
 from comet.functions import LinearRange
 
 from ..actors import TCUActor
-from ..state import FSMState
 from ..writer import Writer
 from .driver import VoltageMeasurable
 from .events import (
@@ -36,15 +36,12 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class IVReading(Reading):
-    voltage: float
-    v_smu: float
-    i_smu: float
-    v_smu2: float
-    i_smu2: float
-    i_elm: float
-    i_elm2: float
+class FSMState(StrEnum):
+    IDLE = "idle"
+    CONFIGURE = "configure"
+    RAMPING = "ramping"
+    CONTINUOUS = "continuous"
+    STOPPING = "stopping"
 
 
 @dataclass(slots=True)
@@ -65,6 +62,17 @@ class MeasurementParameters:
     default_bias_voltage: float = 0.0
     default_waiting_time_continuous: float = 1.0
     provides_continuous: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class IVReading(Reading):
+    voltage: float
+    v_smu: float
+    i_smu: float
+    v_smu2: float
+    i_smu2: float
+    i_elm: float
+    i_elm2: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -407,6 +415,21 @@ class RangeMeasurement(Measurement):
                 self.set_fsm_state(FSMState.CONTINUOUS)
             self.context.submit_event(ChangeVoltageDoneEvent())
 
+    def tcu_start(self) -> None:
+        if self.tcu_actor is not None:
+            self.tcu_actor.start()
+
+    def tcu_stop(self) -> None:
+        if self.tcu_actor is not None:
+            self.tcu_actor.stop()
+
+    def tcu_ensure_setpoint(self) -> None:
+        if self.tcu_actor is not None:
+            if not self.tcu_actor.is_within_setpoint():
+                self.update_message("Waiting for TCU to reach setpoint...")
+                self.update_progress(0, 0, 0)
+            self.tcu_actor.ensure_setpoint()
+
     def update_message(self, message: str) -> None:
         """Emit update message event."""
         self.submit_update({"message": message})
@@ -532,12 +555,8 @@ class RangeMeasurement(Measurement):
                 abort_event=self.context.abort_event,
             )
 
-        if self.tcu_actor is not None:
-            self.tcu_actor.start()
-            if not self.tcu_actor.is_within_setpoint():
-                self.update_message("Waiting for TCU to reach setpoint...")
-                self.update_progress(0, 0, 0)
-            self.tcu_actor.ensure_setpoint()
+        self.tcu_start()
+        self.tcu_ensure_setpoint()
 
         self.bias_current_compliance = self.runtime_state.current_compliance
         if self.bias_source_instrument:
@@ -629,8 +648,7 @@ class RangeMeasurement(Measurement):
 
     def finalize(self) -> None:
         try:
-            if self.tcu_actor is not None:
-                self.tcu_actor.stop()
+            self.tcu_stop()
 
             self.finalize_elms()
 

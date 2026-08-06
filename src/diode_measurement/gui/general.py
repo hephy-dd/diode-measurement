@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from PySide6 import QtCore, QtWidgets
 
 from ..core.measurement import MeasurementParameters
-from ..utils import convert
+from ..core.utils import convert
 
 __all__ = ["GeneralWidget"]
 

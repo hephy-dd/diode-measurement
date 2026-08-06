@@ -126,7 +126,7 @@ class IVMeasurement(RangeMeasurement):
 
 
 def write_meta(writer: Writer, state: State) -> None:
-    writer._current_table = None
+    writer.current_table = None
     writer.write_tag("sample", state.sample)
     writer.write_tag("measurement_type", state.measurement_type)
     writer.write_tag(
@@ -150,8 +150,8 @@ def write_meta(writer: Writer, state: State) -> None:
 
 def write_iv_reading(writer: Writer, reading: IVReading) -> None:
     timestamp_utc = reading.timestamp
-    if writer._current_table != "iv":
-        writer._current_table = "iv"
+    if writer.current_table != "iv":
+        writer.current_table = "iv"
         header = (
             [
                 "timestamp[s]",
@@ -184,8 +184,8 @@ def write_iv_reading(writer: Writer, reading: IVReading) -> None:
 
 def write_it_reading(writer: Writer, reading: IVReading) -> None:
     timestamp_utc = reading.timestamp
-    if writer._current_table != "it":
-        writer._current_table = "it"
+    if writer.current_table != "it":
+        writer.current_table = "it"
         header = (
             [
                 "timestamp[s]",

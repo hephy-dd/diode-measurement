@@ -5,7 +5,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from diode_measurement.controller import Controller
 from diode_measurement.core.plugin import Plugin
-from diode_measurement.utils import get_bool
+from diode_measurement.core.utils import get_bool
 
 __all__ = ["ScreenshotPlugin"]
 

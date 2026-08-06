@@ -1,12 +1,9 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
-from comet.utils import auto_scale, ureg
+from comet.utils import ureg
 
 __all__ = [
-    "format_metric",
-    "format_switch",
-    "limits",
     "convert",
     "get_bool",
     "get_int",
@@ -14,41 +11,6 @@ __all__ = [
     "get_str",
     "get_dict",
 ]
-
-
-def format_metric(value: float, unit: str, decimals: int = 3) -> str:
-    """Pretty format metric units.
-    >>> format_metric(.0042, "A")
-    '4.200 mA'
-    """
-    if value is None:
-        return "---"
-    scale, prefix, _ = auto_scale(value)
-    return f"{value * (1 / scale):.{decimals}f} {prefix}{unit}"
-
-
-def format_switch(value: bool) -> str:
-    """Pretty format for instrument output states.
-    >>> format_switch(False)
-    'OFF'
-    """
-    return {False: "OFF", True: "ON"}.get(value) or "---"
-
-
-def limits(iterable: Iterable) -> tuple:
-    """Calculate limits of 2D point series."""
-    limits: tuple = ()
-    for x, y in iterable:
-        if not limits:
-            limits = (x, x, y, y)
-        else:
-            limits = (
-                min(x, limits[0]),
-                max(x, limits[1]),
-                min(y, limits[2]),
-                max(y, limits[3]),
-            )
-    return limits
 
 
 def convert(value: float, from_unit: str, to_unit: str) -> float:

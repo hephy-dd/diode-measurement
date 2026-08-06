@@ -3,7 +3,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import format_metric, format_switch
+from .utils import format_metric, format_switch
 
 
 def stylesheet_switch(state: Any | None) -> str:

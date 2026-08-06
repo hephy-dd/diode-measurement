@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import get_float, get_str
+from ..core.utils import get_float, get_str
 
 TIMESTAMP_FORMATS: list[str] = [
     ".3f",

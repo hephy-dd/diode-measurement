@@ -23,8 +23,8 @@ class Writer:
     def __init__(self, fp: TextIO) -> None:
         self._fp: TextIO = fp
         self._writer = csv.writer(fp, delimiter=self.delimiter)
-        self._current_table: str | None = None
         self._timestamp_offset: float = 0.0
+        self.current_table: str | None = None
         self.relative_timestamp: bool = False
         self.timestamp_format: str = ".6f"
         self.value_format: str = "+.3E"
