@@ -230,11 +230,18 @@ class Measurement:
         if self.tcu_actor is not None:
             event = self.runtime_state.pop_change_target_temperature_request()
             if event is not None:
-                print("!!!!!!!!!!")
-                print("!!!!!!!!!!", event.target_temperature)
                 self.tcu_actor.set_target_temperature(event.target_temperature)
                 self.context.abort_event.wait(1)
-                self.tcu_ensure_setpoint()
+                if not self.tcu_actor.is_within_setpoint():
+                    self.update_message("Waiting for TCU to reach setpoint...")
+                    self.update_progress(0, 0, 0)
+                while not self.tcu_actor.is_within_setpoint():
+                    if self.context.stop_requested:
+                        break
+                    self.process_inbox()
+                    if self.runtime_state.change_target_temperature_request is not None:
+                        break
+                    self.tcu_actor.ensure_setpoint(timeout=1.0)
 
     def tcu_ensure_setpoint(self) -> None:
         if self.tcu_actor is not None:
