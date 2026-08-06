@@ -15,6 +15,7 @@ class AnalogChannel(IntEnum):
 
 class ITCAdapter:
     def __init__(self, resource: Resource) -> None:
+        self.resource = resource
         self._itc = ITC(resource.resource)
 
     def identify(self) -> str:

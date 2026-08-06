@@ -12,6 +12,7 @@ __all__ = ["AC3Adapter"]
 
 class AC3Adapter:
     def __init__(self, resource: Resource) -> None:
+        self.resource = resource
         self._ac3 = AC3(resource)
 
     def identify(self) -> str:

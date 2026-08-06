@@ -25,6 +25,7 @@ from .events import (
     UpdateMetricsEvent,
     UpdateWaitingTimeContinuous,
 )
+from .resource import drain_output_buffer
 from .role import Role, RoleConfig
 from .station import Station
 
@@ -332,6 +333,15 @@ class RangeMeasurement(Measurement):
             name = type(instrument).__name__
             raise RuntimeError(f"{name}: instrument not interlocked!")
 
+    def safe_drain_output_buffers(self) -> None:
+        for role, instrument in self.station.instruments.items():
+            try:
+                drain_output_buffer(instrument.resource)
+            except Exception as exc:
+                logger.warning(
+                    "failed to drain output buffer for %r: %r", role.upper(), exc
+                )
+
     # Source
 
     def get_source_output_state(self) -> bool:
@@ -494,6 +504,8 @@ class RangeMeasurement(Measurement):
         self.update_progress(0, estimate.total, estimate.passed)
 
     def initialize(self) -> None:
+        self.safe_drain_output_buffers()
+
         source_role = self.state.source_role
         if source_role is None:
             raise RuntimeError("No source instrument set")
@@ -680,6 +692,8 @@ class RangeMeasurement(Measurement):
 
     def finalize(self) -> None:
         try:
+            self.safe_drain_output_buffers()
+
             self.tcu_stop()
 
             self.finalize_elms()
