@@ -3,6 +3,7 @@ import math
 import time
 from copy import copy
 from dataclasses import dataclass
+from functools import partial
 from queue import Queue
 from threading import Event, RLock
 from typing import Any
@@ -83,11 +84,16 @@ class TCUActor(ThreadingActor):
     def on_message(self, message: Any) -> Any:
         return message()
 
+    def set_target_temperature(self, temperature_setpoint: float) -> None:
+        self.ask(partial(self.tcu.set_target_temperature, temperature_setpoint)).result(
+            timeout=self.query_timeout
+        )
+
     def is_within_setpoint(self) -> bool:
         return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
 
-    def ensure_setpoint(self) -> None:
-        while not self._abort_event.is_set():
+    def ensure_setpoint(self, timeout: float | None = None) -> None:
+        while not self._abort_event.wait(timeout=timeout):
             if self.is_within_setpoint():
                 break
             self.sleep(self.poll_interval)

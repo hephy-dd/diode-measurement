@@ -93,6 +93,8 @@ class IVBiasMeasurement(RangeMeasurement):
         voltage = self.get_source_voltage()
 
         while not self.context.stop_requested:
+            self.tcu_update_setpoint()
+
             dt: float = time.monotonic() - t
 
             reading: IVReading = self.acquire_reading_data(voltage)

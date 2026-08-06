@@ -16,6 +16,7 @@ from ..actors import TCUActor
 from ..writer import Writer
 from .driver import VoltageMeasurable
 from .events import (
+    ChangeTargetTemperature,
     ChangeVoltageDoneEvent,
     ExceptionEvent,
     Reading,
@@ -133,11 +134,17 @@ class RuntimeState:
     continue_in_compliance: bool
     waiting_time_continuous: float
     change_voltage_request: ChangeVoltageParameters | None = None
+    change_target_temperature_request: ChangeTargetTemperature | None = None
 
     def pop_change_voltage_request(self) -> ChangeVoltageParameters | None:
         parameters = self.change_voltage_request
         self.change_voltage_request = None
         return parameters
+
+    def pop_change_target_temperature_request(self) -> ChangeTargetTemperature | None:
+        target_temperature = self.change_target_temperature_request
+        self.change_target_temperature_request = None
+        return target_temperature
 
 
 class Measurement:
@@ -180,8 +187,12 @@ class Measurement:
                     self.runtime_state.continue_in_compliance = is_continue
                 case UpdateWaitingTimeContinuous(waiting_time):
                     self.runtime_state.waiting_time_continuous = waiting_time
-                case ChangeVoltageParameters() as parameters:
-                    self.runtime_state.change_voltage_request = parameters
+                case ChangeVoltageParameters() as voltage_parameters:
+                    self.runtime_state.change_voltage_request = voltage_parameters
+                case ChangeTargetTemperature() as target_temperature:
+                    self.runtime_state.change_target_temperature_request = (
+                        target_temperature
+                    )
                 case _:
                     logger.warning("unhandled inbox event: %r", event)
 
@@ -206,6 +217,42 @@ class Measurement:
         if error is not None:
             raise RuntimeError(f"Instrument Error: {error.code}: {error.message}")
 
+    def tcu_start(self) -> None:
+        if self.tcu_actor is not None:
+            self.tcu_actor.start()
+
+    def tcu_stop(self) -> None:
+        if self.tcu_actor is not None:
+            self.tcu_actor.stop()
+
+    def tcu_update_setpoint(self) -> None:
+        self.process_inbox()
+        if self.tcu_actor is not None:
+            event = self.runtime_state.pop_change_target_temperature_request()
+            if event is not None:
+                self.tcu_actor.set_target_temperature(event.target_temperature)
+                self.context.abort_event.wait(1)
+                if not self.tcu_actor.is_within_setpoint():
+                    self.update_message("Waiting for TCU to reach setpoint...")
+                    self.update_progress(0, 0, 0)
+                while not self.tcu_actor.is_within_setpoint():
+                    if self.context.stop_requested:
+                        break
+                    self.process_inbox()
+                    if self.runtime_state.change_target_temperature_request is not None:
+                        break
+                    self.tcu_actor.ensure_setpoint(timeout=1.0)
+
+    def tcu_ensure_setpoint(self) -> None:
+        if self.tcu_actor is not None:
+            if not self.tcu_actor.is_within_setpoint():
+                self.update_message("Waiting for TCU to reach setpoint...")
+                self.update_progress(0, 0, 0)
+            while not self.tcu_actor.is_within_setpoint():
+                if self.context.stop_requested:
+                    break
+                self.tcu_actor.ensure_setpoint(timeout=1.0)
+
     def tcu_temperature(self) -> float:
         if self.tcu_actor is not None:
             metrics = self.tcu_actor.cached_metrics()
@@ -223,6 +270,14 @@ class Measurement:
 
     def set_fsm_state(self, state: FSMState) -> None:
         self.submit_update({"fsm_state": state})
+
+    def update_message(self, message: str) -> None:
+        """Emit update message event."""
+        self.submit_update({"message": message})
+
+    def update_progress(self, begin: int, end: int, step: int) -> None:
+        """Emit update progress event."""
+        self.submit_update({"progress": (begin, end, step)})
 
     def initialize(self) -> None: ...
 
@@ -414,29 +469,6 @@ class RangeMeasurement(Measurement):
             if not self.context.stop_requested:  # hack
                 self.set_fsm_state(FSMState.CONTINUOUS)
             self.context.submit_event(ChangeVoltageDoneEvent())
-
-    def tcu_start(self) -> None:
-        if self.tcu_actor is not None:
-            self.tcu_actor.start()
-
-    def tcu_stop(self) -> None:
-        if self.tcu_actor is not None:
-            self.tcu_actor.stop()
-
-    def tcu_ensure_setpoint(self) -> None:
-        if self.tcu_actor is not None:
-            if not self.tcu_actor.is_within_setpoint():
-                self.update_message("Waiting for TCU to reach setpoint...")
-                self.update_progress(0, 0, 0)
-            self.tcu_actor.ensure_setpoint()
-
-    def update_message(self, message: str) -> None:
-        """Emit update message event."""
-        self.submit_update({"message": message})
-
-    def update_progress(self, begin: int, end: int, step: int) -> None:
-        """Emit update progress event."""
-        self.submit_update({"progress": (begin, end, step)})
 
     def update_estimate_message(self, message: str, estimate: Estimate) -> None:
         """Emit update message event for ramp iterations."""

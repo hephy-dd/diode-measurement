@@ -282,6 +282,7 @@ class MainWindow(QtWidgets.QMainWindow):
         status = self.status_group_boxes.get(role)
         if status is not None:
             status.setEnabled(enabled)
+            status.setVisible(enabled)
 
     def clear(self) -> None:
         """Clear displayed data in plots and inputs."""

@@ -43,3 +43,8 @@ class UpdateCurrentCompliance:
 @dataclass(frozen=True, slots=True)
 class UpdateWaitingTimeContinuous:
     waiting_time: float
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeTargetTemperature:
+    target_temperature: float

@@ -36,7 +36,9 @@ class ITCAdapter:
                 return InstrumentError(ord(code), message)
         return None
 
-    def configure(self, options: Mapping[str, Any]) -> None: ...
+    def configure(self, options: Mapping[str, Any]) -> None:
+        target_temperature = options["setpoint.temperature"]
+        self.set_target_temperature(target_temperature)
 
     def get_temperature(self) -> float:
         return self._itc.analog_channel[AnalogChannel.TEMPERATURE][0]
@@ -51,14 +53,16 @@ class ITCAdapter:
         return self._itc.analog_channel[AnalogChannel.TEMPERATURE][1]
 
     def set_target_temperature(self, temperature: float) -> None:
-        """Not implemented"""
+        self._itc.analog_channel[AnalogChannel.TEMPERATURE] = temperature
 
     def set_target_humidity(self, humidity: float) -> None:
         """Not implemented"""
 
     def is_within_setpoint(self) -> bool:
-        """Not implemented"""
-        return True
+        temperature, target_temperature = self._itc.analog_channel[
+            AnalogChannel.TEMPERATURE
+        ]
+        return round(temperature, 1) == round(target_temperature, 1)
 
     def get_state(self) -> str:
         status = self._itc.status
