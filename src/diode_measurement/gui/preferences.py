@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 
-from ..utils import get_float, get_str
+from ..utils import get_bool, get_float, get_str
 
 TIMESTAMP_FORMATS: list[str] = [
     ".3f",
@@ -25,10 +25,12 @@ class PreferencesDialog(QtWidgets.QDialog):
 
         self.output_widget = OutputWidget(self)
         self.misc_widget = MiscWidget(self)
+        self.logging_widget = LoggingWidget(self)
 
         self.tab_widget = QtWidgets.QTabWidget(self)
         self.tab_widget.addTab(self.output_widget, "Output")
         self.tab_widget.addTab(self.misc_widget, "Misc")
+        self.tab_widget.addTab(self.logging_widget, "Logging")
 
         self.dialog_button_box = QtWidgets.QDialogButtonBox(self)
         self.dialog_button_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
@@ -46,10 +48,12 @@ class PreferencesDialog(QtWidgets.QDialog):
     def read_settings(self) -> None:
         self.output_widget.read_settings()
         self.misc_widget.read_settings()
+        self.logging_widget.read_settings()
 
     def write_settings(self) -> None:
         self.output_widget.write_settings()
         self.misc_widget.write_settings()
+        self.logging_widget.write_settings()
 
 
 class OutputWidget(QtWidgets.QWidget):
@@ -159,10 +163,51 @@ class MiscWidget(QtWidgets.QWidget):
         settings = QtCore.QSettings()
 
         settings.setValue(
-            "misc/discharge_timeout",
-            self.discharge_timeout_spin_box.value(),
+            "misc/discharge_timeout", self.discharge_timeout_spin_box.value()
         )
         settings.setValue(
-            "misc/discharge_threshold",
-            self.discharge_threshold_spin_box.value(),
+            "misc/discharge_threshold", self.discharge_threshold_spin_box.value()
+        )
+
+
+class LoggingWidget(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        self.level_combo_box = QtWidgets.QComboBox(self)
+        self.level_combo_box.addItem("Info", "info")
+        self.level_combo_box.addItem("Debug", "debug")
+        self.level_combo_box.setToolTip(
+            "Select log level. Requires restart to apply changes."
+        )
+
+        self.write_logfile_check_box = QtWidgets.QCheckBox(self)
+        self.write_logfile_check_box.setText("Write Logfile")
+        self.write_logfile_check_box.setToolTip(
+            "Write logfile to user home directory. Requires restart to apply changes."
+        )
+
+        layout = QtWidgets.QFormLayout(self)
+        layout.addRow("Log Level", self.level_combo_box)
+        layout.addWidget(self.write_logfile_check_box)
+
+        self.read_settings()
+
+    def read_settings(self) -> None:
+        settings = QtCore.QSettings()
+
+        log_level = get_str(settings.value("logging/log_level"), "info")
+        write_logifle = get_bool(settings.value("logging/write_logfile"), True)
+
+        index = self.level_combo_box.findData(log_level)
+        self.level_combo_box.setCurrentIndex(max(0, index))
+
+        self.write_logfile_check_box.setChecked(write_logifle)
+
+    def write_settings(self) -> None:
+        settings = QtCore.QSettings()
+
+        settings.setValue("logging/log_level", self.level_combo_box.currentData())
+        settings.setValue(
+            "logging/write_logfile", self.write_logfile_check_box.isChecked()
         )

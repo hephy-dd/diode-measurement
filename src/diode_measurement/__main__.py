@@ -36,17 +36,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def configure_logger(debug=False):
-    logger = logging.getLogger()
-    formatter = logging.Formatter(
-        "%(asctime)s::%(name)s::%(levelname)s::%(message)s", "%Y-%m-%dT%H:%M:%S"
-    )
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG if debug else logging.INFO)
-
-
 def exception_hook(exc_type, exc_value, exc_traceback):
     """
     Function to catch unhandled Python exceptions
@@ -59,8 +48,6 @@ def exception_hook(exc_type, exc_value, exc_traceback):
 
 def main():
     args = parse_args()
-
-    configure_logger(args.debug)
 
     app = QtWidgets.QApplication(sys.argv)
 
@@ -77,7 +64,7 @@ def main():
     if args.style:
         app.setStyle(args.style)
 
-    bootstrap(app)
+    bootstrap(app, debug=args.debug)
 
 
 if __name__ == "__main__":
