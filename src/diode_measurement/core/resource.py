@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Self
 
 import pyvisa
+from pyvisa.constants import StatusCode
 from pyvisa.resources import MessageBasedResource
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     "ResourceError",
     "Resource",
     "AutoReconnectResource",
+    "drain_output_buffer",
 ]
 
 logger = logging.getLogger(__name__)
@@ -71,7 +73,7 @@ class Resource:
     def __init__(self, resource_config: ResourceConfig) -> None:
         self._resource_config = resource_config
         self._rm: pyvisa.ResourceManager | None = None
-        self._resource: pyvisa.resources.MessageBasedResource | None = None
+        self._resource: MessageBasedResource | None = None
 
     def __enter__(self) -> Self:
         try:
@@ -192,3 +194,43 @@ class AutoReconnectResource(Resource):
 
     def clear(self) -> None:
         return self._reconnect_retry(super().clear)
+
+
+def _drain_output_buffer(
+    resource: MessageBasedResource,
+    *,
+    poll_timeout_ms: int = 100,
+    max_reads: int = 10,
+) -> None:
+    if poll_timeout_ms <= 0:
+        raise ValueError("poll_timeout_ms must be positive")
+
+    if max_reads <= 0:
+        raise ValueError("max_reads must be positive")
+
+    previous_timeout = resource.timeout
+
+    try:
+        resource.timeout = poll_timeout_ms
+
+        for _ in range(max_reads):
+            try:
+                resource.read_bytes(4096)
+            except pyvisa.errors.VisaIOError as exc:
+                if exc.error_code == StatusCode.error_timeout:
+                    return
+
+                # Disconnection, invalid session, I/O failure, etc.
+                raise
+
+        raise RuntimeError(
+            f"Output buffer was still producing data after {max_reads} reads"
+        )
+    finally:
+        resource.timeout = previous_timeout
+
+
+def drain_output_buffer(resource: Resource) -> None:
+    res = resource._resource
+    if res is not None:
+        _drain_output_buffer(res)
