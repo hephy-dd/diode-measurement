@@ -186,8 +186,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Dock widgets
 
         self.logging_widget = LogWidget(self)
-        self.logging_widget.addLogger(logging.getLogger())
-        self.logging_widget.setLevel(logging.DEBUG)
 
         self.logging_dock_widget = QtWidgets.QDockWidget("Logging")
         self.logging_dock_widget.setObjectName("logging_dock_widget")
@@ -244,6 +242,12 @@ class MainWindow(QtWidgets.QMainWindow):
         layout = QtWidgets.QVBoxLayout(self.centralWidget())
         layout.addWidget(self.data_stacked_widget)
         layout.addLayout(bottomLayout)
+
+    def add_logger(self, logger: logging.Logger) -> None:
+        self.logging_widget.addLogger(logger)
+
+    def set_log_level(self, log_level: int) -> None:
+        self.logging_widget.setLevel(log_level)
 
     def set_data_widget(self, widget: QtWidgets.QWidget) -> None:
         while self.data_stacked_widget.count():
