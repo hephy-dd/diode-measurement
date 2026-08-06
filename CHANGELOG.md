@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-08-06
+
 ### Added
 
 - Support for CTS/ITC chlimate chamber as TCU role (#84, #175, #178).
 - Options to select log level and to write a logfile to the use home directory (#176).
 - Drain output buffers on errors (#179).
+- Additional Keithley 2470 parameters (#180).
 
 ### Changed
 
@@ -622,7 +625,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.28.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.29.0...HEAD
+[0.29.0]: https://github.com/hephy-dd/diode-measurement/compare/0.28.0...0.29.0
 [0.28.0]: https://github.com/hephy-dd/diode-measurement/compare/0.27.2...0.28.0
 [0.27.2]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...0.27.2
 [0.27.1]: https://github.com/hephy-dd/diode-measurement/compare/0.27.0...0.27.1
