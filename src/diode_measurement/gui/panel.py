@@ -1,9 +1,12 @@
+import logging
 from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 from PySide6 import QtWidgets
 
 from .metric import MetricWidget
+
+logger = logging.getLogger(__name__)
 
 
 class Parameter(Protocol):
@@ -97,7 +100,8 @@ class InstrumentPanel(QtWidgets.QWidget):
         for key, value in config.items():
             parameter = self._parameters.get(key)
             if parameter is None:
-                raise KeyError(f"No such parameter: {key!r}")
+                logger.warning("No such parameter: %r", key)
+                continue
             try:
                 value_ = self.migrate_config_value(key, value)
                 parameter.setValue(value_)

@@ -58,6 +58,7 @@ class ITCPanel(InstrumentPanel):
 
     def set_target_temperature(self, temperature: float) -> None:
         self.target_temperature_spin_box.setValue(temperature)
+        self.target_temperature_changed.emit(self.target_temperature_spin_box.value())
 
     def restore_defaults(self) -> None:
         self.set_target_temperature(24.0)
