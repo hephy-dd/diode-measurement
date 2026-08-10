@@ -4,6 +4,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
+from ..core.measurement import FSMState
 from ..core.role import Role
 from .panel import InstrumentPanel
 from .resource import ResourceWidget
@@ -119,10 +120,10 @@ class RoleWidget(QtWidgets.QWidget):
         for widget in self.instrument_panels():
             widget.apply_config(configs.get(widget.model(), {}))
 
-    def set_locked(self, state: bool) -> None:
-        self.resource_widget.set_locked(state)
+    def set_fsm_state(self, state: FSMState) -> None:
+        self.resource_widget.set_fsm_state(state)
         for widget in self.instrument_panels():
-            widget.set_locked(state)
+            widget.set_fsm_state(state)
         self.restore_defaults_button.setEnabled(not state)
 
     def add_instrument_panel(self, widget: InstrumentPanel) -> None:

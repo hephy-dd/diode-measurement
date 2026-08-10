@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 
-from ..panel import InstrumentPanel, MethodParameter
+from ..panel import FSMState, InstrumentPanel, MethodParameter
 
 __all__ = ["ITCPanel"]
 
@@ -102,4 +102,7 @@ class ITCPanel(InstrumentPanel):
         self.set_target_temperature(24.0)
         self.set_setpoint_tolerance(0.2)
 
-    def set_locked(self, state: bool) -> None: ...
+    def set_fsm_state(self, state: FSMState) -> None:
+        enabled = state in (FSMState.IDLE, FSMState.CONTINUOUS)
+        self.target_temperature_spin_box.setEnabled(enabled)
+        self.setpoint_tolerance_spin_box.setEnabled(enabled)

@@ -1,7 +1,7 @@
 from PySide6 import QtWidgets
 
 from ..metric import MetricWidget
-from ..panel import InstrumentPanel, WidgetParameter
+from ..panel import FSMState, InstrumentPanel, WidgetParameter
 
 __all__ = ["K6517BPanel"]
 
@@ -163,16 +163,17 @@ class K6517BPanel(InstrumentPanel):
         self.filter_mode_combo_box.setCurrentIndex(0)
         self.nplc_spin_box.setValue(1.0)
 
-    def set_locked(self, state: bool) -> None:
-        self.sense_range_metric.setEnabled(not state)
-        self.auto_range_check_box.setEnabled(not state)
-        self.auto_range_llimit_metric.setEnabled(not state)
-        self.auto_range_ulimit_metric.setEnabled(not state)
-        self.meter_connect_check_box.setEnabled(not state)
-        self.filter_enable_check_box.setEnabled(not state)
-        self.filter_count_spin_box.setEnabled(not state)
-        self.filter_mode_combo_box.setEnabled(not state)
-        self.nplc_spin_box.setEnabled(not state)
+    def set_fsm_state(self, state: FSMState) -> None:
+        enabled = state == FSMState.IDLE
+        self.sense_range_metric.setEnabled(enabled)
+        self.auto_range_check_box.setEnabled(enabled)
+        self.auto_range_llimit_metric.setEnabled(enabled)
+        self.auto_range_ulimit_metric.setEnabled(enabled)
+        self.meter_connect_check_box.setEnabled(enabled)
+        self.filter_enable_check_box.setEnabled(enabled)
+        self.filter_count_spin_box.setEnabled(enabled)
+        self.filter_mode_combo_box.setEnabled(enabled)
+        self.nplc_spin_box.setEnabled(enabled)
         self.on_auto_range_check_changed(self.auto_range_check_box.isChecked())
 
     def on_auto_range_check_changed(self, checked) -> None:

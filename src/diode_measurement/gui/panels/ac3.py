@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 
-from ..panel import InstrumentPanel, MethodParameter
+from ..panel import FSMState, InstrumentPanel, MethodParameter
 
 __all__ = ["AC3Panel"]
 
@@ -89,4 +89,7 @@ class AC3Panel(InstrumentPanel):
         self.set_target_temperature(24.0)
         self.set_dewpoint_control(True)
 
-    def set_locked(self, state: bool) -> None: ...
+    def set_fsm_state(self, state: FSMState) -> None:
+        enabled = state in (FSMState.IDLE, FSMState.CONTINUOUS)
+        self.target_temperature_spin_box.setEnabled(enabled)
+        self.dewpoint_control_check_box.setEnabled(enabled)
