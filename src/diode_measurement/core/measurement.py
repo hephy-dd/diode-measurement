@@ -16,6 +16,8 @@ from ..actors import TCUActor
 from ..writer import Writer
 from .driver import VoltageMeasurable
 from .events import (
+    ChangeDewpointControl,
+    ChangeSetpointTolerance,
     ChangeTargetTemperature,
     ChangeVoltageDoneEvent,
     ExceptionEvent,
@@ -128,6 +130,9 @@ class Context:
     def stop_requested(self) -> bool:
         return self.abort_event.is_set()
 
+    def wait(self, seconds: float) -> bool:
+        return self.abort_event.wait(seconds)
+
 
 @dataclass(slots=True)
 class RuntimeState:
@@ -136,16 +141,28 @@ class RuntimeState:
     waiting_time_continuous: float
     change_voltage_request: ChangeVoltageParameters | None = None
     change_target_temperature_request: ChangeTargetTemperature | None = None
+    change_setpoint_tolerance_request: ChangeSetpointTolerance | None = None
+    change_dewpoint_control_request: ChangeDewpointControl | None = None
 
     def pop_change_voltage_request(self) -> ChangeVoltageParameters | None:
-        parameters = self.change_voltage_request
+        event = self.change_voltage_request
         self.change_voltage_request = None
-        return parameters
+        return event
 
     def pop_change_target_temperature_request(self) -> ChangeTargetTemperature | None:
-        target_temperature = self.change_target_temperature_request
+        event = self.change_target_temperature_request
         self.change_target_temperature_request = None
-        return target_temperature
+        return event
+
+    def pop_change_setpoint_tolerance_request(self) -> ChangeSetpointTolerance | None:
+        event = self.change_setpoint_tolerance_request
+        self.change_setpoint_tolerance_request = None
+        return event
+
+    def pop_change_dewpoint_control_request(self) -> ChangeDewpointControl | None:
+        event = self.change_dewpoint_control_request
+        self.change_dewpoint_control_request = None
+        return event
 
 
 class Measurement:
@@ -188,12 +205,14 @@ class Measurement:
                     self.runtime_state.continue_in_compliance = is_continue
                 case UpdateWaitingTimeContinuous(waiting_time):
                     self.runtime_state.waiting_time_continuous = waiting_time
-                case ChangeVoltageParameters() as voltage_parameters:
-                    self.runtime_state.change_voltage_request = voltage_parameters
-                case ChangeTargetTemperature() as target_temperature:
-                    self.runtime_state.change_target_temperature_request = (
-                        target_temperature
-                    )
+                case ChangeVoltageParameters() as evt:
+                    self.runtime_state.change_voltage_request = evt
+                case ChangeTargetTemperature() as evt:
+                    self.runtime_state.change_target_temperature_request = evt
+                case ChangeSetpointTolerance() as evt:
+                    self.runtime_state.change_setpoint_tolerance_request = evt
+                case ChangeDewpointControl() as evt:
+                    self.runtime_state.change_dewpoint_control_request = evt
                 case _:
                     logger.warning("unhandled inbox event: %r", event)
 
@@ -226,33 +245,81 @@ class Measurement:
         if self.tcu_actor is not None:
             self.tcu_actor.stop()
 
-    def tcu_update_setpoint(self) -> None:
+    def tcu_update_tolerance(self) -> None:
+        if self.tcu_actor is None:
+            return
+
         self.process_inbox()
-        if self.tcu_actor is not None:
-            event = self.runtime_state.pop_change_target_temperature_request()
-            if event is not None:
-                self.tcu_actor.set_target_temperature(event.target_temperature)
-                self.context.abort_event.wait(1)
-                if not self.tcu_actor.is_within_setpoint():
-                    self.update_message("Waiting for TCU to reach setpoint...")
-                    self.update_progress(0, 0, 0)
-                while not self.tcu_actor.is_within_setpoint():
-                    if self.context.stop_requested:
-                        break
-                    self.process_inbox()
-                    if self.runtime_state.change_target_temperature_request is not None:
-                        break
-                    self.tcu_actor.ensure_setpoint(timeout=1.0)
+
+        event = self.runtime_state.pop_change_setpoint_tolerance_request()
+        if event is None:
+            return
+
+        self.tcu_actor.handle_event(event)
+
+        logger.info(
+            "updated TCU setpoint tolerance: %s",
+            event.tolerance,
+        )
+
+    def tcu_update_dewpoint_control(self) -> None:
+        if self.tcu_actor is None:
+            return
+
+        self.process_inbox()
+
+        event = self.runtime_state.pop_change_dewpoint_control_request()
+        if event is None:
+            return
+
+        self.tcu_actor.handle_event(event)
+
+        logger.info(
+            "updated TCU dewpoint control: %s",
+            event.enabled,
+        )
+
+    def tcu_update_setpoint(self) -> None:
+        if self.tcu_actor is None:
+            return
+
+        self.process_inbox()
+
+        event = self.runtime_state.pop_change_target_temperature_request()
+        if event is None:
+            return
+
+        self.tcu_actor.handle_event(event)
+        logger.info(
+            "updated TCU target temperature: %s",
+            event.target_temperature,
+        )
+
+    def tcu_update_params(self) -> None:
+        self.tcu_update_tolerance()
+        self.tcu_update_dewpoint_control()
+        self.tcu_update_setpoint()
 
     def tcu_ensure_setpoint(self) -> None:
-        if self.tcu_actor is not None:
-            if not self.tcu_actor.is_within_setpoint():
+        if self.tcu_actor is None:
+            return
+
+        self.tcu_update_params()
+
+        waiting_message_shown = False
+
+        while not self.tcu_actor.is_within_setpoint():
+            if self.context.stop_requested:
+                return
+
+            if not waiting_message_shown:
                 self.update_message("Waiting for TCU to reach setpoint...")
                 self.update_progress(0, 0, 0)
-            while not self.tcu_actor.is_within_setpoint():
-                if self.context.stop_requested:
-                    break
-                self.tcu_actor.ensure_setpoint(timeout=1.0)
+                waiting_message_shown = True
+
+            self.tcu_update_params()
+
+            self.context.wait(1)
 
     def tcu_temperature(self) -> float:
         if self.tcu_actor is not None:
@@ -582,6 +649,7 @@ class RangeMeasurement(Measurement):
             logger.info("Configure %s... done.", role.upper())
 
         # Compliance
+        self.process_inbox()
         self.current_compliance = self.runtime_state.current_compliance
         self.set_source_compliance(self.current_compliance)
         self.check_error_state(self.source_instrument)
@@ -602,6 +670,7 @@ class RangeMeasurement(Measurement):
         self.tcu_start()
         self.tcu_ensure_setpoint()
 
+        self.process_inbox()
         self.bias_current_compliance = self.runtime_state.current_compliance
         if self.bias_source_instrument:
             self.set_bias_source_compliance(self.bias_current_compliance)

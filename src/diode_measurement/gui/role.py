@@ -103,6 +103,12 @@ class RoleWidget(QtWidgets.QWidget):
             return widget.config()
         return {}
 
+    def set_current_config(self, config: Mapping[str, Any]) -> None:
+        for widget in self.instrument_panels():
+            if widget.model() == self.model():
+                widget.apply_config(config)
+                break
+
     def configs(self) -> dict[str, Any]:
         configs = {}
         for widget in self.instrument_panels():

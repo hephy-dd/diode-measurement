@@ -48,3 +48,13 @@ class UpdateWaitingTimeContinuous:
 @dataclass(frozen=True, slots=True)
 class ChangeTargetTemperature:
     target_temperature: float
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeSetpointTolerance:
+    tolerance: float
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeDewpointControl:
+    enabled: bool
