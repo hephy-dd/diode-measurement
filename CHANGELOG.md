@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-08-10
+
+### Added
+
+- ITC setpoint tolerance (#181).
+
+### Changed
+
+- Update AC3 setpoint in continiuous mode (#181).
+- Replace panel lock state with FSM state (#183).
+
 ## [0.29.0] - 2026-08-06
 
 ### Added
@@ -625,7 +636,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.29.0...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.30.0...HEAD
+[0.30.0]: https://github.com/hephy-dd/diode-measurement/compare/0.29.0...0.30.0
 [0.29.0]: https://github.com/hephy-dd/diode-measurement/compare/0.28.0...0.29.0
 [0.28.0]: https://github.com/hephy-dd/diode-measurement/compare/0.27.2...0.28.0
 [0.27.2]: https://github.com/hephy-dd/diode-measurement/compare/0.27.1...0.27.2
