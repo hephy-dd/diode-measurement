@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from PySide6 import QtWidgets
 
-from ..panel import InstrumentPanel, MethodParameter
+from ..panel import FSMState, InstrumentPanel, MethodParameter
 
 __all__ = ["BrandBoxPanel"]
 
@@ -65,6 +65,7 @@ class BrandBoxPanel(InstrumentPanel):
     def restore_defaults(self) -> None:
         self.set_closed_channels([])
 
-    def set_locked(self, state: bool) -> None:
+    def set_fsm_state(self, state: FSMState) -> None:
+        enabled = state == FSMState.IDLE
         for check_box in self.channel_check_boxes.values():
-            check_box.setEnabled(not state)
+            check_box.setEnabled(enabled)

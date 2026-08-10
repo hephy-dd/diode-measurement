@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from PySide6 import QtWidgets
 
-from ..panel import InstrumentPanel, MethodParameter
+from ..panel import FSMState, InstrumentPanel, MethodParameter
 
 __all__ = ["K708BPanel"]
 
@@ -80,5 +80,6 @@ class K708BPanel(InstrumentPanel):
     def restore_defaults(self) -> None:
         self.set_closed_channels([])
 
-    def set_locked(self, state: bool) -> None:
-        self.slots_tab_widgets.setEnabled(not state)
+    def set_fsm_state(self, state: FSMState) -> None:
+        enabled = state == FSMState.IDLE
+        self.slots_tab_widgets.setEnabled(enabled)

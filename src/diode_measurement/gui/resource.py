@@ -1,5 +1,7 @@
 from PySide6 import QtCore, QtWidgets
 
+from ..core.measurement import FSMState
+
 __all__ = ["ResourceWidget"]
 
 BAUD_RATES: list[int] = [
@@ -150,15 +152,16 @@ class ResourceWidget(QtWidgets.QGroupBox):
 
         self.on_update_baud_rate_visibility()
 
-    def set_locked(self, state: bool) -> None:
-        self.model_combo_box.setEnabled(not state)
-        self.resource_line_edit.setEnabled(not state)
-        self.resource_browse_button.setEnabled(not state)
-        self.baud_rate_combo_box.setEnabled(not state)
-        self.termination_combo_box.setEnabled(not state)
-        self.timeout_spin_box.setEnabled(not state)
-        self.test_connection_button.setEnabled(not state)
-        self.reset_instrument_check_box.setEnabled(not state)
+    def set_fsm_state(self, state: FSMState) -> None:
+        enabled = state == FSMState.IDLE
+        self.model_combo_box.setEnabled(enabled)
+        self.resource_line_edit.setEnabled(enabled)
+        self.resource_browse_button.setEnabled(enabled)
+        self.baud_rate_combo_box.setEnabled(enabled)
+        self.termination_combo_box.setEnabled(enabled)
+        self.timeout_spin_box.setEnabled(enabled)
+        self.test_connection_button.setEnabled(enabled)
+        self.reset_instrument_check_box.setEnabled(enabled)
 
     def model(self) -> str:
         model = self.model_combo_box.currentData()

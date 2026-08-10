@@ -4,9 +4,12 @@ from typing import Any, Protocol
 
 from PySide6 import QtWidgets
 
+from ..core.measurement import FSMState
 from .metric import MetricWidget
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["WidgetParameter", "MethodParameter", "InstrumentPanel"]
 
 
 class Parameter(Protocol):
@@ -80,7 +83,7 @@ class InstrumentPanel(QtWidgets.QWidget):
 
     def restore_defaults(self) -> None: ...
 
-    def set_locked(self, state: bool) -> None: ...
+    def set_fsm_state(self, state: FSMState) -> None: ...
 
     def bind_parameter(self, key: str, parameter: Parameter) -> None:
         if key in self._parameters:

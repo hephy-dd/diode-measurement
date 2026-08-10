@@ -4,6 +4,7 @@ import webbrowser
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from .. import __version__ as APP_VERSION
+from ..core.measurement import FSMState
 from ..core.role import Role
 from .general import GeneralWidget
 from .logwindow import LogWidget
@@ -308,8 +309,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.auto_reconnect_check_box.setEnabled(True)
         self.general_widget.set_idle_state()
         self.set_change_voltage_enabled(False)
-        for role in self.roles():
-            role.set_locked(False)
         self.smu_group_box.clear()
         self.smu2_group_box.clear()
         self.elm_group_box.clear()
@@ -333,8 +332,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.continuous_check_box.setEnabled(False)
         self.auto_reconnect_check_box.setEnabled(False)
         self.general_widget.set_running_state()
-        for role in self.roles():
-            role.set_locked(True)
         self.logging_widget.ensure_recent_records_visible()
 
     def set_stopping_state(self) -> None:
@@ -342,6 +339,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stop_button.setEnabled(False)
         self.general_widget.set_stopping_state()
         self.set_change_voltage_enabled(False)
+
+    def set_fsm_state(self, state: FSMState) -> None:
+        for role_widget in self.role_widgets.values():
+            role_widget.set_fsm_state(state)
 
     def set_message(self, message: str) -> None:
         self.message_label.show()
