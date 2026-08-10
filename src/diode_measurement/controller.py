@@ -15,6 +15,8 @@ from PySide6 import QtCore, QtStateMachine, QtWidgets
 
 from .core.cache import Cache
 from .core.events import (
+    ChangeDewpointControl,
+    ChangeSetpointTolerance,
     ChangeTargetTemperature,
     UpdateContinueInCompliance,
     UpdateCurrentCompliance,
@@ -219,9 +221,13 @@ class Controller(QtCore.QObject):
 
         # TCU
         role = main_window.add_role(Role.TCU, "TCU", optional=True)
-        role.add_instrument_panel(AC3Panel())
+        panel = AC3Panel()
+        panel.target_temperature_changed.connect(self.on_tcu_target_temperature_changed)
+        panel.dewpoint_control_changed.connect(self.on_tcu_dewpoint_control_changed)
+        role.add_instrument_panel(panel)
         panel = ITCPanel()
-        panel.target_temperature_changed.connect(self.on_target_temperature_changed)
+        panel.target_temperature_changed.connect(self.on_tcu_target_temperature_changed)
+        panel.setpoint_tolerance_changed.connect(self.on_tcu_setpoint_tolerance_changed)
         role.add_instrument_panel(panel)
 
         # Switch
@@ -395,10 +401,8 @@ class Controller(QtCore.QObject):
                 for key in config:
                     if key in options:
                         config[key] = options[key]
-                # Update models configs
-                configs = role_widget.configs()
-                configs[role_widget.model()] = config
-                role_widget.set_configs(configs)
+                # Update model config
+                role_widget.set_current_config(config)
                 return role_widget.current_config()
         raise KeyError("No such role: {role!r}")
 
@@ -1098,6 +1102,7 @@ class Controller(QtCore.QObject):
                         continue
                     station.register_instrument(role, role_config)
 
+                self._outbox_queue = Queue()  # drop unprocessed events
                 self._abort_event = Event()
 
                 return spec.measurement_cls.create(
@@ -1193,9 +1198,17 @@ class Controller(QtCore.QObject):
 
             self.submit_background_job(job)
 
-    @QtCore.Slot()
-    def on_target_temperature_changed(self, target_temperature: float) -> None:
+    @QtCore.Slot(float)
+    def on_tcu_target_temperature_changed(self, target_temperature: float) -> None:
         self._outbox_queue.put(ChangeTargetTemperature(target_temperature))
+
+    @QtCore.Slot(float)
+    def on_tcu_setpoint_tolerance_changed(self, tolerance: float) -> None:
+        self._outbox_queue.put(ChangeSetpointTolerance(tolerance))
+
+    @QtCore.Slot(bool)
+    def on_tcu_dewpoint_control_changed(self, enabled: bool) -> None:
+        self._outbox_queue.put(ChangeDewpointControl(enabled))
 
 
 class BackgroundJobsController(QtCore.QObject):

@@ -5,6 +5,7 @@ from typing import Any
 from comet.driver.ers.ac3 import AC3
 
 from diode_measurement.core.driver import InstrumentError
+from diode_measurement.core.events import ChangeDewpointControl, ChangeTargetTemperature
 from diode_measurement.core.resource import Resource
 
 __all__ = ["AC3Adapter"]
@@ -31,7 +32,7 @@ class AC3Adapter:
         target_temperature = options["setpoint.temperature"]
         self.set_target_temperature(target_temperature)
         dewpoint_control = options["dewpoint_control.enabled"]
-        self._ac3.dewpoint_control = dewpoint_control
+        self.set_dewpoint_control(dewpoint_control)
         self._ac3.operating_mode = self._ac3.MODE_NORMAL
 
     def get_temperature(self) -> float:
@@ -57,3 +58,15 @@ class AC3Adapter:
         if state == self._ac3.STATUS_ERROR:
             return "ERROR"
         return "UNKNOWN"
+
+    def set_dewpoint_control(self, enabled: bool) -> None:
+        self._ac3.dewpoint_control = enabled
+
+    def handle_event(self, event: Any) -> None:
+        match event:
+            case ChangeTargetTemperature(target_temperature):
+                self.set_target_temperature(target_temperature)
+            case ChangeDewpointControl(enabled):
+                self.set_dewpoint_control(enabled)
+            case _:
+                raise ValueError("Invalid event for AC3: %r", event)

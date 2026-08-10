@@ -89,7 +89,7 @@ class IVMeasurement(RangeMeasurement):
         voltage = self.get_source_voltage()
 
         while not self.context.stop_requested:
-            self.tcu_update_setpoint()
+            self.tcu_ensure_setpoint()
 
             dt = time.monotonic() - t
 

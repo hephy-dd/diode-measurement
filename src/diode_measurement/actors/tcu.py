@@ -54,7 +54,7 @@ class TCUActor(ThreadingActor):
             logger.exception("Failed to read TCU temperature")
 
         try:
-            humidity = self.tcu.get_humidity()
+            humidity = self.tcu.get_humidity()  # AC3 driver returns NaN
         except Exception:
             logger.exception("Failed to read TCU humidity")
 
@@ -92,12 +92,11 @@ class TCUActor(ThreadingActor):
     def is_within_setpoint(self) -> bool:
         return self.ask(self.tcu.is_within_setpoint).result(timeout=self.query_timeout)
 
-    def ensure_setpoint(self, timeout: float | None = None) -> None:
-        while not self._abort_event.wait(timeout=timeout):
-            if self.is_within_setpoint():
-                break
-            self.sleep(self.poll_interval)
-
     def cached_metrics(self) -> TCUMetrics:
         with self._metrics_lock:
             return copy(self._metrics)
+
+    def handle_event(self, event: Any) -> None:
+        self.ask(partial(self.tcu.handle_event, event)).result(
+            timeout=self.query_timeout
+        )
