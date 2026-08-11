@@ -187,9 +187,11 @@ class Controller(QtCore.QObject):
         )
         self.cv_plots_data_windget.start(500)
 
-        self.change_voltage_controller = ChangeVoltageController(
-            self.main_window, self._outbox_queue, self
+        self.change_voltage_controller = ChangeVoltageController(self.main_window, self)
+        self.change_voltage_controller.change_voltage_requested.connect(
+            lambda event: self._outbox_queue.put(event)
         )
+
         self.change_voltage_ready.connect(
             self.change_voltage_controller.on_change_voltage_ready
         )
@@ -1221,7 +1223,7 @@ class Controller(QtCore.QObject):
         state = self.snapshot().state
         if state != FSMState.CONTINUOUS:
             raise RuntimeError(
-                f"Cannot change voltage in state '{state.value}'. Expected 'continuous'."
+                f"Cannot change voltage in state '{state}'. Expected 'continuous'."
             )
         self.change_voltage_controller.request_change_voltage(parameters)
 
@@ -1317,15 +1319,15 @@ class BackgroundJobsController(QtCore.QObject):
 
 
 class ChangeVoltageController(QtCore.QObject):
+    change_voltage_requested = QtCore.Signal(object)
+
     def __init__(
         self,
         main_window,
-        event_queue: Queue[Any],
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self.main_window = main_window
-        self.event_queue: Queue[Any] = event_queue
         self._source_voltage: float | None = None
         # Connect signals
         self.main_window.prepare_change_voltage.connect(self.on_prepare_change_voltage)
@@ -1362,8 +1364,8 @@ class ChangeVoltageController(QtCore.QObject):
                 format_metric(parameters.step_voltage, "V"),
                 format_metric(parameters.waiting_time, "s"),
             )
-            self.event_queue.put(parameters)
             self.main_window.set_change_voltage_enabled(False)
+            self.change_voltage_requested.emit(parameters)
 
     @QtCore.Slot()
     def on_change_voltage_ready(self) -> None:
