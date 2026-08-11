@@ -25,6 +25,18 @@ class ItReadingEvent:
 
 
 class IVMeasurement(RangeMeasurement):
+    @classmethod
+    def filter_source_roles(cls, checked_roles: list[Role]) -> list[Role]:
+        checked = set(checked_roles)
+        has_smu = bool(checked & {Role.SMU, Role.SMU2})
+
+        allowed = {Role.SMU, Role.SMU2}
+
+        if not has_smu:
+            allowed |= {Role.ELM, Role.ELM2}
+
+        return [role for role in checked_roles if role in allowed]
+
     def on_write_begin(self, writer: Writer) -> None:
         write_meta(writer, self.state)
 

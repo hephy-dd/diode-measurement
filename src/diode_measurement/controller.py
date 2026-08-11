@@ -103,6 +103,24 @@ class Snapshot:
     tcu_humidity: float | None
 
 
+@dataclass(frozen=True, slots=True)
+class GeneralConfig:
+    continuous: bool | None = None
+    auto_reconnect: bool | None = None
+    measurement_type: str | None = None
+    measurement_roles: list[Role] | None = None
+    sample: str | None = None
+    end_voltage: float | None = None
+    begin_voltage: float | None = None
+    step_voltage: float | None = None
+    waiting_time: float | None = None
+    source_role: Role | None = None
+    bias_voltage: float | None = None
+    bias_source_role: Role | None = None
+    compliance: float | None = None
+    waiting_time_continuous: float | None = None
+
+
 def get_role_config(role: RoleWidget) -> ResourceConfig:
     resource_name, visa_library = parse_resource(role.resource_name())
     return ResourceConfig(
@@ -116,8 +134,6 @@ def get_role_config(role: RoleWidget) -> ResourceConfig:
 
 class Controller(QtCore.QObject):
     aborted = QtCore.Signal()
-    updated = QtCore.Signal(dict)
-    failed = QtCore.Signal(object)
     finished = QtCore.Signal()
 
     change_voltage_ready = QtCore.Signal()
@@ -137,7 +153,7 @@ class Controller(QtCore.QObject):
         self._last_output_filename: str | None = None
 
         self._background_jobs = BackgroundJobsController(self)
-        self._background_jobs.failed.connect(self.failed.emit)
+        self._background_jobs.failed.connect(self.handle_exception)
         self._background_jobs.finished.connect(self.finished.emit)
 
         self.main_window = main_window
@@ -177,8 +193,6 @@ class Controller(QtCore.QObject):
         self.change_voltage_ready.connect(
             self.change_voltage_controller.on_change_voltage_ready
         )
-        self.updated.connect(self.on_update)
-        self.failed.connect(self.handle_exception)
 
         # Source meter unit
         role = main_window.add_role(Role.SMU, "SMU")
@@ -421,17 +435,8 @@ class Controller(QtCore.QObject):
         if current_measurement is None:
             raise ValueError("No measurement selected.")
 
-        source_role: Role | None = None
-        if general_widget.is_role_checked(Role.SMU):
-            source_role = Role.SMU
-        elif general_widget.is_role_checked(Role.ELM):
-            source_role = Role.ELM
-        elif general_widget.is_role_checked(Role.LCR):
-            source_role = Role.LCR
-
-        bias_source_role: Role | None = None
-        if general_widget.is_role_checked(Role.SMU2):
-            bias_source_role = Role.SMU2
+        source_role: Role | None = general_widget.source_role()
+        bias_source_role: Role | None = general_widget.bias_source_role()
 
         # discharge guard
         discharge_timeout = get_float(
@@ -556,8 +561,20 @@ class Controller(QtCore.QObject):
         waiting_time = get_float(settings.value("waitingTime"), 1.0)
         general_widget.set_waiting_time(waiting_time)
 
+        source_role = get_str(settings.value("sourceRole"), "")
+        try:
+            general_widget.set_source_role(Role(source_role))
+        except ValueError:
+            ...
+
         bias_voltage = get_float(settings.value("biasVoltage"), 0.0)
         general_widget.set_bias_voltage(bias_voltage)
+
+        bias_source_role = get_str(settings.value("biasSourceRole"), "")
+        try:
+            general_widget.set_bias_source_role(Role(bias_source_role))
+        except ValueError:
+            ...
 
         current_compliance = get_float(settings.value("currentCompliance"), 1.0)
         general_widget.set_current_compliance(current_compliance)
@@ -635,8 +652,14 @@ class Controller(QtCore.QObject):
         waiting_time = general_widget.waiting_time()
         settings.setValue("waitingTime", waiting_time)
 
+        source_role = general_widget.source_role()
+        settings.setValue("sourceRole", source_role or "")
+
         bias_voltage = general_widget.bias_voltage()
         settings.setValue("biasVoltage", bias_voltage)
+
+        bias_source_role = general_widget.bias_source_role()
+        settings.setValue("biasSourceRole", bias_source_role or "")
 
         current_compliance = general_widget.current_compliance()
         settings.setValue("currentCompliance", current_compliance)
@@ -801,9 +824,9 @@ class Controller(QtCore.QObject):
                 case ChangeVoltageDoneEvent():
                     self.change_voltage_ready.emit()
                 case UpdateMetricsEvent(data):
-                    self.updated.emit(data)
+                    self.on_update(data)
                 case ExceptionEvent(exception):
-                    self.failed.emit(exception)
+                    self.handle_exception(exception)
                 case IVReadingEvent(reading):
                     self.iv_reading_queue.put(reading)
                 case ItReadingEvent(reading):
@@ -827,6 +850,8 @@ class Controller(QtCore.QObject):
             enabled = fsm_state == FSMState.CONTINUOUS
             self.main_window.set_change_voltage_enabled(enabled)
             self.main_window.set_fsm_state(fsm_state)
+            if fsm_state == FSMState.IDLE:
+                self.main_window.clear_progress()  # prevent glitches
 
         if (source_voltage := data.get("source_voltage")) is not None:
             self.main_window.update_source_voltage(source_voltage)
@@ -978,6 +1003,37 @@ class Controller(QtCore.QObject):
     @QtCore.Slot()
     def on_instruments_changed(self) -> None:
         general_widget = self.main_window.general_widget
+
+        current_source_role = general_widget.source_role()
+
+        general_widget.clear_bias_source_roles()
+        general_widget.clear_source_roles()
+
+        spec = general_widget.current_measurement()
+        if spec is not None:
+            checked_source_roles = [
+                role for role in Role if general_widget.is_role_checked(role)
+            ]
+
+            source_roles = spec.measurement_cls.filter_source_roles(
+                checked_source_roles
+            )
+
+            for role in source_roles:
+                general_widget.add_source_role(role, role.upper())
+
+            bias_source_roles = spec.measurement_cls.filter_bias_source_roles(
+                checked_source_roles
+            )
+
+            for role in bias_source_roles:
+                general_widget.add_bias_source_role(role, role.upper())
+
+            if current_source_role is not None and current_source_role in source_roles:
+                general_widget.set_source_role(current_source_role)
+            elif source_roles:
+                general_widget.set_source_role(source_roles[0])
+
         general_widget.set_current_compliance_locked(False)
         #
         # HACK Not all instruments support compliance!
@@ -1051,35 +1107,38 @@ class Controller(QtCore.QObject):
         filename = safe_filename(f"{sample}-{formatted_timestamp}.txt")
         return os.path.join(path, filename)
 
-    def configure(self, params: Mapping[str, Any]) -> None:
+    def configure(self, config: GeneralConfig) -> None:
         general_widget = self.main_window.general_widget
-        for key, value in params.items():
-            if key == "continuous":
-                self.main_window.set_continuous(value)
-            elif key == "auto_reconnect":
-                self.main_window.set_auto_reconnect(value)
-            elif key == "measurement_type":
-                general_widget.set_current_measurement(value)
-            elif key == "measurement_roles":
-                general_widget.set_measurement_roles(value)
-            elif key == "sample":
-                general_widget.set_sample_name(value)
-            elif key == "end_voltage":
-                general_widget.set_end_voltage(value)
-            elif key == "begin_voltage":
-                general_widget.set_begin_voltage(value)
-            elif key == "step_voltage":
-                general_widget.set_step_voltage(value)
-            elif key == "waiting_time":
-                general_widget.set_waiting_time(value)
-            elif key == "bias_voltage":
-                general_widget.set_bias_voltage(value)
-            elif key == "compliance":
-                general_widget.set_current_compliance(value)
-            elif key == "waiting_time_continuous":
-                general_widget.set_waiting_time_continuous(value)
-            else:
-                raise KeyError(f"Invalid configuration key: {key}")
+        if config.continuous is not None:
+            self.main_window.set_continuous(config.continuous)
+        if config.auto_reconnect is not None:
+            self.main_window.set_auto_reconnect(config.auto_reconnect)
+        if config.measurement_type is not None:
+            if not general_widget.has_measurement(config.measurement_type):
+                raise ValueError("No such measurement: %r", config.measurement_type)
+            general_widget.set_current_measurement(config.measurement_type)
+        if config.measurement_roles is not None:
+            general_widget.set_measurement_roles(config.measurement_roles)
+        if config.sample is not None:
+            general_widget.set_sample_name(config.sample)
+        if config.end_voltage is not None:
+            general_widget.set_end_voltage(config.end_voltage)
+        if config.begin_voltage is not None:
+            general_widget.set_begin_voltage(config.begin_voltage)
+        if config.step_voltage is not None:
+            general_widget.set_step_voltage(config.step_voltage)
+        if config.waiting_time is not None:
+            general_widget.set_waiting_time(config.waiting_time)
+        if config.source_role is not None:
+            general_widget.set_source_role(config.source_role)
+        if config.bias_voltage is not None:
+            general_widget.set_bias_voltage(config.bias_voltage)
+        if config.bias_source_role is not None:
+            general_widget.set_bias_source_role(config.bias_source_role)
+        if config.compliance is not None:
+            general_widget.set_current_compliance(config.compliance)
+        if config.waiting_time_continuous is not None:
+            general_widget.set_waiting_time_continuous(config.waiting_time_continuous)
 
     def request_start(self) -> None:
         self.main_window.start_action.trigger()
@@ -1155,7 +1214,7 @@ class Controller(QtCore.QObject):
 
         except Exception as exc:
             logger.exception("measurement failed")
-            self.failed.emit(exc)
+            self.handle_exception(exc)
             self.aborted.emit()
 
     def request_change_voltage(self, parameters: ChangeVoltageParameters) -> None:

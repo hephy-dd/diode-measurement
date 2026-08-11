@@ -25,6 +25,16 @@ class ItBiasReadingEvent:
 
 
 class IVBiasMeasurement(RangeMeasurement):
+    @classmethod
+    def filter_source_roles(cls, checked_roles: list[Role]) -> list[Role]:
+        allowed = {Role.SMU, Role.SMU2}
+
+        return [role for role in checked_roles if role in allowed]
+
+    @classmethod
+    def filter_bias_source_roles(cls, checked_roles: list[Role]) -> list[Role]:
+        return cls.filter_source_roles(checked_roles)
+
     def on_write_begin(self, writer: Writer) -> None:
         write_meta(writer, self.state)
 

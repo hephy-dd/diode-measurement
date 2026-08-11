@@ -234,6 +234,9 @@ Optional parameters are:
 - `end_voltage` (float, Volt)
 - `step_voltage` (float, Volt)
 - `waiting_time` (float, seconds)
+- `source_role` (str)
+- `bias_voltage` (float, Volt)
+- `bias_source_role` (str)
 - `compliance` (float, Ampere)
 - `waiting_time_continuous` (float, seconds)
 
