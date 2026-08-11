@@ -192,6 +192,14 @@ class Measurement:
     ) -> Self:
         return cls(Context(state, station, outbox_queue, inbox_queue, abort_event))
 
+    @classmethod
+    def filter_source_roles(cls, checked_roles: list[Role]) -> list[Role]:
+        return []
+
+    @classmethod
+    def filter_bias_source_roles(cls, checked_roles: list[Role]) -> list[Role]:
+        return []
+
     def process_inbox(self) -> None:
         for _ in range(1024):
             try:

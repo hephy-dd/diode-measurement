@@ -87,6 +87,9 @@ class DiodeMeasurementClient:
         end_voltage: float | None = None,
         step_voltage: float | None = None,
         waiting_time: float | None = None,
+        source_instrument: str | None = None,
+        bias_voltage: float | None = None,
+        bias_source_instrument: str | None = None,
         compliance: float | None = None,
         waiting_time_continuous: float | None = None,
     ) -> None:
@@ -110,6 +113,12 @@ class DiodeMeasurementClient:
             params["step_voltage"] = step_voltage
         if waiting_time is not None:
             params["waiting_time"] = waiting_time
+        if source_instrument is not None:
+            params["source_role"] = source_instrument
+        if bias_voltage is not None:
+            params["bias_voltage"] = bias_voltage
+        if bias_source_instrument is not None:
+            params["bias_source_role"] = bias_source_instrument
         if compliance is not None:
             params["compliance"] = compliance
         if waiting_time_continuous is not None:
@@ -139,6 +148,8 @@ class DiodeMeasurementClient:
         params = {"instrument": instrument}
         return self.query("instrument.get", params).get("result", {})
 
-    def instrument_update(self, instrument: str, options: dict[str, Any]) -> dict[str, Any]:
+    def instrument_update(
+        self, instrument: str, options: dict[str, Any]
+    ) -> dict[str, Any]:
         params = {"instrument": instrument, "options": options}
         return self.query("instrument.update", params).get("result", {})

@@ -17,9 +17,10 @@ from typing import Any
 import jsonrpc
 from PySide6 import QtCore, QtWidgets
 
-from diode_measurement.controller import Controller
+from diode_measurement.controller import Controller, GeneralConfig
 from diode_measurement.core.measurement import ChangeVoltageParameters
 from diode_measurement.core.plugin import Plugin
+from diode_measurement.core.role import Role
 from diode_measurement.core.utils import get_bool, get_int, get_str
 
 __all__ = ["RPCServerPlugin"]
@@ -41,10 +42,10 @@ def json_dict(d: dict) -> dict:
 
 @dataclass(frozen=True, slots=True)
 class StartEvent:
-    parameters: dict
+    config: GeneralConfig
 
     def __call__(self, controller: Controller) -> None:
-        controller.configure(self.parameters)
+        controller.configure(self.config)
         controller.request_start()
 
 
@@ -176,33 +177,38 @@ class RPCHandler:
         end_voltage: float | None = None,
         step_voltage: float | None = None,
         waiting_time: float | None = None,
+        source_instrument: str | None = None,
+        bias_voltage: float | None = None,
+        bias_source_instrument: str | None = None,
         compliance: float | None = None,
         waiting_time_continuous: float | None = None,
     ) -> None:
-        parameters: dict[str, Any] = {}
-        if continuous is not None:
-            parameters["continuous"] = continuous
-        if auto_reconnect is not None:
-            parameters["auto_reconnect"] = auto_reconnect
-        if measurement_type is not None:
-            parameters["measurement_type"] = measurement_type
-        if measurement_instruments is not None:
-            parameters["measurement_roles"] = measurement_instruments
-        if sample is not None:
-            parameters["sample"] = sample
-        if begin_voltage is not None:
-            parameters["begin_voltage"] = begin_voltage
-        if end_voltage is not None:
-            parameters["end_voltage"] = end_voltage
-        if step_voltage is not None:
-            parameters["step_voltage"] = step_voltage
-        if waiting_time is not None:
-            parameters["waiting_time"] = waiting_time
-        if compliance is not None:
-            parameters["compliance"] = compliance
-        if waiting_time_continuous is not None:
-            parameters["waiting_time_continuous"] = waiting_time_continuous
-        self.event_handler.notify(StartEvent(parameters)).result(self.timeout)
+        measurement_roles = (
+            [Role(role) for role in measurement_instruments]
+            if measurement_instruments is not None
+            else None
+        )
+        source_role = Role(source_instrument) if source_instrument is not None else None
+        bias_source_role = (
+            Role(bias_source_instrument) if bias_source_instrument is not None else None
+        )
+        config = GeneralConfig(
+            continuous=continuous,
+            auto_reconnect=auto_reconnect,
+            measurement_type=measurement_type,
+            measurement_roles=measurement_roles,
+            sample=sample,
+            begin_voltage=begin_voltage,
+            end_voltage=end_voltage,
+            step_voltage=step_voltage,
+            waiting_time=waiting_time,
+            source_role=source_role,
+            bias_voltage=bias_voltage,
+            bias_source_role=bias_source_role,
+            compliance=compliance,
+            waiting_time_continuous=waiting_time_continuous,
+        )
+        self.event_handler.notify(StartEvent(config)).result(self.timeout)
 
     def on_stop(self) -> None:
         self.event_handler.notify(StopEvent()).result(self.timeout)
