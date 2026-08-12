@@ -92,6 +92,7 @@ class DiodeMeasurementClient:
         bias_source_instrument: str | None = None,
         compliance: float | None = None,
         waiting_time_continuous: float | None = None,
+        wait_for_setpoint: bool | None = None,
     ) -> None:
         params: dict[str, Any] = {}
 
@@ -123,6 +124,8 @@ class DiodeMeasurementClient:
             params["compliance"] = compliance
         if waiting_time_continuous is not None:
             params["waiting_time_continuous"] = waiting_time_continuous
+        if wait_for_setpoint is not None:
+            params["wait_for_setpoint"] = wait_for_setpoint
 
         self.query("start", params or None)
 

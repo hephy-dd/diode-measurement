@@ -60,8 +60,8 @@ class CVMeasurement(RangeMeasurement):
         c2_lcr = inverse_square(c_lcr) if math.isfinite(c_lcr) else math.nan
         i_smu, v_smu = smu.measure_iv() if smu else (math.nan, math.nan)
         t_dmm = dmm.measure_temperature() if dmm else math.nan
-        tcu_temperature = self.tcu_temperature()
-        tcu_humidity = self.tcu_humidity()
+        tcu_temperature = self.tcu.temperature()
+        tcu_humidity = self.tcu.humidity()
 
         return CVReading(
             timestamp=time.time(),

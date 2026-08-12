@@ -18,6 +18,7 @@ class GeneralWidget(QtWidgets.QWidget):
     continue_in_compliance_changed = QtCore.Signal(bool)
     waiting_time_continuous_changed = QtCore.Signal(float)
     change_voltage_clicked = QtCore.Signal()
+    wait_for_setpoint_changed = QtCore.Signal(bool)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -27,6 +28,8 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self._create_widgets()
         self._create_layout()
+
+        self.instruments_changed.connect(self.on_instruments_changed)
 
     def _create_widgets(self) -> None:
         self.measurement_combo_box = QtWidgets.QComboBox(self)
@@ -127,6 +130,12 @@ class GeneralWidget(QtWidgets.QWidget):
         self.change_voltage_button.setEnabled(False)
         self.change_voltage_button.clicked.connect(self.change_voltage_clicked)
 
+        self.wait_for_setpoint_check_box = QtWidgets.QCheckBox(self)
+        self.wait_for_setpoint_check_box.setText("Wait for TCU Setpoint")
+        self.wait_for_setpoint_check_box.toggled.connect(
+            self.on_wait_for_setpoint_toggled
+        )
+
         self.measurement_group_box = QtWidgets.QGroupBox(self)
         self.measurement_group_box.setTitle("Measurement")
 
@@ -146,6 +155,9 @@ class GeneralWidget(QtWidgets.QWidget):
 
         self.continuous_group_box = QtWidgets.QGroupBox(self)
         self.continuous_group_box.setTitle("Continuous Meas.")
+
+        self.options_group_box = QtWidgets.QGroupBox(self)
+        self.options_group_box.setTitle("Options")
 
     def _create_layout(self) -> None:
         vbox_layout = QtWidgets.QVBoxLayout(self.measurement_group_box)
@@ -205,6 +217,9 @@ class GeneralWidget(QtWidgets.QWidget):
         vbox_layout.addWidget(self.change_voltage_button)
         vbox_layout.addStretch()
 
+        vbox_layout = QtWidgets.QVBoxLayout(self.options_group_box)
+        vbox_layout.addWidget(self.wait_for_setpoint_check_box)
+
         layout = QtWidgets.QHBoxLayout(self)
 
         vbox_layout = QtWidgets.QVBoxLayout()
@@ -220,6 +235,7 @@ class GeneralWidget(QtWidgets.QWidget):
         vbox_layout = QtWidgets.QVBoxLayout()
         vbox_layout.addWidget(self.compliance_group_box)
         vbox_layout.addWidget(self.continuous_group_box)
+        vbox_layout.addWidget(self.options_group_box)
         layout.addLayout(vbox_layout)
 
         layout.addStretch()
@@ -241,6 +257,10 @@ class GeneralWidget(QtWidgets.QWidget):
         self.change_voltage_button.setEnabled(False)
         self.current_compliance_spin_box.setEnabled(not self._current_compliance_locked)
         self.continue_in_compliance_check_box.setEnabled(True)
+        self.waiting_time_continuous_spin_box.setEnabled(True)
+        self.wait_for_setpoint_check_box.setEnabled(
+            not self._is_wait_for_setpoint_enabled()
+        )
 
     def set_running_state(self) -> None:
         self.measurement_combo_box.setEnabled(False)
@@ -258,6 +278,8 @@ class GeneralWidget(QtWidgets.QWidget):
         self.change_voltage_button.setEnabled(False)
         self.current_compliance_spin_box.setEnabled(False)
         self.continue_in_compliance_check_box.setEnabled(False)
+        self.waiting_time_continuous_spin_box.setEnabled(False)
+        self.wait_for_setpoint_check_box.setEnabled(False)
 
     def add_measurement(self, spec: MeasurementParameters) -> None:
         self.measurement_combo_box.addItem(spec.title, spec)
@@ -453,6 +475,14 @@ class GeneralWidget(QtWidgets.QWidget):
     def set_change_voltage_enabled(self, enabled: bool) -> None:
         self.change_voltage_button.setEnabled(enabled)
 
+    def is_wait_for_setpoint(self) -> bool:
+        return self.wait_for_setpoint_check_box.isChecked()
+
+    def set_wait_for_setpoint(self, enabled: bool) -> None:
+        with QtCore.QSignalBlocker(self.wait_for_setpoint_check_box):
+            self.wait_for_setpoint_check_box.setChecked(enabled)
+        self.wait_for_setpoint_changed.emit(enabled)
+
     @QtCore.Slot(int)
     def on_source_role_changed(self, index: int) -> None:
         self._resolve_source_roles(
@@ -464,6 +494,21 @@ class GeneralWidget(QtWidgets.QWidget):
         self._resolve_source_roles(
             self.bias_source_role_combo_box, self.source_role_combo_box
         )
+
+    @QtCore.Slot(bool)
+    def on_wait_for_setpoint_toggled(self, checked: bool) -> None:
+        self.wait_for_setpoint_changed.emit(checked)
+
+    @QtCore.Slot()
+    def on_instruments_changed(self) -> None:
+        enabled = self.is_role_checked(Role.TCU)
+        self._wait_for_setpoint_locked = not enabled
+        self.wait_for_setpoint_check_box.setEnabled(
+            not self._is_wait_for_setpoint_enabled()
+        )
+
+    def _is_wait_for_setpoint_enabled(self) -> bool:
+        return not self.is_role_checked(Role.TCU)
 
     def _resolve_source_roles(
         self, changed: QtWidgets.QComboBox, other: QtWidgets.QComboBox

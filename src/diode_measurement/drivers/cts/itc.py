@@ -6,6 +6,7 @@ from comet.driver.cts.itc import ITC
 
 from diode_measurement.core.driver import InstrumentError
 from diode_measurement.core.events import (
+    ChangeSetpointEnabled,
     ChangeSetpointTolerance,
     ChangeTargetTemperature,
 )
@@ -21,6 +22,7 @@ class ITCAdapter:
     def __init__(self, resource: Resource) -> None:
         self.resource = resource
         self._itc = ITC(resource.resource)
+        self._setpoint_enabled: bool = False
         self._is_within_setpoint: bool = False
         self._setpoint_tolerance: float = 0.2
         self._setpoint_hysteresis: float = 0.1
@@ -45,6 +47,8 @@ class ITCAdapter:
         return None
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        setpoint_enabled = options.get("setpoint.enabled", False)
+        self.set_setpoint_enabled(setpoint_enabled)
         tolerance = options.get("setpoint.tolerance", 0.2)
         self.set_temperature_tolerance(tolerance)
         target_temperature = options["setpoint.temperature"]
@@ -61,6 +65,12 @@ class ITCAdapter:
 
     def get_target_humidity(self) -> float:
         return self._itc.analog_channel[AnalogChannel.TEMPERATURE][1]
+
+    def is_setpoint_enabled(self) -> bool:
+        return self._setpoint_enabled
+
+    def set_setpoint_enabled(self, enabled: bool) -> None:
+        self._setpoint_enabled = enabled
 
     def set_target_temperature(self, temperature: float) -> None:
         self._itc.analog_channel[AnalogChannel.TEMPERATURE] = temperature
@@ -95,6 +105,8 @@ class ITCAdapter:
 
     def handle_event(self, event: Any) -> None:
         match event:
+            case ChangeSetpointEnabled(enabled):
+                self.set_setpoint_enabled(enabled)
             case ChangeTargetTemperature(target_temperature):
                 self.set_target_temperature(target_temperature)
             case ChangeSetpointTolerance(tolerance):

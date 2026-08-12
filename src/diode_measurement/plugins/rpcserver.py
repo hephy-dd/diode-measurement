@@ -18,7 +18,7 @@ import jsonrpc
 from PySide6 import QtCore, QtWidgets
 
 from diode_measurement.controller import Controller, GeneralConfig
-from diode_measurement.core.measurement import ChangeVoltageParameters
+from diode_measurement.core.events import ChangeVoltageParameters
 from diode_measurement.core.plugin import Plugin
 from diode_measurement.core.role import Role
 from diode_measurement.core.utils import get_bool, get_int, get_str
@@ -182,6 +182,7 @@ class RPCHandler:
         bias_source_instrument: str | None = None,
         compliance: float | None = None,
         waiting_time_continuous: float | None = None,
+        wait_for_setpoint: bool | None = None,
     ) -> None:
         measurement_roles = (
             [Role(role) for role in measurement_instruments]
@@ -207,6 +208,7 @@ class RPCHandler:
             bias_source_role=bias_source_role,
             compliance=compliance,
             waiting_time_continuous=waiting_time_continuous,
+            wait_for_setpoint=wait_for_setpoint,
         )
         self.event_handler.notify(StartEvent(config)).result(self.timeout)
 

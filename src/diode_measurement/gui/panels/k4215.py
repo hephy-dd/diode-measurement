@@ -313,6 +313,8 @@ class K4215Panel(InstrumentPanel):
         self.amplitude_alc_check_box.setEnabled(enabled)
         self.integration_time_combo_box.setEnabled(enabled)
         self.averaging_rate_spin_box.setEnabled(enabled)
+        self.filter_factor_spin_box.setEnabled(enabled)
+        self.delay_factor_spin_box.setEnabled(enabled)
         self.length_combo_box.setEnabled(enabled)
         self.open_enabled_check_box.setEnabled(enabled)
         self.short_enabled_check_box.setEnabled(enabled)

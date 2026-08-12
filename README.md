@@ -239,6 +239,7 @@ Optional parameters are:
 - `bias_source_role` (str)
 - `compliance` (float, Ampere)
 - `waiting_time_continuous` (float, seconds)
+- `wait_for_setpoint` (bool)
 
 **Note:** specified values are applied to the user interface before starting a measurement.
 
