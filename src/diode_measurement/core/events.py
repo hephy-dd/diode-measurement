@@ -1,11 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-__all__ = [
-    "ExceptionEvent",
-    "ChangeVoltageDoneEvent",
-    "UpdateMetricsEvent",
-]
+__all__ = []
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +15,13 @@ class Reading:
 @dataclass(frozen=True, slots=True)
 class ExceptionEvent:
     exception: Exception
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeVoltageParameters:
+    end_voltage: float
+    step_voltage: float
+    waiting_time: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +49,11 @@ class UpdateWaitingTimeContinuous:
 
 
 @dataclass(frozen=True, slots=True)
+class ChangeSetpointEnabled:
+    enabled: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ChangeTargetTemperature:
     target_temperature: float
 
@@ -57,4 +65,9 @@ class ChangeSetpointTolerance:
 
 @dataclass(frozen=True, slots=True)
 class ChangeDewpointControl:
+    enabled: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeWaitForSetpoint:
     enabled: bool

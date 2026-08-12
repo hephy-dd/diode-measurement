@@ -16,21 +16,23 @@ from PySide6 import QtCore, QtStateMachine, QtWidgets
 from .core.cache import Cache
 from .core.events import (
     ChangeDewpointControl,
+    ChangeSetpointEnabled,
     ChangeSetpointTolerance,
     ChangeTargetTemperature,
+    ChangeVoltageDoneEvent,
+    ChangeVoltageParameters,
+    ChangeWaitForSetpoint,
+    ExceptionEvent,
     UpdateContinueInCompliance,
     UpdateCurrentCompliance,
+    UpdateMetricsEvent,
     UpdateWaitingTimeContinuous,
 )
 from .core.job import Job
 from .core.measurement import (
-    ChangeVoltageDoneEvent,
-    ChangeVoltageParameters,
-    ExceptionEvent,
     FSMState,
     Measurement,
     State,
-    UpdateMetricsEvent,
 )
 from .core.resource import ResourceConfig, parse_resource
 from .core.role import Role, RoleConfig
@@ -189,12 +191,15 @@ class Controller(QtCore.QObject):
 
         self.change_voltage_controller = ChangeVoltageController(self.main_window, self)
         self.change_voltage_controller.change_voltage_requested.connect(
-            lambda event: self._outbox_queue.put(event)
+            self.submit_event
         )
 
         self.change_voltage_ready.connect(
             self.change_voltage_controller.on_change_voltage_ready
         )
+
+        self.tcu_controller = TCUController(self)
+        self.tcu_controller.event_dispatched.connect(self.submit_event)
 
         # Source meter unit
         role = main_window.add_role(Role.SMU, "SMU")
@@ -238,12 +243,26 @@ class Controller(QtCore.QObject):
         # TCU
         role = main_window.add_role(Role.TCU, "TCU", optional=True)
         panel = AC3Panel()
-        panel.target_temperature_changed.connect(self.on_tcu_target_temperature_changed)
-        panel.dewpoint_control_changed.connect(self.on_tcu_dewpoint_control_changed)
+        panel.target_temperature_changed.connect(
+            self.tcu_controller.on_target_temperature_changed
+        )
+        panel.dewpoint_control_changed.connect(
+            self.tcu_controller.on_dewpoint_control_changed
+        )
         role.add_instrument_panel(panel)
         panel = ITCPanel()
-        panel.target_temperature_changed.connect(self.on_tcu_target_temperature_changed)
-        panel.setpoint_tolerance_changed.connect(self.on_tcu_setpoint_tolerance_changed)
+        panel.setpoint_enabled_changed.connect(
+            self.tcu_controller.on_setpoint_enabled_changed
+        )
+        panel.target_temperature_changed.connect(
+            self.tcu_controller.on_target_temperature_changed
+        )
+        panel.setpoint_tolerance_changed.connect(
+            self.tcu_controller.on_setpoint_tolerance_changed
+        )
+        panel.wait_for_setpoint_changed.connect(
+            self.tcu_controller.on_wait_for_setpoint_changed
+        )
         role.add_instrument_panel(panel)
 
         # Switch
@@ -371,6 +390,9 @@ class Controller(QtCore.QObject):
         self.state_machine.setInitialState(self.idle_state)
         self.state_machine.start()
 
+    def submit_event(self, event: Any) -> None:
+        self._outbox_queue.put(event)
+
     def snapshot(self) -> Snapshot:
         """Return thread save application state snapshot."""
         with self.cache:
@@ -454,6 +476,11 @@ class Controller(QtCore.QObject):
             self.create_filename(timestamp_utc) if output_enabled else None
         )
 
+        tcu_config = {}
+        tcu_role_widget = self.main_window.find_role(Role.TCU)
+        if tcu_role_widget is not None:
+            tcu_config.update(tcu_role_widget.current_config())
+
         state = State(
             measurement_type=current_measurement.type,
             timestamp=timestamp_utc,
@@ -474,6 +501,8 @@ class Controller(QtCore.QObject):
             discharge_threshold=discharge_threshold,
             roles=self.prepare_roles(),
             output_filename=self._last_output_filename,
+            setpoint_enabled=tcu_config.get("setpoint.enabled", False),
+            wait_for_setpoint=tcu_config.get("setpoint.wait_for_setpoint", False),
         )
 
         for key, value in asdict(state).items():
@@ -1080,17 +1109,17 @@ class Controller(QtCore.QObject):
     @QtCore.Slot(float)
     def on_current_compliance_changed(self, value: float) -> None:
         logger.info("updated current_compliance: %s", format_metric(value, "A"))
-        self._outbox_queue.put(UpdateCurrentCompliance(value))
+        self.submit_event(UpdateCurrentCompliance(value))
 
     @QtCore.Slot(bool)
     def on_continue_in_compliance_changed(self, checked: bool) -> None:
         logger.info("updated continue_in_compliance: %s", checked)
-        self._outbox_queue.put(UpdateContinueInCompliance(checked))
+        self.submit_event(UpdateContinueInCompliance(checked))
 
     @QtCore.Slot(float)
     def on_waiting_time_continuous_changed(self, value: float) -> None:
         logger.info("updated waiting_time_continuous: %s", format_metric(value, "s"))
-        self._outbox_queue.put(UpdateWaitingTimeContinuous(value))
+        self.submit_event(UpdateWaitingTimeContinuous(value))
 
     def update_continuous_option(self) -> None:
         # Tweak continuous option
@@ -1260,18 +1289,6 @@ class Controller(QtCore.QObject):
 
             self.submit_background_job(job)
 
-    @QtCore.Slot(float)
-    def on_tcu_target_temperature_changed(self, target_temperature: float) -> None:
-        self._outbox_queue.put(ChangeTargetTemperature(target_temperature))
-
-    @QtCore.Slot(float)
-    def on_tcu_setpoint_tolerance_changed(self, tolerance: float) -> None:
-        self._outbox_queue.put(ChangeSetpointTolerance(tolerance))
-
-    @QtCore.Slot(bool)
-    def on_tcu_dewpoint_control_changed(self, enabled: bool) -> None:
-        self._outbox_queue.put(ChangeDewpointControl(enabled))
-
 
 class BackgroundJobsController(QtCore.QObject):
     started = QtCore.Signal()
@@ -1433,3 +1450,27 @@ class TestConnectionController(QtCore.QObject):
         QtWidgets.QMessageBox.information(
             self.main_window, f"Connection Test ({role})", str(identity)
         )
+
+
+class TCUController(QtCore.QObject):
+    event_dispatched = QtCore.Signal(object)
+
+    @QtCore.Slot(bool)
+    def on_setpoint_enabled_changed(self, enabled: bool) -> None:
+        self.event_dispatched.emit(ChangeSetpointEnabled(enabled))
+
+    @QtCore.Slot(float)
+    def on_target_temperature_changed(self, target_temperature: float) -> None:
+        self.event_dispatched.emit(ChangeTargetTemperature(target_temperature))
+
+    @QtCore.Slot(float)
+    def on_setpoint_tolerance_changed(self, tolerance: float) -> None:
+        self.event_dispatched.emit(ChangeSetpointTolerance(tolerance))
+
+    @QtCore.Slot(bool)
+    def on_dewpoint_control_changed(self, enabled: bool) -> None:
+        self.event_dispatched.emit(ChangeDewpointControl(enabled))
+
+    @QtCore.Slot(bool)
+    def on_wait_for_setpoint_changed(self, enabled: bool) -> None:
+        self.event_dispatched.emit(ChangeWaitForSetpoint(enabled))

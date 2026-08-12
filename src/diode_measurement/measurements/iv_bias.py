@@ -103,6 +103,7 @@ class IVBiasMeasurement(RangeMeasurement):
         voltage = self.get_source_voltage()
 
         while not self.context.stop_requested:
+            self.context.process_inbox()
             self.tcu_ensure_setpoint()
 
             dt: float = time.monotonic() - t

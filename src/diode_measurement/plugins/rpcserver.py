@@ -18,7 +18,7 @@ import jsonrpc
 from PySide6 import QtCore, QtWidgets
 
 from diode_measurement.controller import Controller, GeneralConfig
-from diode_measurement.core.measurement import ChangeVoltageParameters
+from diode_measurement.core.events import ChangeVoltageParameters
 from diode_measurement.core.plugin import Plugin
 from diode_measurement.core.role import Role
 from diode_measurement.core.utils import get_bool, get_int, get_str
