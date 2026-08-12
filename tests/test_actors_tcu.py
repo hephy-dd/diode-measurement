@@ -16,5 +16,6 @@ def test_tcu_actor(res):
     actor.start()
     try:
         assert actor.is_within_setpoint() == True
+        assert actor.is_setpoint_enabled() == True
     finally:
         actor.stop(timeout=1.0)

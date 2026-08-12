@@ -59,8 +59,8 @@ class IVBiasMeasurement(RangeMeasurement):
         i_elm = elm.measure_i() if elm else math.nan
         i_elm2 = elm2.measure_i() if elm2 else math.nan
         t_dmm = dmm.measure_temperature() if dmm else math.nan
-        tcu_temperature = self.tcu_temperature()
-        tcu_humidity = self.tcu_humidity()
+        tcu_temperature = self.tcu.temperature()
+        tcu_humidity = self.tcu.humidity()
 
         return IVReading(
             timestamp=time.time(),
@@ -104,7 +104,7 @@ class IVBiasMeasurement(RangeMeasurement):
 
         while not self.context.stop_requested:
             self.context.process_inbox()
-            self.tcu_ensure_setpoint()
+            self.tcu.ensure_setpoint()
 
             dt: float = time.monotonic() - t
 

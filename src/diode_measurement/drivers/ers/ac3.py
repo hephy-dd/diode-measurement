@@ -41,6 +41,11 @@ class AC3Adapter:
     def get_humidity(self) -> float:
         return math.nan
 
+    def is_setpoint_enabled(self) -> bool:
+        return True
+
+    def set_setpoint_enabled(self, enabled: bool) -> None: ...
+
     def set_target_temperature(self, temperature: float) -> None:
         self._ac3.target_temperature = temperature
 

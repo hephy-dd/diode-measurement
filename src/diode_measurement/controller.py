@@ -477,12 +477,6 @@ class Controller(QtCore.QObject):
             self.create_filename(timestamp_utc) if output_enabled else None
         )
 
-        # HACk
-        tcu_config = {}
-        tcu_role_widget = self.main_window.find_role(Role.TCU)
-        if tcu_role_widget is not None:
-            tcu_config.update(tcu_role_widget.current_config())
-
         state = State(
             measurement_type=current_measurement.type,
             timestamp=timestamp_utc,
@@ -503,7 +497,6 @@ class Controller(QtCore.QObject):
             discharge_threshold=discharge_threshold,
             roles=self.prepare_roles(),
             output_filename=self._last_output_filename,
-            setpoint_enabled=tcu_config.get("setpoint.enabled", False),
             wait_for_setpoint=general_widget.is_wait_for_setpoint(),
         )
 

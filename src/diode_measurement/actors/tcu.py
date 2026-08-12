@@ -84,6 +84,14 @@ class TCUActor(ThreadingActor):
     def on_message(self, message: Any) -> Any:
         return message()
 
+    def is_setpoint_enabled(self) -> bool:
+        return self.ask(self.tcu.is_setpoint_enabled).result(timeout=self.query_timeout)
+
+    def set_setpoint_enabled(self, enabled: bool) -> None:
+        self.ask(partial(self.tcu.set_setpoint_enabled, enabled)).result(
+            timeout=self.query_timeout
+        )
+
     def set_target_temperature(self, temperature_setpoint: float) -> None:
         self.ask(partial(self.tcu.set_target_temperature, temperature_setpoint)).result(
             timeout=self.query_timeout

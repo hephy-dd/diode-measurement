@@ -45,7 +45,6 @@ class State:
     output_filename: str | None = None
     settle_waiting_time: float = 1.0
     tcu_poll_interval: float = 5.0
-    setpoint_enabled: bool = False
     wait_for_setpoint: bool = False
 
     def find_role(self, role: Role) -> RoleConfig | None:
@@ -55,6 +54,7 @@ class State:
 @dataclass(slots=True)
 class PendingChanges:
     voltage_change: ChangeVoltageParameters | None = None
+    setpoint_enabled: ChangeSetpointEnabled | None = None
     target_temperature: ChangeTargetTemperature | None = None
     setpoint_tolerance: ChangeSetpointTolerance | None = None
     dewpoint_control: ChangeDewpointControl | None = None
@@ -62,6 +62,11 @@ class PendingChanges:
     def pop_voltage_change(self) -> ChangeVoltageParameters | None:
         event = self.voltage_change
         self.voltage_change = None
+        return event
+
+    def pop_setpoint_enabled(self) -> ChangeSetpointEnabled | None:
+        event = self.setpoint_enabled
+        self.setpoint_enabled = None
         return event
 
     def pop_target_temperature(self) -> ChangeTargetTemperature | None:
@@ -89,7 +94,6 @@ class RuntimeState:
     current_compliance: float
     continue_in_compliance: bool
     waiting_time_continuous: float
-    setpoint_enabled: bool
     wait_for_setpoint: bool
 
     def handle_event(self, event: Any) -> None:
@@ -102,8 +106,8 @@ class RuntimeState:
                 self.waiting_time_continuous = waiting_time
             case ChangeVoltageParameters() as evt:
                 self.pending.voltage_change = evt
-            case ChangeSetpointEnabled(enabled):
-                self.setpoint_enabled = enabled
+            case ChangeSetpointEnabled() as evt:
+                self.pending.setpoint_enabled = evt
             case ChangeTargetTemperature() as evt:
                 self.pending.target_temperature = evt
             case ChangeSetpointTolerance() as evt:
