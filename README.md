@@ -305,7 +305,6 @@ This returns application state parameters.
     "state": "ramping",
     "measurement_type": "iv",
     "sample": "VPX1",
-    "waiting_for_setpoint": false,
     "source_voltage": 24.0,
     "smu_voltage": 24.026,
     "smu_current": 0.0025,
