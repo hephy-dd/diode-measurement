@@ -121,6 +121,7 @@ class GeneralConfig:
     bias_source_role: Role | None = None
     compliance: float | None = None
     waiting_time_continuous: float | None = None
+    wait_for_setpoint: bool | None = None
 
 
 def get_role_config(role: RoleWidget) -> ResourceConfig:
@@ -260,9 +261,6 @@ class Controller(QtCore.QObject):
         panel.setpoint_tolerance_changed.connect(
             self.tcu_controller.on_setpoint_tolerance_changed
         )
-        panel.wait_for_setpoint_changed.connect(
-            self.tcu_controller.on_wait_for_setpoint_changed
-        )
         role.add_instrument_panel(panel)
 
         # Switch
@@ -329,6 +327,9 @@ class Controller(QtCore.QObject):
         )
         general_widget.waiting_time_continuous_changed.connect(
             self.on_waiting_time_continuous_changed
+        )
+        general_widget.wait_for_setpoint_changed.connect(
+            self.tcu_controller.on_wait_for_setpoint_changed
         )
 
         general_widget.instruments_changed.connect(self.on_instruments_changed)
@@ -476,6 +477,7 @@ class Controller(QtCore.QObject):
             self.create_filename(timestamp_utc) if output_enabled else None
         )
 
+        # HACk
         tcu_config = {}
         tcu_role_widget = self.main_window.find_role(Role.TCU)
         if tcu_role_widget is not None:
@@ -502,7 +504,7 @@ class Controller(QtCore.QObject):
             roles=self.prepare_roles(),
             output_filename=self._last_output_filename,
             setpoint_enabled=tcu_config.get("setpoint.enabled", False),
-            wait_for_setpoint=tcu_config.get("setpoint.wait_for_setpoint", False),
+            wait_for_setpoint=general_widget.is_wait_for_setpoint(),
         )
 
         for key, value in asdict(state).items():
@@ -616,6 +618,9 @@ class Controller(QtCore.QObject):
         waiting_time_continuous = get_float(settings.value("waitingTimeContinuous"), 1)
         general_widget.set_waiting_time_continuous(waiting_time_continuous)
 
+        wait_for_setpoint = get_bool(settings.value("waitForSetpoint"), False)
+        general_widget.set_wait_for_setpoint(wait_for_setpoint)
+
         settings.endGroup()
 
         settings.beginGroup("roles")
@@ -700,6 +705,9 @@ class Controller(QtCore.QObject):
 
         waiting_time_continuous = general_widget.waiting_time_continuous()
         settings.setValue("waitingTimeContinuous", waiting_time_continuous)
+
+        wait_for_setpoint = general_widget.is_wait_for_setpoint()
+        settings.setValue("waitForSetpoint", wait_for_setpoint)
 
         settings.endGroup()
 
@@ -1170,6 +1178,8 @@ class Controller(QtCore.QObject):
             general_widget.set_current_compliance(config.compliance)
         if config.waiting_time_continuous is not None:
             general_widget.set_waiting_time_continuous(config.waiting_time_continuous)
+        if config.wait_for_setpoint is not None:
+            general_widget.set_wait_for_setpoint(config.wait_for_setpoint)
 
     def request_start(self) -> None:
         self.main_window.start_action.trigger()

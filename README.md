@@ -239,6 +239,7 @@ Optional parameters are:
 - `bias_source_role` (str)
 - `compliance` (float, Ampere)
 - `waiting_time_continuous` (float, seconds)
+- `wait_for_setpoint` (bool)
 
 **Note:** specified values are applied to the user interface before starting a measurement.
 
@@ -304,6 +305,7 @@ This returns application state parameters.
     "state": "ramping",
     "measurement_type": "iv",
     "sample": "VPX1",
+    "waiting_for_setpoint": false,
     "source_voltage": 24.0,
     "smu_voltage": 24.026,
     "smu_current": 0.0025,

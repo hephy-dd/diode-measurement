@@ -182,6 +182,7 @@ class RPCHandler:
         bias_source_instrument: str | None = None,
         compliance: float | None = None,
         waiting_time_continuous: float | None = None,
+        wait_for_setpoint: bool | None = None,
     ) -> None:
         measurement_roles = (
             [Role(role) for role in measurement_instruments]
@@ -207,6 +208,7 @@ class RPCHandler:
             bias_source_role=bias_source_role,
             compliance=compliance,
             waiting_time_continuous=waiting_time_continuous,
+            wait_for_setpoint=wait_for_setpoint,
         )
         self.event_handler.notify(StartEvent(config)).result(self.timeout)
 
