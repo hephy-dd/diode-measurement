@@ -840,10 +840,15 @@ class Controller(QtCore.QObject):
 
     def handle_exception(self, exc: Exception) -> None:
         """Shows up to one error message at a time."""
-        if not self.is_exception_dialog_active:
-            self.is_exception_dialog_active = True
-            show_exception(exc, self.main_window)
+        if self.is_exception_dialog_active:
+            return
+
+        self.is_exception_dialog_active = True
+
+        def finished(result: int) -> None:
             self.is_exception_dialog_active = False
+
+        show_exception(exc, self.main_window, on_finished=finished)
 
     @QtCore.Slot()
     def on_event_poll(self) -> None:

@@ -1,11 +1,16 @@
 import traceback
+from collections.abc import Callable
 
 from PySide6 import QtWidgets
 
 __all__ = ["show_exception"]
 
 
-def show_exception(exc: Exception, parent: QtWidgets.QWidget | None = None) -> None:
+def show_exception(
+    exc: Exception,
+    parent: QtWidgets.QWidget | None = None,
+    on_finished: Callable[[int], None] | None = None,
+) -> None:
     detailed_text = "".join(traceback.format_tb(exc.__traceback__))
 
     message_box = QtWidgets.QMessageBox(parent)
@@ -28,4 +33,6 @@ def show_exception(exc: Exception, parent: QtWidgets.QWidget | None = None) -> N
         layout.addItem(spacer_item, layout.rowCount(), 0, 1, layout.columnCount())
 
     message_box.finished.connect(message_box.deleteLater)
+    if on_finished is not None:
+        message_box.finished.connect(on_finished)
     message_box.open()
