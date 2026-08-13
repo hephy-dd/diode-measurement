@@ -3,9 +3,9 @@ import time
 from collections.abc import Mapping
 from typing import Any, Final
 
-from ..core.driver import BaseDriver, InstrumentError, Resource, handle_exception
+from ..core.driver import InstrumentError, Resource, handle_exception
 
-__all__ = ["K237"]
+__all__ = ["K237Adapter"]
 
 ERROR_MESSAGES: Final[dict[int, str]] = {
     0: "Trigger Overrun",
@@ -39,11 +39,11 @@ ERROR_MESSAGES: Final[dict[int, str]] = {
 logger = logging.getLogger(__name__)
 
 
-class K237(BaseDriver):
+class K237Adapter:
     WRITE_DELAY = 0.250
 
     def __init__(self, resource: Resource) -> None:
-        super().__init__(resource)
+        self.resource = resource
         self._write_timestamp: float = 0.0
 
     def identify(self) -> str:

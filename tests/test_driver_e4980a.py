@@ -1,8 +1,8 @@
-from diode_measurement.drivers.e4980a import E4980A
+from diode_measurement.drivers.e4980a import E4980AAdapter
 
 
 def test_driver_e4980a(res):
-    d = E4980A(res)
+    d = E4980AAdapter(res)
 
     res.buffer = ["Agilent Model 4980A\r"]
     assert d.identify() == "Agilent Model 4980A"

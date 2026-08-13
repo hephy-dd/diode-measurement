@@ -1,11 +1,11 @@
 import pytest
 
-from diode_measurement.drivers.k4215 import K4215
+from diode_measurement.drivers.k4215 import K4215Adapter
 
 
 def test_driver_k4215_basic_operations(res):
-    """Test basic driver operations."""
-    d = K4215(res)
+    """Test basic operations."""
+    d = K4215Adapter(res)
 
     # Test identity
     res.buffer = ["KEITHLEY INSTRUMENTS,KI4200A,1489223,V1.14"]
@@ -24,7 +24,7 @@ def test_driver_k4215_basic_operations(res):
 
 
 def test_driver_k4215_finalize(res):
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     assert d.configure({}) is None
 
@@ -46,7 +46,7 @@ def test_driver_k4215_finalize(res):
 
 def test_driver_k4215_error_handling(res):
     """Test error handling functionality."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test no error
     res.buffer = [""]
@@ -70,7 +70,7 @@ def test_driver_k4215_error_handling(res):
 
 def test_driver_k4215_output_control(res):
     """Test output enable/disable functionality."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test get output enabled - True
     res.buffer = ["1"]
@@ -99,7 +99,7 @@ def test_driver_k4215_output_control(res):
 
 def test_driver_k4215_voltage_level(res):
     """Test voltage level and range control."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test get voltage level
     # as this is not implemented by the instrument, it always returns 0.0
@@ -127,7 +127,7 @@ def test_driver_k4215_voltage_level(res):
 
 def test_driver_k4215_voltage_offset(res):
     """Test voltage offset control."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test get voltage offset
     # as this is not implemented by the instrument, it always returns 0.0
@@ -155,7 +155,7 @@ def test_driver_k4215_voltage_offset(res):
 
 def test_driver_k4215_amplitude(res):
     """Test AC amplitude voltage and frequency control."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test set amplitude voltage
     res.buffer = []
@@ -176,7 +176,7 @@ def test_driver_k4215_amplitude(res):
 
 def test_driver_k4215_frequency(res):
     """Test AC frequency control."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     res.buffer = []
     assert d.set_amplitude_frequency(1.2e3) is None
@@ -195,7 +195,7 @@ def test_driver_k4215_frequency(res):
 
 def test_driver_k4215_impedance_functions(res):
     """Test impedance type and measurement functions."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test impedance type with string (CPRP maps to 2)
     res.buffer = []
@@ -250,7 +250,7 @@ def test_driver_k4215_impedance_functions(res):
 
 def test_driver_k4215_aperture_control(res):
     """Test aperture, filter, and delay control."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test default aperture settings - default is aperture=10.0, filter_factor=1, delay_factor=1
     res.buffer = []
@@ -288,7 +288,7 @@ def test_driver_k4215_aperture_control(res):
 
 def test_driver_k4215_correction_length_validation(res):
     """Test cable length correction with validation."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test valid cable lengths
     valid_lengths = [0, 1.5, 3.0]
@@ -306,7 +306,7 @@ def test_driver_k4215_correction_length_validation(res):
 
 def test_driver_k4215_correction_functions(res):
     """Test correction and cable length functions."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test correction - all disabled (format: open,short,load)
     res.buffer = []
@@ -335,7 +335,7 @@ def test_driver_k4215_correction_functions(res):
 
 
 def test_driver_k4215_start_load_correction(res):
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     res.buffer = []
     assert d.start_load_correction(1.5, 50) is None
@@ -347,7 +347,7 @@ def test_driver_k4215_start_load_correction(res):
 
 
 def test_driver_k4215_start_open_correction(res):
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     res.buffer = []
     assert d.start_open_correction(1.5) is None
@@ -364,7 +364,7 @@ def test_driver_k4215_start_open_correction(res):
 
 
 def test_driver_k4215_start_short_correction(res):
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     res.buffer = []
     assert d.start_short_correction(1.5) is None
@@ -377,7 +377,7 @@ def test_driver_k4215_start_short_correction(res):
 
 def test_driver_k4215_aci_range(res):
     """Test ACI range setting."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     for aci_range in [0, 1e-6, 30e-6, 1e-3]:
         res.buffer = []
@@ -393,7 +393,7 @@ def test_driver_k4215_aci_range(res):
 
 def test_driver_k4215_impedance_measurement(res):
     """Test impedance measurement functionality."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test successful impedance measurement - _fetch() directly queries :CVU:MEASZ?
     res.buffer = ["1.000000E-01,2.000000E-01"]
@@ -411,7 +411,7 @@ def test_driver_k4215_impedance_measurement(res):
 
 def test_driver_k4215_external_bias_tee(res):
     """Test external bias tee functionality."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test external bias tee configuration
     res.buffer = []  # Need enough responses for all the _write calls
@@ -436,7 +436,7 @@ def test_driver_k4215_external_bias_tee(res):
 
 def test_driver_k4215_abstract_methods(res):
     """Test abstract method implementations."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # Test compliance_tripped (always returns False for K4215)
     assert d.compliance_tripped() is False
@@ -453,7 +453,7 @@ def test_driver_k4215_abstract_methods(res):
 
 def test_driver_k4215_default_configuration(res):
     """Test comprehensive configuration with all options."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     res.buffer = []
     options = {"voltage": 0.1, "frequency": 100000.0}
@@ -467,7 +467,7 @@ def test_driver_k4215_default_configuration(res):
 
 def test_driver_k4215_fetch_functionality(res):
     """Test _fetch method for measurement operations."""
-    d = K4215(res)
+    d = K4215Adapter(res)
 
     # _fetch directly queries :CVU:MEASZ?
     res.buffer = ["1.000000E-01,2.000000E-01"]

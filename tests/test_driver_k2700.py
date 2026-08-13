@@ -1,8 +1,8 @@
-from diode_measurement.drivers.k2700 import K2700
+from diode_measurement.drivers.k2700 import K2700Adapter
 
 
 def test_driver_k2700(res):
-    d = K2700(res)
+    d = K2700Adapter(res)
 
     res.buffer = ["Keithley Model 2700\r"]
     assert d.identify() == "Keithley Model 2700"

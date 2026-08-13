@@ -5,18 +5,18 @@ from typing import Any
 
 import pyvisa.errors
 
-from ..core.driver import BaseDriver, InstrumentError, Resource, handle_exception
+from ..core.driver import InstrumentError, Resource, handle_exception
 
-__all__ = ["K4215"]
+__all__ = ["K4215Adapter"]
 
 logger = logging.getLogger(__name__)
 
 
-class K4215(BaseDriver):
+class K4215Adapter:
     correction_timeout: float = 120.0
 
     def __init__(self, resource: Resource) -> None:
-        super().__init__(resource)
+        self.resource = resource
         self._external_bias_tee_enabled: bool = False
 
     def identify(self) -> str:

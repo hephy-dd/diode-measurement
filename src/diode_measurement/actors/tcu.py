@@ -9,7 +9,7 @@ from threading import Event, RLock
 from typing import Any
 
 from ..core.actor import ThreadingActor
-from ..core.driver import TCU
+from ..core.driver import TCUAdapter
 from ..core.events import UpdateMetricsEvent
 
 __all__ = ["TCUActor"]
@@ -26,7 +26,7 @@ class TCUMetrics:
 
 
 class TCUActor(ThreadingActor):
-    def __init__(self, tcu: TCU, event_queue: Queue, abort_event: Event) -> None:
+    def __init__(self, tcu: TCUAdapter, event_queue: Queue, abort_event: Event) -> None:
         super().__init__(abort_event=abort_event)
         self.tcu = tcu
         self.event_queue: Queue[Any] = event_queue

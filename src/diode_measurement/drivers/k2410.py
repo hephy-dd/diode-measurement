@@ -1,6 +1,6 @@
-from .k2400 import K2400
+from .k2400 import K2400Adapter
 
-__all__ = ["K2410"]
+__all__ = ["K2410Adapter"]
 
 
-class K2410(K2400): ...
+class K2410Adapter(K2400Adapter): ...

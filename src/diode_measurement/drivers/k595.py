@@ -3,9 +3,9 @@ import time
 from collections.abc import Mapping
 from typing import Any, Final
 
-from ..core.driver import BaseDriver, InstrumentError, Resource, handle_exception
+from ..core.driver import InstrumentError, Resource, handle_exception
 
-__all__ = ["K595"]
+__all__ = ["K595Adapter"]
 
 ERROR_MESSAGES: Final[dict[int, str]] = {
     0: "IDDC",
@@ -18,11 +18,11 @@ ERROR_MESSAGES: Final[dict[int, str]] = {
 }
 
 
-class K595(BaseDriver):
+class K595Adapter:
     WRITE_DELAY = 0.250
 
     def __init__(self, resource: Resource) -> None:
-        super().__init__(resource)
+        self.resource = resource
         self._write_timestamp: float = 0.0
 
     def identify(self) -> str:

@@ -1,28 +1,29 @@
 from collections.abc import Mapping
 from typing import Any
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from comet.driver.keithley.k2470 import K2470
 
-__all__ = ["K2470"]
+from ..core.driver import InstrumentError, Resource, handle_exception
+
+__all__ = ["K2470Adapter"]
 
 
-class K2470(BaseDriver):
+class K2470Adapter:
+    def __init__(self, resource: Resource) -> None:
+        self.resource = resource
+        self._driver = K2470(resource)
+
     def identify(self) -> str:
-        return self._query("*IDN?")
+        return self._driver.identify()
 
     def reset(self) -> None:
-        self._write("*RST")
+        self._driver.reset()
 
     def clear(self) -> None:
-        self._write("*CLS")
+        self._driver.clear()
 
     def next_error(self) -> InstrumentError | None:
-        code, message = self._query(":SYST:ERR?").split(",")
-        code = int(code)
-        if code == 0:
-            return None
-        message = message.strip().strip('"')
-        return InstrumentError(code, message)
+        return self._driver.next_error()
 
     def configure(self, options: Mapping[str, Any]) -> None:
         route_terminals = options.get("route.terminals", "FRON")
@@ -65,26 +66,25 @@ class K2470(BaseDriver):
         self.set_sense_current_azero(sense_azero)
 
     def get_output_enabled(self) -> bool:
-        return self._query(":OUTP:STAT?") == "1"
+        return self._driver.output
 
     def set_output_enabled(self, enabled: bool) -> None:
-        value = {False: "0", True: "1"}[enabled]
-        self._write(f":OUTP:STAT {value}")
+        self._driver.output = enabled
 
     def get_voltage_level(self) -> float:
-        return float(self._query(":SOUR:VOLT:LEV?"))
+        return self._driver.voltage_level
 
     def set_voltage_level(self, level: float) -> None:
-        self._write(f":SOUR:VOLT:LEV {level:.3E}")
+        self._driver.voltage_level = level
 
     def set_voltage_range(self, level: float) -> None:
-        self._write(f":SOUR:VOLT:RANG {level:.3E}")
+        self._driver.voltage_range = level
 
     def set_current_compliance_level(self, level: float) -> None:
-        self._write(f":SOUR:VOLT:ILIM:LEV {level:.3E}")
+        self._driver.current_compliance = level
 
     def compliance_tripped(self) -> bool:
-        return self._query(":SOUR:VOLT:ILIM:LEV:TRIP?") == "1"
+        return self._driver.voltage_compliance_tripped
 
     def measure_i(self) -> float:
         i, _ = self.measure_iv()
@@ -96,7 +96,7 @@ class K2470(BaseDriver):
 
     def measure_iv(self) -> tuple[float, float]:
         """Measure I and V at once using READ?."""
-        result = self.resource.query(':READ? "defbuffer1", SOUR, READ')
+        result = self._query(':READ? "defbuffer1", SOUR, READ')
         try:
             source, reading = result.split(",", 1)
             return float(reading), float(source)
@@ -106,9 +106,13 @@ class K2470(BaseDriver):
             ) from exc
 
     def set_route_terminals(self, terminal: str) -> None:
+        if terminal not in {"FRON", "REAR"}:
+            raise ValueError(f"Invalid terminal: {terminal}")
         self._write(f":ROUT:TERM {terminal}")
 
     def set_source_function(self, function: str) -> None:
+        if function not in {"CURR", "VOLT"}:
+            raise ValueError(f"Invalid terminal: {function}")
         self._write(f":SOUR:FUNC {function}")
 
     def set_sense_function(self, function: str) -> None:

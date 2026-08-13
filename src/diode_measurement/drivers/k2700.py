@@ -1,19 +1,25 @@
 from collections.abc import Mapping
 from typing import Any
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from comet.driver.keithley.k2700 import K2700
 
-__all__ = ["K2700"]
+from ..core.driver import InstrumentError, Resource, handle_exception
+
+__all__ = ["K2700Adapter"]
 
 
-class K2700(BaseDriver):
+class K2700Adapter:
+    def __init__(self, resource: Resource) -> None:
+        self.resource = resource
+        self._driver = K2700(resource)
+
     def identify(self) -> str:
-        return self._query("*IDN?")
+        return self._driver.identify()
 
     def reset(self) -> None: ...  # prevent reset
 
     def clear(self) -> None:
-        self._write("*CLS")
+        self._driver.clear()
 
     def next_error(self) -> InstrumentError | None:
         code, message = self._query(":SYST:ERR?").split(",")

@@ -1,10 +1,10 @@
 import math
 
-from diode_measurement.drivers.k595 import K595
+from diode_measurement.drivers.k595 import K595Adapter
 
 
 def test_driver_k595(res):
-    d = K595(res)
+    d = K595Adapter(res)
     d.WRITE_DELAY = 0  # disable for tests
 
     res.buffer = ["595\r"]

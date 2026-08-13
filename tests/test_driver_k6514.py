@@ -1,8 +1,8 @@
-from diode_measurement.drivers.k6514 import K6514
+from diode_measurement.drivers.k6514 import K6514Adapter
 
 
 def test_driver_k6514(res):
-    d = K6514(res)
+    d = K6514Adapter(res)
 
     res.buffer = ["Keithley Model 6514\r"]
     assert d.identify() == "Keithley Model 6514"

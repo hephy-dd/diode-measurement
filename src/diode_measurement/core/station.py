@@ -2,7 +2,7 @@ import logging
 from contextlib import ExitStack
 from typing import Any
 
-from .driver import Driver, driver_factory
+from .driver import InstrumentAdapter, adapter_factory
 from .resource import AutoReconnectResource, Resource, ResourceConfig
 from .role import Role, RoleConfig
 
@@ -15,8 +15,10 @@ class Station:
     def __init__(self) -> None:
         self.auto_reconnect: bool = False
         self.instruments: dict[Role, Any] = {}
-        self._instrument_registry: dict[Role, tuple[type[Driver], Resource]] = {}
-        self._driver_factory = driver_factory
+        self._instrument_registry: dict[
+            Role, tuple[type[InstrumentAdapter], Resource]
+        ] = {}
+        self._adapter_factory = adapter_factory
 
     def register_instrument(self, role: Role, role_config: RoleConfig) -> None:
         model = role_config.model
@@ -25,7 +27,7 @@ class Station:
                 f"Empty resource name not allowed for {role.upper()} ({model})."
             )
 
-        driver_cls = self._driver_factory(model)
+        adapter_cls = self._adapter_factory(model)
 
         resource_config = ResourceConfig(
             resource_name=role_config.resource_name,
@@ -34,7 +36,7 @@ class Station:
             timeout=role_config.timeout,
         )
         resource = self._create_resource(resource_config)
-        self._instrument_registry[role] = driver_cls, resource
+        self._instrument_registry[role] = adapter_cls, resource
 
     def _create_resource(self, config: ResourceConfig) -> Resource:
         # If auto reconnect use experimental class AutoReconnectResource

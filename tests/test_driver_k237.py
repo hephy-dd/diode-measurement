@@ -1,8 +1,8 @@
-from diode_measurement.drivers.k237 import K237
+from diode_measurement.drivers.k237 import K237Adapter
 
 
 def test_driver_k237(res):
-    d = K237(res)
+    d = K237Adapter(res)
     d.WRITE_DELAY = 0  # disable for tests
 
     res.buffer = ["K237A1\r"]

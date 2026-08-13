@@ -1,10 +1,10 @@
 import pytest
 
-from diode_measurement.drivers.k2470 import K2470
+from diode_measurement.drivers.k2470 import K2470Adapter
 
 
 def test_driver_k2470(res):
-    d = K2470(res)
+    d = K2470Adapter(res)
 
     res.buffer = ["Keithley Model 2470\r"]
     assert d.identify() == "Keithley Model 2470"
@@ -20,15 +20,15 @@ def test_driver_k2470(res):
 
     res.buffer = ['0,"no error;;"']
     assert d.next_error() is None
-    assert res.buffer == [":SYST:ERR?"]
+    assert res.buffer == [":SYST:ERR:NEXT?"]
 
     res.buffer = ["1"]
     assert d.get_output_enabled() is True
     assert res.buffer == [":OUTP:STAT?"]
 
-    res.buffer = ["1"]
+    res.buffer = ["ON"]
     assert d.set_output_enabled(True) is None
-    assert res.buffer == [":OUTP:STAT 1", "*OPC?"]
+    assert res.buffer == [":OUTP:STAT ON", "*OPC?"]
 
     res.buffer = ["4.200000E+01"]
     assert d.get_voltage_level() == 42.0
@@ -36,11 +36,11 @@ def test_driver_k2470(res):
 
     res.buffer = ["1"]
     assert d.set_voltage_level(42.0) is None
-    assert res.buffer == [":SOUR:VOLT:LEV 4.200E+01", "*OPC?"]
+    assert res.buffer == [":SOUR:VOLT:LEV 4.200000E+01", "*OPC?"]
 
     res.buffer = ["1"]
     assert d.set_voltage_range(200.0) is None
-    assert res.buffer == [":SOUR:VOLT:RANG 2.000E+02", "*OPC?"]
+    assert res.buffer == [":SOUR:VOLT:RANG 2.000000E+02", "*OPC?"]
 
     res.buffer = ["1"]
     assert d.set_current_compliance_level(0.002) is None

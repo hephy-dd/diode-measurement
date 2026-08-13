@@ -1,8 +1,8 @@
-from diode_measurement.drivers.a4284a import A4284A
+from diode_measurement.drivers.a4284a import A4284AAdapter
 
 
 def test_driver_a4284a(res):
-    d = A4284A(res)
+    d = A4284AAdapter(res)
 
     res.buffer = ["Agilent Model A4284A\r"]
     assert d.identify() == "Agilent Model A4284A"

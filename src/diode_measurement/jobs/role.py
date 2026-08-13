@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..core.resource import Resource, ResourceConfig, list_resources
-from ..drivers import K4215, driver_factory
+from ..drivers import K4215Adapter, adapter_factory
 
 __all__ = [
     "TestConnectionJob",
@@ -23,7 +23,7 @@ class TestConnectionJob:
 
     def __call__(self) -> None:
         with Resource(self.resource_config) as res:
-            instr = driver_factory(self.model)(res)
+            instr = adapter_factory(self.model)(res)
             identity = instr.identify()
             self.on_result_ready(identity)
 
@@ -52,7 +52,7 @@ class K4215PerformCorrectionJob:
         logger.info("Performing cable correction...")
 
         def wait_until_done(
-            instr: K4215,
+            instr: K4215Adapter,
             timeout: float = 120.0,
             interval: float = 1.0,
         ) -> None:
@@ -65,7 +65,7 @@ class K4215PerformCorrectionJob:
             raise TimeoutError("Timeout expired before cable correction completed.")
 
         with Resource(self.resource_config) as res:
-            instr = K4215(res)
+            instr = K4215Adapter(res)
 
             if self.open_correction:
                 if self.external_bias_tee:

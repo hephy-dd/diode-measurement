@@ -2,12 +2,15 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.driver import InstrumentError, Resource, handle_exception
 
-__all__ = ["E4980A"]
+__all__ = ["E4980AAdapter"]
 
 
-class E4980A(BaseDriver):
+class E4980AAdapter:
+    def __init__(self, resource: Resource) -> None:
+        self.resource = resource
+
     def identify(self) -> str:
         return self._query("*IDN?").strip()
 

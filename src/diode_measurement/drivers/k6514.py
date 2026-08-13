@@ -2,12 +2,15 @@ import time
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.driver import InstrumentError, Resource, handle_exception
 
-__all__ = ["K6514"]
+__all__ = ["K6514Adapter"]
 
 
-class K6514(BaseDriver):
+class K6514Adapter:
+    def __init__(self, resource: Resource) -> None:
+        self.resource = resource
+
     def identify(self) -> str:
         return self._query("*IDN?").strip()
 

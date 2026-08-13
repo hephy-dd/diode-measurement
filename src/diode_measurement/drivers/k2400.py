@@ -1,14 +1,14 @@
 from collections.abc import Mapping
 from typing import Any
 
-from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.driver import InstrumentError, Resource, handle_exception
 
-__all__ = ["K2400"]
+__all__ = ["K2400Adapter"]
 
 
-class K2400(BaseDriver):
-    def __init__(self, resource) -> None:
-        super().__init__(resource)
+class K2400Adapter:
+    def __init__(self, resource: Resource) -> None:
+        self.resource = resource
         self._format_element: str | None = None
 
     def identify(self) -> str:

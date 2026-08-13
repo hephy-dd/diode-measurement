@@ -1,10 +1,10 @@
 import pytest
 
-from diode_measurement.drivers.k2400 import K2400
+from diode_measurement.drivers.k2400 import K2400Adapter
 
 
 def test_driver_k2400(res):
-    d = K2400(res)
+    d = K2400Adapter(res)
 
     res.buffer = ["Keithley Model 2400\r"]
     assert d.identify() == "Keithley Model 2400"

@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Iterable, Mapping
 from typing import Any, Protocol, runtime_checkable
 
@@ -7,13 +6,10 @@ from comet.driver.generic import InstrumentError
 from .resource import Resource
 
 __all__ = [
-    "BaseDriver",
-    "Driver",
-    "driver_registry",
-    "driver_factory",
+    "InstrumentAdapter",
+    "adapter_registry",
+    "adapter_factory",
 ]
-
-logger = logging.getLogger(__name__)
 
 
 def handle_exception(method):
@@ -21,20 +17,15 @@ def handle_exception(method):
         try:
             return method(self, *args, **kwargs)
         except Exception as exc:
-            raise DriverError(f"{type(self).__name__}: {exc}") from exc
+            raise AdapterError(f"{type(self).__name__}: {exc}") from exc
 
     return handle_exception
 
 
-class DriverError(Exception): ...
+class AdapterError(Exception): ...
 
 
-class BaseDriver:
-    def __init__(self, resource: Resource) -> None:
-        self.resource = resource
-
-
-class Driver(Protocol):
+class InstrumentAdapter(Protocol):
     def __init__(self, resource: Resource) -> None: ...
     def identify(self) -> str: ...
     def reset(self) -> None: ...
@@ -43,7 +34,7 @@ class Driver(Protocol):
     def configure(self, options: Mapping[str, Any]) -> None: ...
 
 
-class SourceMeter(Driver, Protocol):
+class SourceMeterAdapter(InstrumentAdapter, Protocol):
     def get_output_enabled(self) -> bool: ...
     def set_output_enabled(self, enabled: bool) -> None: ...
     def get_voltage_level(self) -> float: ...
@@ -55,19 +46,19 @@ class SourceMeter(Driver, Protocol):
     def measure_iv(self) -> tuple[float, float]: ...
 
 
-class Electrometer(SourceMeter, Protocol):
+class ElectrometerAdapter(SourceMeterAdapter, Protocol):
     def set_zero_check_enabled(self, enabled: bool) -> None: ...
 
 
-class LCRMeter(SourceMeter, Protocol):
+class LCRMeterAdapter(SourceMeterAdapter, Protocol):
     def measure_impedance(self) -> tuple[float, float]: ...
 
 
-class DMM(Driver, Protocol):
+class DMMAdapter(InstrumentAdapter, Protocol):
     def measure_temperature(self) -> float: ...
 
 
-class TCU(Driver, Protocol):
+class TCUAdapter(InstrumentAdapter, Protocol):
     def get_temperature(self) -> float: ...
     def get_humidity(self) -> float: ...
     def is_setpoint_enabled(self) -> bool: ...
@@ -78,7 +69,7 @@ class TCU(Driver, Protocol):
     def handle_event(self, event: Any) -> None: ...
 
 
-class SwitchingMatrix(Driver, Protocol):
+class SwitchingMatrixAdapter(InstrumentAdapter, Protocol):
     def close_channels(self, channels: Iterable[str]) -> None: ...
     def open_channels(self, channels: Iterable[str]) -> None: ...
     def open_all_channels(self) -> None: ...
@@ -90,12 +81,12 @@ class VoltageMeasurable(Protocol):
     def measure_v(self) -> float: ...
 
 
-driver_registry: dict[str, type[Driver]] = {}
+adapter_registry: dict[str, type[InstrumentAdapter]] = {}
 
 
-def driver_factory(model: str) -> type[Driver]:
-    """Return the driver class for the given model."""
+def adapter_factory(model: str) -> type[InstrumentAdapter]:
+    """Return a instrument adapter class for a given model."""
     try:
-        return driver_registry[model]
+        return adapter_registry[model]
     except KeyError as exc:
-        raise ValueError(f"Unknown driver model: {model}") from exc
+        raise ValueError(f"Unknown instrument model: {model}") from exc

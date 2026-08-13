@@ -1,8 +1,8 @@
-from diode_measurement.drivers.k2657a import K2657A
+from diode_measurement.drivers.k2657a import K2657AAdapter
 
 
 def test_driver_k2657a(res):
-    d = K2657A(res)
+    d = K2657AAdapter(res)
 
     res.buffer = ["Keithley Model 2657A\r"]
     assert d.identify() == "Keithley Model 2657A"
