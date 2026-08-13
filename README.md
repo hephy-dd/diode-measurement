@@ -234,9 +234,9 @@ Optional parameters are:
 - `end_voltage` (float, Volt)
 - `step_voltage` (float, Volt)
 - `waiting_time` (float, seconds)
-- `source_role` (str)
+- `source_instrument` (str)
 - `bias_voltage` (float, Volt)
-- `bias_source_role` (str)
+- `bias_source_instrument` (str)
 - `compliance` (float, Ampere)
 - `waiting_time_continuous` (float, seconds)
 - `wait_for_setpoint` (bool)
@@ -251,6 +251,20 @@ Optional parameters are:
     "end_voltage": -100.0,
     "step_voltage": 10.0,
     "waiting_time": 1.0
+  }
+}
+```
+
+Source and bias source instruments can be swapped using optional parameters `source_instrument` and `bias_source_instruments`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "start",
+  "params": {
+    "measurement_instruments": ["smu", "smu2"],
+    "source_instrument": "smu2",
+    "bias_source_instrument": "smu"
   }
 }
 ```
