@@ -468,8 +468,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_show_preferences(self) -> None:
         dialog = PreferencesDialog(self)
         dialog.read_settings()
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            dialog.write_settings()
+
+        def finished(result: int) -> None:
+            if result == QtWidgets.QDialog.DialogCode.Accepted:
+                dialog.write_settings()
+
+            dialog.deleteLater()
+
+        dialog.finished.connect(finished)
+        dialog.open()
 
     @QtCore.Slot()
     def on_show_contents(self) -> None:
