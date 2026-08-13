@@ -2,7 +2,7 @@ import json
 import socket
 from typing import Any
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 
 class DiodeMeasurementError(Exception):
@@ -121,11 +121,11 @@ class DiodeMeasurementClient:
         if waiting_time is not None:
             params["waiting_time"] = waiting_time
         if source_instrument is not None:
-            params["source_role"] = source_instrument
+            params["source_instrument"] = source_instrument
         if bias_voltage is not None:
             params["bias_voltage"] = bias_voltage
         if bias_source_instrument is not None:
-            params["bias_source_role"] = bias_source_instrument
+            params["bias_source_instrument"] = bias_source_instrument
         if compliance is not None:
             params["compliance"] = compliance
         if waiting_time_continuous is not None:
