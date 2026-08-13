@@ -1,4 +1,4 @@
-"""Example: start a continuous IV measurement and monitor it for 10 seconds."""
+"""Example: start a continuous IV measurement and apply change voltage."""
 
 import time
 
@@ -8,7 +8,7 @@ client = DiodeMeasurementClient("localhost", 4000)
 
 # Wait until the system is idle
 print("Waiting for 'idle' state...")
-while client.current_state() != "idle":
+while client.current_state() != client.IDLE:
     time.sleep(1)
 
 # Update an instrument's options
@@ -31,15 +31,15 @@ client.start(
 
 # Wait for the expected state transitions
 print("Waiting for 'configure' state...")
-while client.current_state() != "configure":
+while client.current_state() != client.CONFIGURE:
     time.sleep(1)
 
 print("Waiting for 'ramping' state...")
-while client.current_state() != "ramping":
+while client.current_state() != client.RAMPING:
     time.sleep(1)
 
 print("Waiting for 'continuous' state...")
-while client.current_state() != "continuous":
+while client.current_state() != client.CONTINUOUS:
     time.sleep(1)
 
 # Monitor for 10 seconds
@@ -47,21 +47,21 @@ print("Monitoring measurement for 10 seconds...")
 start_time = time.monotonic()
 
 while time.monotonic() - start_time < 10:
-    if client.current_state() != "continuous":
+    if client.current_state() != client.CONTINUOUS:
         print("Measurement stopped early.")
         break
 
-    print(client.state())
+    print("state:", client.state())
     time.sleep(1)
 
 client.change_voltage(-40, 0.5, 1.0)
 
 print("Waiting for 'ramping' state...")
-while client.current_state() != "ramping":
+while client.current_state() != client.RAMPING:
     time.sleep(1)
 
 print("Waiting for 'continuous' state...")
-while client.current_state() != "continuous":
+while client.current_state() != client.CONTINUOUS:
     time.sleep(1)
 
 # Monitor for 10 seconds
@@ -69,11 +69,11 @@ print("Monitoring measurement for 10 seconds...")
 start_time = time.monotonic()
 
 while time.monotonic() - start_time < 10:
-    if client.current_state() != "continuous":
+    if client.current_state() != client.CONTINUOUS:
         print("Measurement stopped early.")
         break
 
-    print(client.state())
+    print("state:", client.state())
     time.sleep(1)
 
 # Stop the measurement
@@ -82,7 +82,7 @@ client.stop()
 
 # Wait until the system is idle again
 print("Waiting for 'idle' state...")
-while client.current_state() != "idle":
+while client.current_state() != client.IDLE:
     time.sleep(1)
 
 print("Done!")

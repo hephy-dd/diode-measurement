@@ -2,7 +2,7 @@ import json
 import socket
 from typing import Any
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 class DiodeMeasurementError(Exception):
@@ -10,6 +10,12 @@ class DiodeMeasurementError(Exception):
 
 
 class DiodeMeasurementClient:
+    IDLE = "idle"
+    CONFIGURE = "configure"
+    RAMPING = "ramping"
+    CONTINUOUS = "continuous"
+    STOPPING = "stopping"
+
     def __init__(self, host: str, port: int, timeout: float = 5.0) -> None:
         self.host = host
         self.port = port
