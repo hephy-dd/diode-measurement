@@ -1264,33 +1264,43 @@ class Controller(QtCore.QObject):
         role_widget = self.main_window.find_role(Role.LCR)
         if role_widget is None:
             return
+
         model = role_widget.model()
         config = role_widget.configs().get(model, {})
-        if model == "K4215":
-            dialog = K4215CorrectionDialog(self.main_window)
-            external_bias_tee = config.get("external_bias_tee.enabled", False)
-            if external_bias_tee:
-                dialog.set_hint("<b>With</b> external Bias Tee (applying -10V DC)")
-            if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-                return
+        external_bias_tee = config.get("external_bias_tee.enabled", False)
+        cable_length = config["correction.length"]
+        resource_config = get_role_config(role_widget)
 
-            resource_config = get_role_config(role_widget)
+        if model != "K4215":
+            return
 
-            job = K4215PerformCorrectionJob(
-                resource_config=resource_config,
-                cable_length=config["correction.length"],
-                open_correction=dialog.is_open_correction(),
-                short_correction=dialog.is_short_correction(),
-                load_correction=dialog.get_load_correction(),
-                external_bias_tee=external_bias_tee,
-                on_message_changed=self.message_changed.emit,
-            )
+        dialog = K4215CorrectionDialog(self.main_window)
 
-            self.main_window.control_tab_widget.setEnabled(False)
-            self.main_window.set_progress(0, 0, 0)
-            self.main_window.set_message("Performing open correction...")
+        if external_bias_tee:
+            dialog.set_hint("<b>With</b> external Bias Tee (applying -10V DC)")
 
-            self.submit_background_job(job)
+        def finished(result: int) -> None:
+            if result == QtWidgets.QDialog.DialogCode.Accepted:
+                job = K4215PerformCorrectionJob(
+                    resource_config=resource_config,
+                    cable_length=cable_length,
+                    open_correction=dialog.is_open_correction(),
+                    short_correction=dialog.is_short_correction(),
+                    load_correction=dialog.get_load_correction(),
+                    external_bias_tee=external_bias_tee,
+                    on_message_changed=self.message_changed.emit,
+                )
+
+                self.main_window.control_tab_widget.setEnabled(False)
+                self.main_window.set_progress(0, 0, 0)
+                self.main_window.set_message("Performing open correction...")
+
+                self.submit_background_job(job)
+
+            dialog.deleteLater()
+
+        dialog.finished.connect(finished)
+        dialog.open()
 
 
 class BackgroundJobsController(QtCore.QObject):
@@ -1364,17 +1374,25 @@ class ChangeVoltageController(QtCore.QObject):
     @QtCore.Slot()
     def on_prepare_change_voltage(self) -> None:
         general_widget = self.main_window.general_widget
+
         dialog = ChangeVoltageDialog(self.main_window)
         dialog.set_end_voltage(self.source_voltage())
         dialog.set_step_voltage(general_widget.step_voltage())
         dialog.set_waiting_time(general_widget.waiting_time())
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            parameters = ChangeVoltageParameters(
-                end_voltage=dialog.end_voltage(),
-                step_voltage=dialog.step_voltage(),
-                waiting_time=dialog.waiting_time(),
-            )
-            self.request_change_voltage(parameters)
+
+        def finished(result: int) -> None:
+            if result == QtWidgets.QDialog.DialogCode.Accepted:
+                parameters = ChangeVoltageParameters(
+                    end_voltage=dialog.end_voltage(),
+                    step_voltage=dialog.step_voltage(),
+                    waiting_time=dialog.waiting_time(),
+                )
+                self.request_change_voltage(parameters)
+
+            dialog.deleteLater()
+
+        dialog.finished.connect(finished)
+        dialog.open()
 
     def request_change_voltage(self, parameters: ChangeVoltageParameters) -> None:
         if self.main_window.is_change_voltage_enabled():

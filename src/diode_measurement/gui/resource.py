@@ -212,15 +212,20 @@ class ResourceWidget(QtWidgets.QGroupBox):
 
     def show_browse_resources(self, resource_names: list[str]) -> None:
         dialog = BrowseResourcesDialog(self)
+
         for resource_name in resource_names:
             dialog.add_resource_name(resource_name)
 
-        result = dialog.exec()
+        def finished(result: int) -> None:
+            if result == QtWidgets.QDialog.DialogCode.Accepted:
+                selected_resource = dialog.current_resource_name()
+                if selected_resource:
+                    self.resource_line_edit.setText(selected_resource)
 
-        if result == QtWidgets.QDialog.DialogCode.Accepted:
-            selected_resource = dialog.current_resource_name()
-            if selected_resource:
-                self.resource_line_edit.setText(selected_resource)
+            dialog.deleteLater()
+
+        dialog.finished.connect(finished)
+        dialog.open()
 
     @QtCore.Slot(str)
     def on_model_index_changed(self, index: int) -> None:
