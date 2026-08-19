@@ -5,15 +5,18 @@ from queue import Empty, Queue
 from threading import Event, Thread
 from typing import Any
 
-__all__ = ["ThreadingActor"]
+__all__ = ["ThreadingActor", "ActorNotRunningError"]
 
 logger = logging.getLogger(__name__)
+
+
+class ActorNotRunningError(RuntimeError): ...
 
 
 @dataclass(frozen=True, slots=True)
 class Envelope:
     message: Any
-    future: Future
+    future: Future[Any]
 
 
 class ThreadingActor:
@@ -34,11 +37,11 @@ class ThreadingActor:
         if self._thread.is_alive():
             self._thread.join(timeout)
 
-    def ask(self, message: Any) -> Future:
-        future: Future = Future()
+    def ask(self, message: Any) -> Future[Any]:
+        future: Future[Any] = Future()
 
         if self._abort_event.is_set() or not self._thread.is_alive():
-            future.set_exception(RuntimeError("Actor is not running"))
+            future.set_exception(ActorNotRunningError())
             return future
 
         self._inbox.put_nowait(Envelope(message, future))
