@@ -51,8 +51,10 @@ class ITCAdapter:
         self.set_setpoint_enabled(setpoint_enabled)
         tolerance = options.get("setpoint.tolerance", 0.2)
         self.set_temperature_tolerance(tolerance)
-        target_temperature = options["setpoint.temperature"]
-        self.set_target_temperature(target_temperature)
+
+        if self.is_setpoint_enabled():
+            target_temperature = options["setpoint.temperature"]
+            self.set_target_temperature(target_temperature)
 
     def get_temperature(self) -> float:
         return self._itc.analog_channel[AnalogChannel.TEMPERATURE][0]
