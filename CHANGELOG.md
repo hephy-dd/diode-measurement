@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Follow Qt recommendations for modal dialog creation (#187).
 - Improved SCPI error parsing (#188).
+- Normalized instrument drivers by using adapters (#190).
 
 ## [0.31.1] - 2026-08-19
 
