@@ -182,7 +182,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tcu_temperature_line_edit.setReadOnly(True)
         self.tcu_temperature_line_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
-        self.setCentralWidget(QtWidgets.QWidget())
+        self.central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.central_widget)
 
         # Dock widgets
 
@@ -240,7 +241,7 @@ class MainWindow(QtWidgets.QMainWindow):
         bottomLayout.setStretch(1, 7)
         bottomLayout.setStretch(2, 3)
 
-        layout = QtWidgets.QVBoxLayout(self.centralWidget())
+        layout = QtWidgets.QVBoxLayout(self.central_widget)
         layout.addWidget(self.data_stacked_widget)
         layout.addLayout(bottomLayout)
 
@@ -252,9 +253,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def set_data_widget(self, widget: QtWidgets.QWidget) -> None:
         while self.data_stacked_widget.count():
-            self.data_stacked_widget.removeWidget(
-                self.data_stacked_widget.currentWidget()
-            )
+            current_widget = self.data_stacked_widget.currentWidget()
+            if current_widget is not None:
+                self.data_stacked_widget.removeWidget(current_widget)
         self.data_stacked_widget.addWidget(widget)
 
     def add_role(self, role: Role, title: str, optional: bool = False) -> RoleWidget:

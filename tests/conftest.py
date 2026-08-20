@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from typing import Self
 
 import pytest
 
 
 @dataclass(slots=True)
-class FakeResource:
+class MockResource:
     buffer: list[str]
 
     def write(self, message: str) -> int:
@@ -18,6 +19,32 @@ class FakeResource:
     def clear(self) -> None: ...
 
 
+@dataclass(slots=True)
+class MockRawResource:
+    in_buffer: bytes
+    out_buffer: bytes
+
+    def write_raw(self, message: bytes) -> int:
+        self.in_buffer += message
+        return len(message)
+
+    def read_bytes(self, count: int) -> bytes:
+        result = self.out_buffer[:count]
+        self.out_buffer = self.out_buffer[count:]
+        return result
+
+    def clear(self) -> None: ...
+
+    @property
+    def resource(self) -> Self:
+        return self
+
+
 @pytest.fixture
 def res():
-    return FakeResource([])
+    return MockResource([])
+
+
+@pytest.fixture
+def raw_res():
+    return MockRawResource(b"", b"")
