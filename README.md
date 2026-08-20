@@ -55,7 +55,7 @@ Pre-built Windows executables are available in the GitHub Releases section.
 Install the package inside a virtual environment using `pip`:
 
 ```bash
-pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.31.0.tar.gz
+pip install https://github.com/hephy-dd/diode-measurement/archive/refs/tags/0.31.1.tar.gz
 ```
 
 ## Run
@@ -71,7 +71,7 @@ diode-measurement
 To run the project locally, we recommend using Astral’s [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/hephy-dd/diode-measurement.git -b 0.31.0
+git clone https://github.com/hephy-dd/diode-measurement.git -b 0.31.1
 cd diode-measurement
 uv venv
 uv run diode-measurement

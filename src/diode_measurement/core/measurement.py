@@ -3,6 +3,7 @@ import logging
 import math
 import time
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from enum import StrEnum
 from queue import Queue
@@ -14,6 +15,7 @@ from comet.functions import LinearRange
 
 from ..actors import TCUActor
 from ..writer import Writer
+from .actor import ActorNotRunningError
 from .context import Context, PendingChanges, RuntimeState, State
 from .driver import VoltageMeasurable
 from .events import (
@@ -913,7 +915,7 @@ class TCUController:
             event.target_temperature,
         )
 
-    def ensure_setpoint(self) -> None:
+    def _ensure_setpoint(self) -> None:
         if self.tcu_actor is None:
             return
 
@@ -957,3 +959,7 @@ class TCUController:
                 self._update_setpoint()
 
             self.context.wait(1)
+
+    def ensure_setpoint(self) -> None:
+        with suppress(ActorNotRunningError):
+            self._ensure_setpoint()

@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.scpi import parse_scpi_error
 
 __all__ = ["K2400"]
 
@@ -21,16 +22,7 @@ class K2400(BaseDriver):
         self._write("*CLS")
 
     def next_error(self) -> InstrumentError | None:
-        result = self._query(":SYST:ERR?")
-        try:
-            code, message = result.split(",")
-            code = int(code)
-            if code == 0:
-                return None
-            message = message.strip().strip('"')
-            return InstrumentError(code, message)
-        except Exception as exc:
-            raise RuntimeError(f"Failed to parse error message: {result!r}") from exc
+        return parse_scpi_error(self._query(":SYST:ERR?"))
 
     def configure(self, options: Mapping[str, Any]) -> None:
         beeper_state = options.get("beeper.state", False)

@@ -6,6 +6,7 @@ from typing import Any
 import pyvisa.errors
 
 from ..core.driver import BaseDriver, InstrumentError, Resource, handle_exception
+from ..core.scpi import parse_scpi_error
 
 __all__ = ["K4215"]
 
@@ -43,12 +44,7 @@ class K4215(BaseDriver):
         # Try to parse response in standard SCPI format: code,"message"
         if "," in response and '"' in response:
             try:
-                parts = response.split(",", 1)
-                code = int(parts[0])
-                message = parts[1].strip().strip('"')
-                if code == 0:
-                    return None
-                return InstrumentError(code, message)
+                return parse_scpi_error(response)
             except Exception:
                 logger.exception("failed to parse error message: %r", response)
 

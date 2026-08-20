@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.scpi import parse_scpi_error
 
 __all__ = ["K2700"]
 
@@ -16,12 +17,7 @@ class K2700(BaseDriver):
         self._write("*CLS")
 
     def next_error(self) -> InstrumentError | None:
-        code, message = self._query(":SYST:ERR?").split(",")
-        code = int(code)
-        if code == 0:
-            return None
-        message = message.strip().strip('"')
-        return InstrumentError(code, message)
+        return parse_scpi_error(self._query(":SYST:ERR?"))
 
     def configure(self, options: Mapping[str, Any]) -> None: ...
 

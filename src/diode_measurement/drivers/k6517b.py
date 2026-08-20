@@ -3,6 +3,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ..core.driver import BaseDriver, InstrumentError, handle_exception
+from ..core.scpi import parse_scpi_error
 
 __all__ = ["K6517B"]
 
@@ -18,12 +19,7 @@ class K6517B(BaseDriver):
         self._write("*CLS")
 
     def next_error(self) -> InstrumentError | None:
-        code, message = self._query(":SYST:ERR?").split(",")
-        code = int(code)
-        if code == 0:
-            return None
-        message = message.strip().strip('"')
-        return InstrumentError(code, message)
+        return parse_scpi_error(self._query(":SYST:ERR?"))
 
     def configure(self, options: Mapping[str, Any]) -> None:
         self.set_format_elements(["READ"])
