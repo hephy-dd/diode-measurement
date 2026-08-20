@@ -1,5 +1,6 @@
 import pytest
 
+from diode_measurement.core.scpi import SCPIParseError
 from diode_measurement.drivers.k2400 import K2400
 
 
@@ -23,9 +24,8 @@ def test_driver_k2400(res):
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]  # errornous response
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(SCPIParseError):
         d.next_error()
-    assert excinfo.value.args == ("Failed to parse error message: '1'",)
     assert res.buffer == [":SYST:ERR?"]
 
     res.buffer = ["1"]
