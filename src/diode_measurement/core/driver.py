@@ -7,7 +7,6 @@ from comet.driver.generic import InstrumentError
 from .resource import Resource
 
 __all__ = [
-    "BaseDriver",
     "Driver",
     "driver_registry",
     "driver_factory",
@@ -27,11 +26,6 @@ def handle_exception(method):
 
 
 class DriverError(Exception): ...
-
-
-class BaseDriver:
-    def __init__(self, resource: Resource) -> None:
-        self.resource = resource
 
 
 class Driver(Protocol):

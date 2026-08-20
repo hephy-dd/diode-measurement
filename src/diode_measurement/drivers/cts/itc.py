@@ -12,6 +12,8 @@ from diode_measurement.core.events import (
 )
 from diode_measurement.core.resource import Resource
 
+__all__ = ["ITCAdapter"]
+
 
 class AnalogChannel(IntEnum):
     TEMPERATURE = 1
