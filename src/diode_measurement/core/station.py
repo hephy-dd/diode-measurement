@@ -15,6 +15,7 @@ class Station:
     def __init__(self) -> None:
         self.auto_reconnect: bool = False
         self.instruments: dict[Role, Any] = {}
+        self.resources: dict[Role, Resource] = {}
         self._instrument_registry: dict[Role, tuple[type[Driver], Resource]] = {}
         self._driver_factory = driver_factory
 
@@ -45,4 +46,5 @@ class Station:
         for role, (cls, resource) in self._instrument_registry.items():
             logger.debug("creating instrument context %s: %s...", role, cls.__name__)
             context = cls(stack.enter_context(resource))
+            self.resources[role] = resource
             self.instruments[role] = context

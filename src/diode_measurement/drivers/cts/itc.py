@@ -22,8 +22,7 @@ class AnalogChannel(IntEnum):
 
 class ITCAdapter:
     def __init__(self, resource: Resource) -> None:
-        self.resource = resource
-        self._itc = ITC(resource.resource)
+        self._itc: ITC = ITC(resource.resource)  # requires PyVISA resource
         self._setpoint_enabled: bool = False
         self._is_within_setpoint: bool = False
         self._setpoint_tolerance: float = 0.2

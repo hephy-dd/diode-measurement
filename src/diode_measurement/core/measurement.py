@@ -203,9 +203,9 @@ class RangeMeasurement(Measurement):
             raise RuntimeError(f"{name}: instrument not interlocked!")
 
     def safe_drain_output_buffers(self) -> None:
-        for role, instrument in self.station.instruments.items():
+        for role, resource in self.station.resources.items():
             try:
-                drain_output_buffer(instrument.resource)
+                drain_output_buffer(resource)
             except Exception as exc:
                 logger.warning(
                     "failed to drain output buffer for %r: %r", role.upper(), exc
