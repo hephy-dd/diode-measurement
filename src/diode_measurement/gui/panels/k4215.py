@@ -186,7 +186,7 @@ class K4215Panel(InstrumentPanel):
             "aperture.aperture", WidgetParameter(self.averaging_rate_spin_box)
         )
         self.bind_parameter(
-            "aperture.filter_count", WidgetParameter(self.filter_factor_spin_box)
+            "aperture.filter_factor", WidgetParameter(self.filter_factor_spin_box)
         )
         self.bind_parameter(
             "aperture.delay_factor", WidgetParameter(self.delay_factor_spin_box)
