@@ -36,21 +36,21 @@ class K4215Options(msgspec.Struct):
         name="function.type",
         default=ImpedanceType.CPRP,
     )
-    aperture: int = msgspec.field(
+    aperture: float = msgspec.field(
         name="aperture.aperture",
-        default=1,
+        default=10.0,
     )
-    filter_factor: int = msgspec.field(
+    filter_factor: float = msgspec.field(
         name="aperture.filter_factor",
-        default=5,
+        default=1.0,
     )
-    delay_factor: int = msgspec.field(
+    delay_factor: float = msgspec.field(
         name="aperture.delay_factor",
-        default=10,
+        default=1.0,
     )
-    correction_length: int = msgspec.field(
+    correction_length: float = msgspec.field(
         name="correction.length",
-        default=0,
+        default=0.0,
     )
     correction_open: bool = msgspec.field(
         name="correction.open.enabled",
@@ -288,7 +288,10 @@ class K4215Adapter:
         self._write(f":CVU:MODEL {impedance_type}")
 
     def set_aperture(
-        self, aperture: float = 10.0, filter_factor: int = 1, delay_factor: int = 1
+        self,
+        aperture: float = 10.0,
+        filter_factor: float = 1.0,
+        delay_factor: float = 1.0,
     ) -> None:
         """Set measurement speed and aperture settings.
 
