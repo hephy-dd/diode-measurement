@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.2] - 2026-08-21
+
+### Fixed
+
+- Keithley 4215 CVU aperture filter factor parameter (#191).
+
 ## [0.31.1] - 2026-08-19
 
 ### Fixed
@@ -656,7 +662,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.31.1...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.31.2...HEAD
+[0.31.2]: https://github.com/hephy-dd/diode-measurement/compare/0.31.1...0.31.2
 [0.31.1]: https://github.com/hephy-dd/diode-measurement/compare/0.31.0...0.31.1
 [0.31.0]: https://github.com/hephy-dd/diode-measurement/compare/0.30.1...0.31.0
 [0.30.1]: https://github.com/hephy-dd/diode-measurement/compare/0.30.0...0.30.1
