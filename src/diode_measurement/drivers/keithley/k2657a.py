@@ -1,12 +1,54 @@
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any
 
+import msgspec
 from comet.driver.keithley.k2657a import K2657A
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
 from diode_measurement.core.resource import Resource
 
 __all__ = ["K2657AAdapter"]
+
+
+class SourceFunction(StrEnum):
+    DCVOLTS = "DCVOLTS"
+
+
+class DisplayMeasureFunction(StrEnum):
+    DCAMPS = "DCAMPS"
+    DCVOLTS = "DCVOLTS"
+    OHMS = "OHMS"
+    WATTS = "WATTS"
+
+
+class FilterType(StrEnum):
+    REPEAT_AVG = "REPEAT_AVG"
+    MOVING_AVG = "MOVING_AVG"
+    MEDIAN = "MEDIAN"
+
+
+class K2657Options(msgspec.Struct):
+    beeper_enable: bool = msgspec.field(
+        name="beeper.enable",
+        default=False,
+    )
+    filter_mode: FilterType = msgspec.field(
+        name="filter.mode",
+        default=FilterType.REPEAT_AVG,
+    )
+    filter_count: int = msgspec.field(
+        name="filter.count",
+        default=10,
+    )
+    filter_enable: bool = msgspec.field(
+        name="filter.enable",
+        default=False,
+    )
+    nplc: float = msgspec.field(
+        name="nplc",
+        default=1.0,
+    )
 
 
 class K2657AAdapter:
@@ -30,23 +72,19 @@ class K2657AAdapter:
         return InstrumentError(error.code, error.message)
 
     def configure(self, options: Mapping[str, Any]) -> None:
-        beeper_enable = options.get("beeper.enable", False)
-        self.set_beeper_enable(beeper_enable)
+        self._configure(msgspec.convert(options, type=K2657Options))
 
-        self.set_source_function("DCVOLTS")
-        self.set_display_measure_function("DCAMPS")
+    def _configure(self, options: K2657Options) -> None:
+        self.set_beeper_enable(options.beeper_enable)
 
-        filter_mode = options.get("filter.mode", "REPEAT_AVG")
-        self.set_measure_filter_type(filter_mode)
+        self.set_source_function(SourceFunction.DCVOLTS)
+        self.set_display_measure_function(DisplayMeasureFunction.DCAMPS)
 
-        filter_count = options.get("filter.count", 10)
-        self.set_measure_filter_count(filter_count)
+        self.set_measure_filter_type(options.filter_mode)
+        self.set_measure_filter_count(options.filter_count)
+        self.set_measure_filter_enable(options.filter_enable)
 
-        filter_enable = options.get("filter.enable", False)
-        self.set_measure_filter_enable(filter_enable)
-
-        nplc = options.get("nplc", 1.0)
-        self.set_measure_nplc(nplc)
+        self.set_measure_nplc(options.nplc)
 
     def get_output_enabled(self) -> bool:
         return self._print("smua.source.output") == "1"
@@ -85,10 +123,10 @@ class K2657AAdapter:
         value = {True: "ON", False: "OFF"}[enabled]
         self._write(f"beeper.enable = beeper.{value}")
 
-    def set_source_function(self, function: str) -> None:
+    def set_source_function(self, function: SourceFunction) -> None:
         self._write(f"smua.source.func = smua.OUTPUT_{function}")
 
-    def set_measure_filter_type(self, filter_type: str) -> None:
+    def set_measure_filter_type(self, filter_type: FilterType) -> None:
         self._write(f"smua.measure.filter.type = smua.FILTER_{filter_type}")
 
     def set_measure_filter_count(self, count: int) -> None:
@@ -100,9 +138,7 @@ class K2657AAdapter:
     def set_measure_nplc(self, nplc: float) -> None:
         self._write(f"smua.measure.nplc = {nplc:E}")
 
-    def set_display_measure_function(self, function: str) -> None:
-        if function not in ("DCAMPS", "DCVOLTS", "OHMS", "WATTS"):
-            raise ValueError(f"Invalid display measure function: {function}")
+    def set_display_measure_function(self, function: DisplayMeasureFunction) -> None:
         self._write(f"display.smua.measure.func = display.MEASURE_{function}")
 
     @handle_exception

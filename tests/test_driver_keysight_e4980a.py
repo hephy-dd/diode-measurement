@@ -1,4 +1,8 @@
-from diode_measurement.drivers.keysight.e4980a import E4980AAdapter
+from diode_measurement.drivers.keysight.e4980a import (
+    E4980AAdapter,
+    FunctionType,
+    IntegrationTime,
+)
 
 
 def test_e4980a_adapter(res):
@@ -69,11 +73,11 @@ def test_e4980a_adapter(res):
     ]
 
     res.buffer = ["1"]
-    assert d.set_function_impedance_type("CPRP") is None
+    assert d.set_function_impedance_type(FunctionType.CPRP) is None
     assert res.buffer == [":FUNC:IMP:TYPE CPRP", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_aperture("MED", 42) is None
+    assert d.set_aperture(IntegrationTime.MEDIUM, 42) is None
     assert res.buffer == [":APER MED,42", "*OPC?"]
 
     res.buffer = ["1"]

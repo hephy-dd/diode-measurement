@@ -27,6 +27,7 @@ dependencies = [
     "PyVISA~=1.16.1",
     "PyVISA-py~=0.8.1",
     "json-rpc~=1.15",
+    "msgspec~=0.21.1",
 ]
 dynamic = ["version"]
 

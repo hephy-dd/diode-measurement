@@ -1,6 +1,9 @@
-import pytest
-
-from diode_measurement.drivers.keithley.k2470 import K2470Adapter
+from diode_measurement.drivers.keithley.k2470 import (
+    K2470Adapter,
+    ProtectionSetting,
+    TControlMode,
+    TerminalsLocation,
+)
 
 
 def test_k2470_adapter(res):
@@ -68,9 +71,13 @@ def test_k2470_adapter(res):
         ':READ? "defbuffer1", SOUR, READ',
     ]
 
-    res.buffer = ["1"]
-    assert d.set_route_terminals("REAR") is None
-    assert res.buffer == [":ROUT:TERM REAR", "*OPC?"]
+    for value, command in [
+        (TerminalsLocation.FRONT, ":ROUT:TERM FRON"),
+        (TerminalsLocation.REAR, ":ROUT:TERM REAR"),
+    ]:
+        res.buffer = ["1"]
+        assert d.set_route_terminals(value) is None
+        assert res.buffer == [command, "*OPC?"]
 
     res.buffer = ["1"]
     assert d.set_source_function("VOLT") is None
@@ -81,7 +88,7 @@ def test_k2470_adapter(res):
     assert res.buffer == [':SENS:FUNC "CURR"', "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_sense_current_average_tcontrol("MOV") is None
+    assert d.set_sense_current_average_tcontrol(TControlMode.MOV) is None
     assert res.buffer == [":SENS:CURR:AVER:TCON MOV", "*OPC?"]
 
     res.buffer = ["1"]
@@ -96,20 +103,14 @@ def test_k2470_adapter(res):
     assert d.set_sense_current_nplc(4.2) is None
     assert res.buffer == [":SENS:CURR:NPLC 4.200000E+00", "*OPC?"]
 
-    res.buffer = ["1"]
-    assert d.set_system_breakdown_protection("OFF") is None
-    assert res.buffer == [":SYST:BRE:PROT OFF", "*OPC?"]
-
-    res.buffer = ["1"]
-    assert d.set_system_breakdown_protection("ON") is None
-    assert res.buffer == [":SYST:BRE:PROT ON", "*OPC?"]
-
-    res.buffer = ["1"]
-    assert d.set_system_breakdown_protection("AUTO") is None
-    assert res.buffer == [":SYST:BRE:PROT AUTO", "*OPC?"]
-
-    with pytest.raises(ValueError):
-        d.set_system_breakdown_protection("shrubbery")
+    for value, command in [
+        (ProtectionSetting.AUTO, ":SYST:BRE:PROT AUTO"),
+        (ProtectionSetting.OFF, ":SYST:BRE:PROT OFF"),
+        (ProtectionSetting.ON, ":SYST:BRE:PROT ON"),
+    ]:
+        res.buffer = ["1"]
+        assert d.set_system_breakdown_protection(value) is None
+        assert res.buffer == [command, "*OPC?"]
 
     res.buffer = ["1"]
     assert d.is_interlock() is True

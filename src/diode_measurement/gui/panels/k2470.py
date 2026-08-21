@@ -2,6 +2,12 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
+from diode_measurement.drivers.keithley.k2470 import (
+    ProtectionSetting,
+    TControlMode,
+    TerminalsLocation,
+)
+
 from ..metric import MetricWidget
 from ..panel import FSMState, InstrumentPanel, WidgetParameter
 
@@ -65,8 +71,8 @@ class K2470Panel(InstrumentPanel):
         self.filter_mode_label = QtWidgets.QLabel("Mode")
 
         self.filter_mode_combo_box = QtWidgets.QComboBox()
-        self.filter_mode_combo_box.addItem("Repeat", "REP")
-        self.filter_mode_combo_box.addItem("Moving", "MOV")
+        self.filter_mode_combo_box.addItem("Repeat", TControlMode.REP)
+        self.filter_mode_combo_box.addItem("Moving", TControlMode.MOV)
 
         filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
         filter_layout.addWidget(self.filter_enable_check_box)
@@ -99,8 +105,8 @@ class K2470Panel(InstrumentPanel):
         # Route Terminals
 
         self.route_terminals_combo_box = QtWidgets.QComboBox()
-        self.route_terminals_combo_box.addItem("Front", "FRON")
-        self.route_terminals_combo_box.addItem("Rear", "REAR")
+        self.route_terminals_combo_box.addItem("Front", TerminalsLocation.FRONT)
+        self.route_terminals_combo_box.addItem("Rear", TerminalsLocation.REAR)
 
         self.route_terminals_group_box = QtWidgets.QGroupBox()
         self.route_terminals_group_box.setTitle("Route Terminals")
@@ -116,9 +122,9 @@ class K2470Panel(InstrumentPanel):
         self.breakdown_protection_label = QtWidgets.QLabel("Breakdown Protection")
 
         self.breakdown_protection_combo_box = QtWidgets.QComboBox()
-        self.breakdown_protection_combo_box.addItem("Auto", "AUTO")
-        self.breakdown_protection_combo_box.addItem("On", "ON")
-        self.breakdown_protection_combo_box.addItem("Off", "OFF")
+        self.breakdown_protection_combo_box.addItem("Auto", ProtectionSetting.AUTO)
+        self.breakdown_protection_combo_box.addItem("On", ProtectionSetting.ON)
+        self.breakdown_protection_combo_box.addItem("Off", ProtectionSetting.OFF)
 
         system_layout = QtWidgets.QVBoxLayout(self.system_group_box)
         system_layout.addWidget(self.breakdown_protection_label)
@@ -213,6 +219,7 @@ class K2470Panel(InstrumentPanel):
     def migrate_config_value(self, key: str, value: Any) -> Any:
         match key:
             case "system.breakdown.protection":
+                # migrate from old definition (ON/OFF)
                 if isinstance(value, bool):
                     return {True: "AUTO", False: "OFF"}.get(value, "AUTO")
         return value

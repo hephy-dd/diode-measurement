@@ -2,6 +2,7 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
+import msgspec
 from comet.driver.ers.ac3 import AC3
 
 from diode_measurement.core.driver import InstrumentError
@@ -9,6 +10,17 @@ from diode_measurement.core.events import ChangeDewpointControl, ChangeTargetTem
 from diode_measurement.core.resource import Resource
 
 __all__ = ["AC3Adapter"]
+
+
+class AC3Options(msgspec.Struct):
+    target_temperature: float = msgspec.field(
+        name="setpoint.temperature",
+        default=24.0,
+    )
+    dewpoint_control: bool = msgspec.field(
+        name="dewpoint_control.enabled",
+        default=True,
+    )
 
 
 class AC3Adapter:
@@ -28,10 +40,11 @@ class AC3Adapter:
         return self._ac3.next_error()
 
     def configure(self, options: Mapping[str, Any]) -> None:
-        target_temperature = options["setpoint.temperature"]
-        self.set_target_temperature(target_temperature)
-        dewpoint_control = options["dewpoint_control.enabled"]
-        self.set_dewpoint_control(dewpoint_control)
+        self._configure(msgspec.convert(options, type=AC3Options))
+
+    def _configure(self, options: AC3Options) -> None:
+        self.set_target_temperature(options.target_temperature)
+        self.set_dewpoint_control(options.dewpoint_control)
         self._ac3.operating_mode = self._ac3.MODE_NORMAL
 
     def get_temperature(self) -> float:

@@ -1,4 +1,4 @@
-from diode_measurement.drivers.keithley.k237 import K237Adapter
+from diode_measurement.drivers.keithley.k237 import FilterMode, K237Adapter
 
 
 def test_k237_adapter(res):
@@ -56,6 +56,10 @@ def test_k237_adapter(res):
     res.buffer = []
     assert d.set_voltage_range(200.0) is None
     assert res.buffer == ["B,4,X"]
+
+    res.buffer = []
+    assert d.set_filter_mode(FilterMode.READINGS_32) is None
+    assert res.buffer == ["P5X"]
 
     res.buffer = []
     assert d.set_current_compliance_level(0.002) is None

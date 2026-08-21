@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+import msgspec
 from comet.driver.keithley.k2700 import K2700
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
@@ -8,6 +9,9 @@ from diode_measurement.core.resource import Resource
 from diode_measurement.core.scpi import parse_scpi_error
 
 __all__ = ["K2700Adapter"]
+
+
+class K2700Options(msgspec.Struct): ...
 
 
 class K2700Adapter:
@@ -18,7 +22,7 @@ class K2700Adapter:
     def identify(self) -> str:
         return self._driver.identify()
 
-    def reset(self) -> None: ...  # prevent reset
+    def reset(self) -> None: ...  # TODO prevent reset
 
     def clear(self) -> None:
         self._driver.clear()
@@ -26,7 +30,10 @@ class K2700Adapter:
     def next_error(self) -> InstrumentError | None:
         return parse_scpi_error(self._query(":SYST:ERR?"))
 
-    def configure(self, options: Mapping[str, Any]) -> None: ...
+    def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=K2700Options))
+
+    def _configure(self, options: K2700Options) -> None: ...
 
     def measure_temperature(self) -> float:
         self._write(":FORM:ELEM READ")  # select reading as return value

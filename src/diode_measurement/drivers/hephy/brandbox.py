@@ -1,12 +1,20 @@
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+import msgspec
 from comet.driver.hephy.brandbox import BrandBox
 
 from diode_measurement.core.driver import InstrumentError
 from diode_measurement.core.resource import Resource
 
 __all__ = ["BrandBoxAdapter"]
+
+
+class BrandBoxOptions(msgspec.Struct):
+    channels: list[str] = msgspec.field(
+        name="channels",
+        default=[],
+    )
 
 
 class BrandBoxAdapter:
@@ -26,9 +34,11 @@ class BrandBoxAdapter:
         return self._driver.next_error()
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=BrandBoxOptions))
+
+    def _configure(self, options: BrandBoxOptions) -> None:
         self.open_all_channels()
-        channels = options.get("channels", [])
-        self.close_channels(channels)
+        self.close_channels(options.channels)
 
     def open_all_channels(self) -> None:
         self._driver.open_all_channels()

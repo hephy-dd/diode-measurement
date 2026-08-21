@@ -1,8 +1,10 @@
 import logging
 import time
 from collections.abc import Mapping
+from enum import IntEnum
 from typing import Any
 
+import msgspec
 import pyvisa.errors
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
@@ -12,6 +14,72 @@ from diode_measurement.core.scpi import parse_scpi_error
 __all__ = ["K4215Adapter"]
 
 logger = logging.getLogger(__name__)
+
+
+class ImpedanceType(IntEnum):
+    ZTHETA = 0
+    RPLUSJX = 1
+    CPRP = 2
+    CPGP = 2
+    CSRS = 3
+    CPD = 4
+    CSD = 5
+    YTHETA = 7
+
+
+class K4215Options(msgspec.Struct):
+    external_bias_tee: bool = msgspec.field(
+        name="external_bias_tee.enabled",
+        default=False,
+    )
+    function_type: ImpedanceType = msgspec.field(
+        name="function.type",
+        default=ImpedanceType.CPRP,
+    )
+    aperture: int = msgspec.field(
+        name="aperture.aperture",
+        default=1,
+    )
+    filter_factor: int = msgspec.field(
+        name="aperture.filter_factor",
+        default=5,
+    )
+    delay_factor: int = msgspec.field(
+        name="aperture.delay_factor",
+        default=10,
+    )
+    correction_length: int = msgspec.field(
+        name="correction.length",
+        default=0,
+    )
+    correction_open: bool = msgspec.field(
+        name="correction.open.enabled",
+        default=False,
+    )
+    correction_short: bool = msgspec.field(
+        name="correction.short.enabled",
+        default=False,
+    )
+    correction_load: bool = msgspec.field(
+        name="correction.load.enabled",
+        default=False,
+    )
+    amplitude_voltage: float = msgspec.field(
+        name="voltage",
+        default=0.1,
+    )
+    amplitude_frequency: float = msgspec.field(
+        name="frequency",
+        default=1.0e5,
+    )
+    bias_voltage: float | None = msgspec.field(
+        name="bias_voltage",
+        default=None,
+    )
+    ac_range: float | None = msgspec.field(
+        name="ac_range",
+        default=None,
+    )
 
 
 class K4215Adapter:
@@ -63,54 +131,43 @@ class K4215Adapter:
         return InstrumentError(-1, response.strip())
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=K4215Options))
+
+    def _configure(self, options: K4215Options) -> None:
         """Configure the CVU for measurements options."""
         # Set CVU mode (0 = user mode)
         self._write(":CVU:MODE 0")
 
         # Configure external bias tee option
-        external_bias_tee = options.get("external_bias_tee.enabled", False)
-        self._external_bias_tee_enabled = external_bias_tee
+        self._external_bias_tee_enabled = options.external_bias_tee
 
         # Enable -10V DC bias for P3 bias tee if selected
         if self._external_bias_tee_enabled:
             self.enable_bias_tee_dc_voltage()
 
         # Configure impedance/function type, default CPRP
-        function_type = options.get("function.type", "CPRP")
-        self.set_function_impedance_type(function_type)
+        self.set_function_impedance_type(options.function_type)
 
         # Configure aperture/speed settings
-        aperture = options.get("aperture.aperture", 1)
-        filter_factor = options.get("aperture.filter_factor", 5)
-        delay_factor = options.get("aperture.delay_factor", 10)
-        self.set_aperture(aperture, filter_factor, delay_factor)
+        self.set_aperture(options.aperture, options.filter_factor, options.delay_factor)
 
         # Configure correction settings
-        correction_length = options.get("correction.length", 0)
-        self.set_correction_length(correction_length)
-
-        correction_open = options.get("correction.open.enabled", False)
-        correction_short = options.get("correction.short.enabled", False)
-        correction_load = options.get("correction.load.enabled", False)
-        self.set_correction(correction_open, correction_short, correction_load)
+        self.set_correction_length(options.correction_length)
+        self.set_correction(
+            options.correction_open, options.correction_short, options.correction_load
+        )
 
         # Set measurement parameters
-        voltage = options.get("voltage", 0.1)
-        self.set_amplitude_voltage(voltage)
-
-        frequency = options.get("frequency", 1.0e5)
-        self.set_amplitude_frequency(frequency)
+        self.set_amplitude_voltage(options.amplitude_voltage)
+        self.set_amplitude_frequency(options.amplitude_frequency)
 
         # Set bias voltage only if external bias tee is NOT enabled
-        if not external_bias_tee:
-            bias_voltage = options.get("bias_voltage", None)
-            if bias_voltage is not None:
-                self.set_voltage_level(bias_voltage)
+        if not options.external_bias_tee and options.bias_voltage is not None:
+            self.set_voltage_level(options.bias_voltage)
 
         # Set AC impedance range if specified
-        ac_range = options.get("ac_range", None)
-        if ac_range is not None:
-            self.set_aci_range(ac_range)
+        if options.ac_range is not None:
+            self.set_aci_range(options.ac_range)
         else:
             self.set_aci_range(0)  # Auto range
 
@@ -213,11 +270,11 @@ class K4215Adapter:
                 f"Failed to parse impedance reading: {result!r}"
             ) from exc
 
-    def set_function_impedance_type(self, impedance_type: int | str) -> None:
+    def set_function_impedance_type(self, impedance_type: ImpedanceType) -> None:
         """Set the impedance equivalent circuit representation.
 
         Args:
-            impedance_type: Can be integer (0-7) or string ("CPRP", "CSRS", etc.)
+            impedance_type: Can be integer 0-7
 
         CVU model types:
         0: Z, theta
@@ -228,30 +285,6 @@ class K4215Adapter:
         5: Cs, D
         7: Y, theta
         """
-        if isinstance(impedance_type, str):
-            # Map string types to integer values
-            type_map = {
-                "ZTHETA": 0,
-                "RPLUSJX": 1,
-                "CPRP": 2,
-                "CPGP": 2,
-                "CSRS": 3,
-                "CPD": 4,
-                "CSD": 5,
-                "YTHETA": 7,
-            }
-            impedance_type = type_map.get(impedance_type.upper(), 2)  # Default to Cp,Rp
-        if not isinstance(impedance_type, int) or impedance_type not in [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            7,
-        ]:
-            impedance_type = 2  # Default to Cp,Rp if invalid
-
         self._write(f":CVU:MODEL {impedance_type}")
 
     def set_aperture(

@@ -1,5 +1,7 @@
 from PySide6 import QtWidgets
 
+from diode_measurement.drivers.keithley.k6514 import TControlMode
+
 from ..metric import MetricWidget
 from ..panel import FSMState, InstrumentPanel, WidgetParameter
 
@@ -65,8 +67,8 @@ class K6514Panel(InstrumentPanel):
         self.filter_mode_label = QtWidgets.QLabel("Mode")
 
         self.filter_mode_combo_box = QtWidgets.QComboBox()
-        self.filter_mode_combo_box.addItem("Repeat", "REP")
-        self.filter_mode_combo_box.addItem("Moving", "MOV")
+        self.filter_mode_combo_box.addItem("Repeat", TControlMode.REP)
+        self.filter_mode_combo_box.addItem("Moving", TControlMode.MOV)
 
         filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
         filter_layout.addWidget(self.filter_enable_check_box)

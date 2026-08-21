@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from enum import IntEnum
 from typing import Any
 
+import msgspec
 from comet.driver.cts.itc import ITC
 
 from diode_measurement.core.driver import InstrumentError
@@ -18,6 +19,21 @@ __all__ = ["ITCAdapter"]
 class AnalogChannel(IntEnum):
     TEMPERATURE = 1
     HUMIDITY = 2
+
+
+class ITCOptions(msgspec.Struct):
+    setpoint_enabled: bool = msgspec.field(
+        name="setpoint.enabled",
+        default=False,
+    )
+    temperature_tolerance: float = msgspec.field(
+        name="setpoint.tolerance",
+        default=0.2,
+    )
+    target_temperature: float = msgspec.field(
+        name="setpoint.temperature",
+        default=24.0,
+    )
 
 
 class ITCAdapter:
@@ -48,14 +64,13 @@ class ITCAdapter:
         return None
 
     def configure(self, options: Mapping[str, Any]) -> None:
-        setpoint_enabled = options.get("setpoint.enabled", False)
-        self.set_setpoint_enabled(setpoint_enabled)
-        tolerance = options.get("setpoint.tolerance", 0.2)
-        self.set_temperature_tolerance(tolerance)
+        self._configure(msgspec.convert(options, type=ITCOptions))
 
-        if self.is_setpoint_enabled():
-            target_temperature = options["setpoint.temperature"]
-            self.set_target_temperature(target_temperature)
+    def _configure(self, options: ITCOptions) -> None:
+        self.set_setpoint_enabled(options.setpoint_enabled)
+        self.set_temperature_tolerance(options.temperature_tolerance)
+        if options.setpoint_enabled:
+            self.set_target_temperature(options.target_temperature)
 
     def get_temperature(self) -> float:
         return self._itc.analog_channel[AnalogChannel.TEMPERATURE][0]

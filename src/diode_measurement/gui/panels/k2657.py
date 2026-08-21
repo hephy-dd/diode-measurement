@@ -1,5 +1,7 @@
 from PySide6 import QtWidgets
 
+from diode_measurement.drivers.keithley.k2657a import FilterType
+
 from ..panel import FSMState, InstrumentPanel, WidgetParameter
 
 __all__ = ["K2657APanel"]
@@ -22,9 +24,9 @@ class K2657APanel(InstrumentPanel):
         self.filter_mode_label = QtWidgets.QLabel("Mode")
 
         self.filter_mode_combo_box = QtWidgets.QComboBox()
-        self.filter_mode_combo_box.addItem("Repeat", "REPEAT_AVG")
-        self.filter_mode_combo_box.addItem("Moving", "MOVING_AVG")
-        self.filter_mode_combo_box.addItem("Median", "MEDIAN")
+        self.filter_mode_combo_box.addItem("Repeat", FilterType.REPEAT_AVG)
+        self.filter_mode_combo_box.addItem("Moving", FilterType.MOVING_AVG)
+        self.filter_mode_combo_box.addItem("Median", FilterType.MEDIAN)
 
         filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
         filter_layout.addWidget(self.filter_enable_check_box)

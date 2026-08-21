@@ -1,6 +1,8 @@
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any
 
+import msgspec
 from comet.driver.keithley.k2470 import K2470
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
@@ -8,6 +10,69 @@ from diode_measurement.core.resource import Resource
 from diode_measurement.core.scpi import parse_scpi_error
 
 __all__ = ["K2470Adapter"]
+
+
+class TerminalsLocation(StrEnum):
+    FRONT = "FRON"
+    REAR = "REAR"
+
+
+class TControlMode(StrEnum):
+    REP = "REP"
+    MOV = "MOV"
+
+
+class ProtectionSetting(StrEnum):
+    AUTO = "AUTO"
+    OFF = "OFF"
+    ON = "ON"
+
+
+class K2470Options(msgspec.Struct):
+    route_terminals: TerminalsLocation = msgspec.field(
+        name="route.terminals",
+        default=TerminalsLocation.FRONT,
+    )
+    sense_range: float = msgspec.field(
+        name="sense.range",
+        default=1e-08,
+    )
+    sense_auto_range_lower_limit: float = msgspec.field(
+        name="sense.auto_range.lower_limit",
+        default=1e-08,
+    )
+    sense_auto_range: bool = msgspec.field(
+        name="sense.auto_range",
+        default=True,
+    )
+    filter_mode: TControlMode = msgspec.field(
+        name="filter.mode",
+        default=TControlMode.REP,
+    )
+    filter_count: int = msgspec.field(
+        name="filter.count",
+        default=10,
+    )
+    filter_enable: bool = msgspec.field(
+        name="filter.enable",
+        default=False,
+    )
+    nplc: float = msgspec.field(
+        name="nplc",
+        default=1.0,
+    )
+    system_breakdown_protection: ProtectionSetting = msgspec.field(
+        name="system.breakdown.protection",
+        default=ProtectionSetting.AUTO,
+    )
+    source_delay_auto: bool = msgspec.field(
+        name="source.delay.auto",
+        default=True,
+    )
+    sense_azero: bool = msgspec.field(
+        name="sense.azero",
+        default=True,
+    )
 
 
 class K2470Adapter:
@@ -28,44 +93,29 @@ class K2470Adapter:
         return parse_scpi_error(self._query(":SYST:ERR?"))
 
     def configure(self, options: Mapping[str, Any]) -> None:
-        route_terminals = options.get("route.terminals", "FRON")
-        self.set_route_terminals(route_terminals)
+        self._configure(msgspec.convert(options, type=K2470Options))
+
+    def _configure(self, options: K2470Options) -> None:
+        self.set_route_terminals(options.route_terminals)
 
         self.set_source_function("VOLT")
-
         self.set_sense_function("CURR")
 
-        sense_range = options.get("sense.range", 1e-08)
-        self.set_sense_current_range(sense_range)
-
-        sense_auto_range_lower_limit = options.get(
-            "sense.auto_range.lower_limit", 1e-08
+        self.set_sense_current_range(options.sense_range)
+        self.set_sense_current_range_auto_lower_limit(
+            options.sense_auto_range_lower_limit
         )
-        self.set_sense_current_range_auto_lower_limit(sense_auto_range_lower_limit)
+        self.set_sense_current_range_auto(options.sense_auto_range)
 
-        sense_auto_range = options.get("sense.auto_range", True)
-        self.set_sense_current_range_auto(sense_auto_range)
+        self.set_sense_current_average_tcontrol(options.filter_mode)
+        self.set_sense_current_average_count(options.filter_count)
+        self.set_sense_current_average_enable(options.filter_enable)
 
-        filter_mode = options.get("filter.mode", "MOV")
-        self.set_sense_current_average_tcontrol(filter_mode)
+        self.set_sense_current_nplc(options.nplc)
 
-        filter_count = options.get("filter.count", 10)
-        self.set_sense_current_average_count(filter_count)
-
-        filter_enable = options.get("filter.enable", False)
-        self.set_sense_current_average_enable(filter_enable)
-
-        nplc = options.get("nplc", 1.0)
-        self.set_sense_current_nplc(nplc)
-
-        system_breakdown_protection = options.get("system.breakdown.protection", "AUTO")
-        self.set_system_breakdown_protection(system_breakdown_protection)
-
-        source_delay_auto = options.get("source.delay.auto", True)
-        self.set_source_voltage_delay_auto(source_delay_auto)
-
-        sense_azero = options.get("sense.azero", True)
-        self.set_sense_current_azero(sense_azero)
+        self.set_system_breakdown_protection(options.system_breakdown_protection)
+        self.set_source_voltage_delay_auto(options.source_delay_auto)
+        self.set_sense_current_azero(options.sense_azero)
 
     def get_output_enabled(self) -> bool:
         return self._query(":OUTP:STAT?") == "1"
@@ -108,8 +158,8 @@ class K2470Adapter:
                 f"Unexpected instrument response for READ?: {result!r}"
             ) from exc
 
-    def set_route_terminals(self, terminal: str) -> None:
-        self._write(f":ROUT:TERM {terminal}")
+    def set_route_terminals(self, location: TerminalsLocation) -> None:
+        self._write(f":ROUT:TERM {location}")
 
     def set_source_function(self, function: str) -> None:
         self._write(f":SOUR:FUNC {function}")
@@ -128,8 +178,8 @@ class K2470Adapter:
     def set_sense_current_range_auto_lower_limit(self, limit: float) -> None:
         self._write(f":SENS:CURR:RANG:AUTO:LLIM {limit:E}")
 
-    def set_sense_current_average_tcontrol(self, tcontrol: str) -> None:
-        self._write(f":SENS:CURR:AVER:TCON {tcontrol}")
+    def set_sense_current_average_tcontrol(self, mode: TControlMode) -> None:
+        self._write(f":SENS:CURR:AVER:TCON {mode}")
 
     def set_sense_current_average_count(self, count: int) -> None:
         self._write(f":SENS:CURR:AVER:COUN {count:d}")
@@ -140,12 +190,8 @@ class K2470Adapter:
     def set_sense_current_nplc(self, nplc: float) -> None:
         self._write(f":SENS:CURR:NPLC {nplc:E}")
 
-    def set_system_breakdown_protection(self, value: str) -> None:
-        if value not in ("AUTO", "OFF", "ON"):
-            raise ValueError(
-                "Breakdown protection must be one of: 'AUTO', 'OFF' or 'ON'"
-            )
-        self._write(f":SYST:BRE:PROT {value}")
+    def set_system_breakdown_protection(self, setting: ProtectionSetting) -> None:
+        self._write(f":SYST:BRE:PROT {setting}")
 
     def is_interlock(self) -> bool:
         """Return status of the interlock."""

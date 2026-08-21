@@ -1,4 +1,8 @@
-from diode_measurement.drivers.keithley.k6514 import K6514Adapter
+from diode_measurement.drivers.keithley.k6514 import (
+    K6514Adapter,
+    SenseFunction,
+    TControlMode,
+)
 
 
 def test_k6514_adapter(res):
@@ -25,7 +29,7 @@ def test_k6514_adapter(res):
     assert res.buffer == [":FORM:ELEM VOLT,CURR", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_sense_function("VOLT") is None
+    assert d.set_sense_function(SenseFunction.VOLTAGE) is None
     assert res.buffer == [":SENS:FUNC 'VOLT'", "*OPC?"]
 
     res.buffer = ["1"]
@@ -37,7 +41,7 @@ def test_k6514_adapter(res):
     assert res.buffer == [":SENS:CURR:RANG:AUTO 1", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_sense_average_tcontrol("MOV") is None
+    assert d.set_sense_average_tcontrol(TControlMode.MOV) is None
     assert res.buffer == [":SENS:AVER:TCON MOV", "*OPC?"]
 
     res.buffer = ["1"]

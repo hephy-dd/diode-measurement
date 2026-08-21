@@ -1,12 +1,20 @@
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+import msgspec
 from comet.driver.keithley.k708b import K708B
 
 from diode_measurement.core.driver import InstrumentError
 from diode_measurement.core.resource import Resource
 
 __all__ = ["K708B"]
+
+
+class K708BOptions(msgspec.Struct):
+    channels: list[str] = msgspec.field(
+        name="channels",
+        default=[],
+    )
 
 
 class K708BAdapter:
@@ -27,9 +35,11 @@ class K708BAdapter:
         return self._driver.next_error()
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=K708BOptions))
+
+    def _configure(self, options: K708BOptions) -> None:
         self.open_all_channels()
-        channels = options.get("channels", [])
-        self.close_channels(channels)
+        self.close_channels(options.channels)
 
     def open_all_channels(self) -> None:
         self._driver.open_all_channels()

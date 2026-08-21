@@ -1,12 +1,64 @@
 import time
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any
+
+import msgspec
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
 from diode_measurement.core.resource import Resource
 from diode_measurement.core.scpi import parse_scpi_error
 
 __all__ = ["E4980AAdapter"]
+
+
+class FunctionType(StrEnum):
+    CPRP = "CPRP"
+
+
+class IntegrationTime(StrEnum):
+    SHORT = "SHOR"
+    MEDIUM = "MED"
+    LONG = "LONG"
+
+
+class E4980AOptions(msgspec.Struct):
+    function_type: FunctionType = msgspec.field(
+        name="function.type",
+        default=FunctionType.CPRP,
+    )
+    integration_time: IntegrationTime = msgspec.field(
+        name="aperture.integration_time",
+        default=IntegrationTime.MEDIUM,
+    )
+    averaging_rate: int = msgspec.field(
+        name="aperture.averaging_rate",
+        default=1,
+    )
+    correction_length: int = msgspec.field(
+        name="correction.length",
+        default=0,
+    )
+    correction_open_enabled: bool = msgspec.field(
+        name="correction.open.enabled",
+        default=False,
+    )
+    correction_short_enabled: bool = msgspec.field(
+        name="correction.short.enabled",
+        default=False,
+    )
+    amplitude_voltage: float = msgspec.field(
+        name="voltage",
+        default=1.0,
+    )
+    amplitude_frequency: float = msgspec.field(
+        name="frequency",
+        default=1000.0,
+    )
+    amplitude_alc: bool = msgspec.field(
+        name="amplitude.alc",
+        default=False,
+    )
 
 
 class E4980AAdapter:
@@ -26,39 +78,31 @@ class E4980AAdapter:
         return parse_scpi_error(self._query(":SYST:ERR?"))
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=E4980AOptions))
+
+    def _configure(self, options: E4980AOptions) -> None:
         self._write(":SYST:BEEP:STAT 0")
         self._write(":BIAS:RANG:AUTO 1")
         self._write(":INIT:CONT OFF")
         self._write(":TRIG:SOUR BUS")
 
-        function_type = options.get("function.type", "CPRP")
-        self.set_function_impedance_type(function_type)
+        self.set_function_impedance_type(options.function_type)
 
         # Aperture
-        integration_time = options.get("aperture.integration_time", "MED")
-        averaging_rate = options.get("aperture.averaging_rate", 1)
-        self.set_aperture(integration_time, averaging_rate)
+        self.set_aperture(options.integration_time, options.averaging_rate)
 
         # Correction cable length
-        correction_length = options.get("correction.length", 0)
-        self.set_correction_length(correction_length)
+        self.set_correction_length(options.correction_length)
 
         # Enable open correction
-        correction_open_enabled = options.get("correction.open.enabled", False)
-        self.set_correction_open_state(correction_open_enabled)
+        self.set_correction_open_state(options.correction_open_enabled)
 
         # Enable open correction
-        correction_short_enabled = options.get("correction.short.enabled", False)
-        self.set_correction_short_state(correction_short_enabled)
+        self.set_correction_short_state(options.correction_short_enabled)
 
-        voltage = options.get("voltage", 1.0)
-        self.set_amplitude_voltage(voltage)
-
-        frequency = options.get("frequency", 1000.0)
-        self.set_amplitude_frequency(frequency)
-
-        amplitude_alc = options.get("amplitude.alc", False)
-        self.set_amplitude_alc(amplitude_alc)
+        self.set_amplitude_voltage(options.amplitude_voltage)
+        self.set_amplitude_frequency(options.amplitude_frequency)
+        self.set_amplitude_alc(options.amplitude_alc)
 
     def get_output_enabled(self) -> bool:
         return self._query(":BIAS:STAT?") == "1"
@@ -95,11 +139,12 @@ class E4980AAdapter:
                 f"Failed to parse impedance reading: {result!r}"
             ) from exc
 
-    def set_function_impedance_type(self, impedance_type: str) -> None:
+    def set_function_impedance_type(self, impedance_type: FunctionType) -> None:
         self._write(f":FUNC:IMP:TYPE {impedance_type}")
 
-    def set_aperture(self, integration_time: str, averaging_rate: int) -> None:
-        assert integration_time in ["SHOR", "MED", "LONG"]
+    def set_aperture(
+        self, integration_time: IntegrationTime, averaging_rate: int
+    ) -> None:
         assert 1 <= averaging_rate <= 256
         self._write(f":APER {integration_time},{averaging_rate:d}")
 

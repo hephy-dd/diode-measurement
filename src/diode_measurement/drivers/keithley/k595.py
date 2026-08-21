@@ -3,6 +3,8 @@ import time
 from collections.abc import Mapping
 from typing import Any, Final
 
+import msgspec
+
 from diode_measurement.core.driver import InstrumentError, handle_exception
 from diode_measurement.core.resource import Resource
 
@@ -17,6 +19,9 @@ ERROR_MESSAGES: Final[dict[int, str]] = {
     5: "Number",
     6: "Self Test",
 }
+
+
+class K595Options(msgspec.Struct): ...
 
 
 class K595Adapter:
@@ -45,6 +50,9 @@ class K595Adapter:
         return None
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=K595Options))
+
+    def _configure(self, options: K595Options) -> None:
         self._write("T0X")
         self._write("V0X")
 

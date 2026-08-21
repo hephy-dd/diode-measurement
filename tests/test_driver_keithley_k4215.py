@@ -1,6 +1,6 @@
 import pytest
 
-from diode_measurement.drivers.keithley.k4215 import K4215Adapter
+from diode_measurement.drivers.keithley.k4215 import ImpedanceType, K4215Adapter
 
 
 def test_driver_k4215_basic_operations(res):
@@ -199,53 +199,43 @@ def test_driver_k4215_impedance_functions(res):
 
     # Test impedance type with string (CPRP maps to 2)
     res.buffer = []
-    assert d.set_function_impedance_type("CPRP") is None
+    assert d.set_function_impedance_type(ImpedanceType.CPRP) is None
     assert res.buffer == [":CVU:MODEL 2"]
 
     # Test impedance type with string (CPGP also maps to 2)
     res.buffer = []
-    assert d.set_function_impedance_type("CPGP") is None
+    assert d.set_function_impedance_type(ImpedanceType.CPGP) is None
     assert res.buffer == [":CVU:MODEL 2"]
 
     # Test impedance type with string (CSRS maps to 3)
     res.buffer = []
-    assert d.set_function_impedance_type("CSRS") is None
+    assert d.set_function_impedance_type(ImpedanceType.CSRS) is None
     assert res.buffer == [":CVU:MODEL 3"]
 
     # Test impedance type with string (ZTHETA maps to 0)
     res.buffer = []
-    assert d.set_function_impedance_type("ZTHETA") is None
+    assert d.set_function_impedance_type(ImpedanceType.ZTHETA) is None
     assert res.buffer == [":CVU:MODEL 0"]
 
     # Test impedance type with string (RPLUSJX maps to 1)
     res.buffer = []
-    assert d.set_function_impedance_type("RPLUSJX") is None
+    assert d.set_function_impedance_type(ImpedanceType.RPLUSJX) is None
     assert res.buffer == [":CVU:MODEL 1"]
 
     # Test impedance type with string (CPD maps to 4)
     res.buffer = []
-    assert d.set_function_impedance_type("CPD") is None
+    assert d.set_function_impedance_type(ImpedanceType.CPD) is None
     assert res.buffer == [":CVU:MODEL 4"]
 
     # Test impedance type with string (CSD maps to 5)
     res.buffer = []
-    assert d.set_function_impedance_type("CSD") is None
+    assert d.set_function_impedance_type(ImpedanceType.CSD) is None
     assert res.buffer == [":CVU:MODEL 5"]
 
     # Test impedance type with string (YTHETA maps to 7)
     res.buffer = []
-    assert d.set_function_impedance_type("YTHETA") is None
+    assert d.set_function_impedance_type(ImpedanceType.YTHETA) is None
     assert res.buffer == [":CVU:MODEL 7"]
-
-    # Test impedance type with integer
-    res.buffer = []
-    assert d.set_function_impedance_type(3) is None
-    assert res.buffer == [":CVU:MODEL 3"]
-
-    # Test impedance type with invalid string (should default to 2)
-    res.buffer = []
-    assert d.set_function_impedance_type("INVALID") is None
-    assert res.buffer == [":CVU:MODEL 2"]
 
 
 def test_driver_k4215_aperture_control(res):

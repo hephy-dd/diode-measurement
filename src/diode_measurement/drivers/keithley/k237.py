@@ -1,7 +1,10 @@
 import logging
 import time
 from collections.abc import Mapping
+from enum import IntEnum
 from typing import Any, Final
+
+import msgspec
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
 from diode_measurement.core.resource import Resource
@@ -40,6 +43,22 @@ ERROR_MESSAGES: Final[dict[int, str]] = {
 logger = logging.getLogger(__name__)
 
 
+class FilterMode(IntEnum):
+    DISABLED = 0
+    READINGS_2 = 1
+    READINGS_4 = 2
+    READINGS_8 = 3
+    READINGS_16 = 4
+    READINGS_32 = 5
+
+
+class K237Options(msgspec.Struct):
+    filter_mode: FilterMode = msgspec.field(
+        name="filter.mode",
+        default=FilterMode.DISABLED,
+    )
+
+
 class K237Adapter:
     WRITE_DELAY: float = 0.250
 
@@ -66,10 +85,12 @@ class K237Adapter:
         return None
 
     def configure(self, options: Mapping[str, Any]) -> None:
+        self._configure(msgspec.convert(options, type=K237Options))
+
+    def _configure(self, options: K237Options) -> None:
         self._write("F0,0X")  # function VOLT
         self._write("B0,0,0X")  # bias to auto
-        filter_mode = options.get("filter.mode", 0)
-        self._write(f"P{filter_mode:d}X")
+        self.set_filter_mode(options.filter_mode)
 
     def get_output_enabled(self) -> bool:
         return self._query("U3X")[18:20] == "N1"
@@ -88,6 +109,9 @@ class K237Adapter:
     def set_voltage_range(self, level: float) -> None:
         index = self._voltage_range(level)
         self._write(f"B,{index:d},X")
+
+    def set_filter_mode(self, mode: FilterMode) -> None:
+        self._write(f"P{mode:d}X")
 
     def set_current_compliance_level(self, level: float) -> None:
         self._write(f"L{level:.3E},0X")

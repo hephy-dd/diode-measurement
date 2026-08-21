@@ -1,5 +1,7 @@
 from PySide6 import QtWidgets
 
+from diode_measurement.drivers.keithley.k237 import FilterMode
+
 from ..panel import FSMState, InstrumentPanel, WidgetParameter
 
 __all__ = ["K237Panel"]
@@ -17,12 +19,12 @@ class K237Panel(InstrumentPanel):
         self.filter_mode_label = QtWidgets.QLabel("Mode")
 
         self.filter_mode_combo_box = QtWidgets.QComboBox()
-        self.filter_mode_combo_box.addItem("Disabled", 0)
-        self.filter_mode_combo_box.addItem("2-readings", 1)
-        self.filter_mode_combo_box.addItem("4-readings", 2)
-        self.filter_mode_combo_box.addItem("8-readings", 3)
-        self.filter_mode_combo_box.addItem("16-readings", 4)
-        self.filter_mode_combo_box.addItem("32-readings", 5)
+        self.filter_mode_combo_box.addItem("Disabled", FilterMode.DISABLED)
+        self.filter_mode_combo_box.addItem("2-readings", FilterMode.READINGS_2)
+        self.filter_mode_combo_box.addItem("4-readings", FilterMode.READINGS_4)
+        self.filter_mode_combo_box.addItem("8-readings", FilterMode.READINGS_8)
+        self.filter_mode_combo_box.addItem("16-readings", FilterMode.READINGS_16)
+        self.filter_mode_combo_box.addItem("32-readings", FilterMode.READINGS_32)
 
         filter_layout = QtWidgets.QVBoxLayout(self.filter_group_box)
         filter_layout.addWidget(self.filter_mode_label)
