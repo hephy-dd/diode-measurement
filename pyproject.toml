@@ -62,3 +62,6 @@ ignore_missing_imports = true
 
 [tool.ruff.lint]
 extend-ignore = ["BLE001", "RUF022"]
+
+[tool.pyright]
+typeCheckingMode = "standard"
