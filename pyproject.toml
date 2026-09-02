@@ -23,7 +23,7 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "comet",
+    "comet @ https://github.com/hephy-dd/comet/archive/refs/tags/v1.6.0.tar.gz",
     "PySide6~=6.11.1",
     "PyVISA~=1.16.1",
     "PyVISA-py~=0.8.1",
@@ -36,9 +36,6 @@ Source = "https://github.com/hephy-dd/diode-measurement/"
 
 [project.scripts]
 diode-measurement = "diode_measurement.__main__:main"
-
-[tool.uv.sources]
-comet = { git = "https://github.com/hephy-dd/comet.git", tag = "v1.6.0" }
 
 [tool.ruff.lint]
 extend-ignore = ["BLE001", "RUF022"]

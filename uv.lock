@@ -5,8 +5,22 @@ requires-python = ">=3.11"
 [[package]]
 name = "comet"
 version = "1.6.0"
-source = { git = "https://github.com/hephy-dd/comet.git?tag=v1.6.0#fefbfa8cd35d7ac1421ede29c27f76d9f7b0478f" }
+source = { url = "https://github.com/hephy-dd/comet/archive/refs/tags/v1.6.0.tar.gz" }
 dependencies = [
+    { name = "numpy" },
+    { name = "pint" },
+    { name = "pyserial" },
+    { name = "pyusb" },
+    { name = "pyvisa" },
+    { name = "pyvisa-py" },
+    { name = "pyvisa-sim" },
+    { name = "pyyaml" },
+    { name = "schema" },
+]
+sdist = { hash = "sha256:7523958892375f75e3316bb4028cd1e522f049e413cce5dc93d31143f3ad20ba" }
+
+[package.metadata]
+requires-dist = [
     { name = "numpy" },
     { name = "pint" },
     { name = "pyserial" },
@@ -32,7 +46,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "comet", git = "https://github.com/hephy-dd/comet.git?tag=v1.6.0" },
+    { name = "comet", url = "https://github.com/hephy-dd/comet/archive/refs/tags/v1.6.0.tar.gz" },
     { name = "json-rpc", specifier = "~=1.15" },
     { name = "pyside6", specifier = "~=6.11.1" },
     { name = "pyvisa", specifier = "~=1.16.1" },
