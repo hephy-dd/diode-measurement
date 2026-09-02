@@ -1,9 +1,10 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.9,<0.13"]
+build-backend = "uv_build"
 
 [project]
 name = "diode-measurement"
+version = "0.31.2"
 description = "IV/CV measurements for silicon sensors."
 readme = "README.md"
 license = {text = "GPLv3"}
@@ -22,13 +23,12 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "comet @ https://github.com/hephy-dd/comet/archive/refs/tags/v1.5.1.tar.gz",
+    "comet",
     "PySide6~=6.11.1",
     "PyVISA~=1.16.1",
     "PyVISA-py~=0.8.1",
     "json-rpc~=1.15",
 ]
-dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/hephy-dd/diode-measurement/"
@@ -37,28 +37,8 @@ Source = "https://github.com/hephy-dd/diode-measurement/"
 [project.scripts]
 diode-measurement = "diode_measurement.__main__:main"
 
-[tool.hatch.version]
-path = "src/diode_measurement/__init__.py"
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build.targets.sdist]
-include = [
-    "src",
-    "tests",
-    "docs",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE",
-    "tox.ini",
-]
-
-[tool.mypy]
-
-[[tool.mypy.overrides]]
-module = ["jsonrpc.*"]
-ignore_missing_imports = true
+[tool.uv.sources]
+comet = { git = "https://github.com/hephy-dd/comet.git", tag = "v1.6.0" }
 
 [tool.ruff.lint]
 extend-ignore = ["BLE001", "RUF022"]
