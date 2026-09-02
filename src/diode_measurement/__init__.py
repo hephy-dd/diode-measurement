@@ -1,1 +1,3 @@
-__version__ = "0.31.2"
+from importlib.metadata import version
+
+__version__ = version("diode-measurement")
