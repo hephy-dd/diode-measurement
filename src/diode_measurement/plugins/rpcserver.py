@@ -21,7 +21,7 @@ from diode_measurement.controller import Controller, GeneralConfig
 from diode_measurement.core.events import ChangeVoltageParameters
 from diode_measurement.core.plugin import Plugin
 from diode_measurement.core.role import Role
-from diode_measurement.core.utils import get_bool, get_int, get_str
+from diode_measurement.gui.adapters import SettingsAdapter
 
 __all__ = ["RPCServerPlugin"]
 
@@ -35,7 +35,7 @@ def is_finite(value: Any) -> bool:
     return True
 
 
-def json_dict(d: dict) -> dict:
+def json_dict(d: dict[Any, Any]) -> dict[Any, Any]:
     """Replace non-finite floats (nan, +inf, -inf) with `None` to be converted to `null` in JSON."""
     return {k: (v if is_finite(v) else None) for k, v in d.items()}
 
@@ -108,7 +108,7 @@ class InstrumentUpdateEvent:
 @dataclass(frozen=True, slots=True)
 class Envelope:
     event: Any
-    future: Future
+    future: Future[Any]
 
 
 class EventHandler:
@@ -123,8 +123,8 @@ class EventHandler:
     def shutdown(self) -> None:
         self.event_timer.stop()
 
-    def notify(self, event: Callable[[Controller], Any]) -> Future:
-        future: Future = Future()
+    def notify(self, event: Callable[[Controller], Any]) -> Future[Any]:
+        future: Future[Any] = Future()
         self.inbox.put_nowait(Envelope(event, future))
         return future
 
@@ -402,11 +402,13 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         super().__init__(parent)
         self._thread = threading.Thread(target=self.run)
         self._enabled = threading.Event()
-        self._shutdown_handlers: list = []
-        self._message_cache: list = []
+        self._shutdown_handlers: list[Callable[[], None]] = []
+        self._message_cache: list[str] = []
         self._message_cache_lock = threading.RLock()
         self._message_timer = QtCore.QTimer()
         self._message_timer.timeout.connect(self.append_cached_messages)
+        self.event_handler = None
+        self.rpc_handler = None
         self.failed.connect(
             lambda _: self.rpc_widget.set_server_enabled(False)
         )  # disable on error
@@ -429,26 +431,28 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         self.write_settings()
 
     def read_settings(self) -> None:
-        settings = QtCore.QSettings()
-        settings.beginGroup("tcpServer")
-        enabled = get_bool(settings.value("enabled"), False)
-        hostname = get_str(settings.value("hostname"), "")
-        port = get_int(settings.value("port"), 4000)
-        settings.endGroup()
-        self.rpc_widget.set_server_enabled(enabled)
-        self.rpc_widget.set_hostname(hostname)
-        self.rpc_widget.set_port(port)
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("tcpServer"):
+            enabled = settings.get("enabled", False)
+            self.rpc_widget.set_server_enabled(enabled)
+
+            hostname = settings.get("hostname", "")
+            self.rpc_widget.set_hostname(hostname)
+
+            port = settings.get("port", 4000)
+            self.rpc_widget.set_port(port)
 
     def write_settings(self) -> None:
-        settings = QtCore.QSettings()
-        enabled = self.rpc_widget.is_server_enabled()
-        hostname = self.rpc_widget.hostname()
-        port = self.rpc_widget.port()
-        settings.beginGroup("tcpServer")
-        settings.setValue("enabled", enabled)
-        settings.setValue("hostname", hostname)
-        settings.setValue("port", port)
-        settings.endGroup()
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("tcpServer"):
+            enabled = self.rpc_widget.is_server_enabled()
+            settings.set("enabled", enabled)
+
+            hostname = self.rpc_widget.hostname()
+            settings.set("hostname", hostname)
+
+            port = self.rpc_widget.port()
+            settings.set("port", port)
 
     def _request_restart(self) -> None:
         for handler in self._shutdown_handlers:

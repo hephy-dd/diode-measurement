@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 
-from ..core.utils import get_bool, get_float, get_str
+from .adapters import SettingsAdapter
 
 TIMESTAMP_FORMATS: list[str] = [
     ".3f",
@@ -100,25 +100,19 @@ class OutputWidget(QtWidgets.QWidget):
         self.value_format_combo_box.setCurrentIndex(index)
 
     def read_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("writer"):
+            timestamp_format = settings.get("timestampFormat", TIMESTAMP_FORMATS[1])
+            self.set_timestamp_format(timestamp_format)
 
-        timestamp_format = get_str(
-            settings.value("writer/timestampFormat"),
-            TIMESTAMP_FORMATS[1],
-        )
-        self.set_timestamp_format(timestamp_format)
-
-        value_format = get_str(
-            settings.value("writer/valueFormat"),
-            VALUE_FORMATS[0],
-        )
-        self.set_value_format(value_format)
+            value_format = settings.get("valueFormat", VALUE_FORMATS[0])
+            self.set_value_format(value_format)
 
     def write_settings(self) -> None:
-        settings = QtCore.QSettings()
-
-        settings.setValue("writer/timestampFormat", self.timestamp_format())
-        settings.setValue("writer/valueFormat", self.value_format())
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("writer"):
+            settings.set("timestampFormat", self.timestamp_format())
+            settings.set("valueFormat", self.value_format())
 
 
 class MiscWidget(QtWidgets.QWidget):
@@ -151,23 +145,22 @@ class MiscWidget(QtWidgets.QWidget):
         self.read_settings()
 
     def read_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("misc"):
+            discharge_timeout = settings.get("discharge_timeout", 60.0)
+            self.discharge_timeout_spin_box.setValue(discharge_timeout)
 
-        discharge_timeout = get_float(settings.value("misc/discharge_timeout"), 60.0)
-        discharge_threshold = get_float(settings.value("misc/discharge_threshold"), 0.5)
-
-        self.discharge_timeout_spin_box.setValue(discharge_timeout)
-        self.discharge_threshold_spin_box.setValue(discharge_threshold)
+            discharge_threshold = settings.get("discharge_threshold", 0.5)
+            self.discharge_threshold_spin_box.setValue(discharge_threshold)
 
     def write_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("misc"):
+            discharge_timeout = self.discharge_timeout_spin_box.value()
+            settings.set("discharge_timeout", discharge_timeout)
 
-        settings.setValue(
-            "misc/discharge_timeout", self.discharge_timeout_spin_box.value()
-        )
-        settings.setValue(
-            "misc/discharge_threshold", self.discharge_threshold_spin_box.value()
-        )
+            discharge_threshold = self.discharge_threshold_spin_box.value()
+            settings.set("discharge_threshold", discharge_threshold)
 
 
 class LoggingWidget(QtWidgets.QWidget):
@@ -194,20 +187,20 @@ class LoggingWidget(QtWidgets.QWidget):
         self.read_settings()
 
     def read_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("logging"):
+            log_level = settings.get("log_level", "info")
+            index = self.level_combo_box.findData(log_level)
+            self.level_combo_box.setCurrentIndex(max(0, index))
 
-        log_level = get_str(settings.value("logging/log_level"), "info")
-        write_logifle = get_bool(settings.value("logging/write_logfile"), True)
-
-        index = self.level_combo_box.findData(log_level)
-        self.level_combo_box.setCurrentIndex(max(0, index))
-
-        self.write_logfile_check_box.setChecked(write_logifle)
+            write_logifle = settings.get("write_logfile", True)
+            self.write_logfile_check_box.setChecked(write_logifle)
 
     def write_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("logging"):
+            log_level = self.level_combo_box.currentData() or "info"
+            settings.set("log_level", log_level)
 
-        settings.setValue("logging/log_level", self.level_combo_box.currentData())
-        settings.setValue(
-            "logging/write_logfile", self.write_logfile_check_box.isChecked()
-        )
+            write_logfile = self.write_logfile_check_box.isChecked()
+            settings.set("write_logfile", write_logfile)

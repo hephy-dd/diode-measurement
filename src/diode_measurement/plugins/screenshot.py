@@ -5,7 +5,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from diode_measurement.controller import Controller
 from diode_measurement.core.plugin import Plugin
-from diode_measurement.core.utils import get_bool
+from diode_measurement.gui.adapters import SettingsAdapter
 
 __all__ = ["ScreenshotPlugin"]
 
@@ -46,14 +46,14 @@ class ScreenshotPlugin(Plugin):
         self.save_screenshot_check_box.deleteLater()
 
     def read_settings(self) -> None:
-        settings = QtCore.QSettings()
-        enabled = get_bool(settings.value("saveScreenshot"), False)
+        settings = SettingsAdapter(QtCore.QSettings())
+        enabled = settings.get("saveScreenshot", False)
         self.save_screenshot_check_box.setChecked(enabled)
 
     def write_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
         enabled = self.save_screenshot_check_box.isChecked()
-        settings.setValue("saveScreenshot", enabled)
+        settings.set("saveScreenshot", enabled)
 
     def is_option_enabled(self) -> bool:
         return (

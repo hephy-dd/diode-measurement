@@ -14,6 +14,7 @@ from comet.utils import safe_filename
 from PySide6 import QtCore, QtStateMachine, QtWidgets
 
 from .core.cache import Cache
+from .core.context import State
 from .core.events import (
     ChangeDewpointControl,
     ChangeSetpointEnabled,
@@ -32,12 +33,11 @@ from .core.job import Job
 from .core.measurement import (
     FSMState,
     Measurement,
-    State,
 )
 from .core.resource import ResourceConfig, parse_resource
 from .core.role import Role, RoleConfig
 from .core.station import Station
-from .core.utils import get_bool, get_dict, get_float, get_int, get_str
+from .gui.adapters import SettingsAdapter
 from .gui.dialogs import ChangeVoltageDialog
 from .gui.mainwindow import MainWindow
 
@@ -160,8 +160,6 @@ class Controller(QtCore.QObject):
         self._background_jobs.finished.connect(self.finished.emit)
 
         self.main_window = main_window
-
-        self.settings = QtCore.QSettings()
 
         self.is_exception_dialog_active: bool = False
 
@@ -464,12 +462,10 @@ class Controller(QtCore.QObject):
         bias_source_role: Role | None = general_widget.bias_source_role()
 
         # discharge guard
-        discharge_timeout = get_float(
-            self.settings.value("misc/discharge_timeout"), 60.0
-        )
-        discharge_threshold = get_float(
-            self.settings.value("misc/discharge_threshold"), 0.5
-        )
+        settings = SettingsAdapter(QtCore.QSettings())
+        with settings.group("misc"):
+            discharge_timeout = settings.get("misc/discharge_timeout", 60.0)
+            discharge_threshold = settings.get("misc/discharge_threshold", 0.5)
 
         # Filename
         output_enabled = self.main_window.general_widget.is_output_enabled()
@@ -537,189 +533,174 @@ class Controller(QtCore.QObject):
         self.state_machine.stop()
 
     def read_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
 
-        geometry = settings.value("mainwindow/geometry")
-        if isinstance(geometry, QtCore.QByteArray) and not geometry.isEmpty():
-            self.main_window.restoreGeometry(geometry)
-        else:
-            self.main_window.resize(800, 600)
+        with settings.group("mainwindow"):
+            geometry = settings.get("geometry", QtCore.QByteArray())
+            if not self.main_window.restoreGeometry(geometry):
+                self.main_window.resize(800, 600)
 
-        state = settings.value("mainwindow/state")
-        if isinstance(state, QtCore.QByteArray) and not state.isEmpty():
-            self.main_window.restoreState(state)
+            state = settings.get("state", QtCore.QByteArray())
+            _ = self.main_window.restoreState(state)
 
-        continuous = get_bool(settings.value("continuous"), False)
+        continuous = settings.get("continuous", False)
         self.main_window.set_continuous(continuous)
 
-        auto_reconnect = get_bool(settings.value("autoReconnect"), False)
+        auto_reconnect = settings.get("autoReconnect", False)
         self.main_window.set_auto_reconnect(auto_reconnect)
 
-        settings.beginGroup("generalTab")
+        with settings.group("generalTab"):
+            general_widget = self.main_window.general_widget
 
-        general_widget = self.main_window.general_widget
+            index = settings.get("measurement/index", 0)
+            general_widget.measurement_combo_box.setCurrentIndex(index)
 
-        index = get_int(settings.value("measurement/index"), 0)
-        general_widget.measurement_combo_box.setCurrentIndex(index)
+            for role in self._roles:
+                enabled = settings.get(f"{role}/enabled", False)
+                general_widget.set_role_checked(role, enabled)
 
-        for role in self._roles:
-            enabled = get_bool(settings.value(f"{role}/enabled"), False)
-            general_widget.set_role_checked(role, enabled)
+            output_enabled = settings.get("outputEnabled", False)
+            general_widget.set_output_enabled(output_enabled)
 
-        output_enabled = get_bool(settings.value("outputEnabled"), False)
-        general_widget.set_output_enabled(output_enabled)
+            sample_name = settings.get("sampleName", "Unnamed")
+            general_widget.set_sample_name(sample_name)
 
-        sample_name = get_str(settings.value("sampleName"), "Unnamed")
-        general_widget.set_sample_name(sample_name)
+            output_dir = settings.get("outputDir", os.path.expanduser("~"))
+            general_widget.set_output_dir(output_dir)
 
-        output_dir = get_str(settings.value("outputDir"), os.path.expanduser("~"))
-        general_widget.set_output_dir(output_dir)
+            begin_voltage = settings.get("beginVoltage", 1.0)
+            general_widget.set_begin_voltage(begin_voltage)
 
-        begin_voltage = get_float(settings.value("beginVoltage"), 1.0)
-        general_widget.set_begin_voltage(begin_voltage)
+            end_voltage = settings.get("endVoltage", 1.0)
+            general_widget.set_end_voltage(end_voltage)
 
-        end_voltage = get_float(settings.value("endVoltage"), 1.0)
-        general_widget.set_end_voltage(end_voltage)
+            step_voltage = settings.get("stepVoltage", 1.0)
+            general_widget.set_step_voltage(step_voltage)
 
-        step_voltage = get_float(settings.value("stepVoltage"), 1.0)
-        general_widget.set_step_voltage(step_voltage)
+            waiting_time = settings.get("waitingTime", 1.0)
+            general_widget.set_waiting_time(waiting_time)
 
-        waiting_time = get_float(settings.value("waitingTime"), 1.0)
-        general_widget.set_waiting_time(waiting_time)
+            source_role = settings.get("sourceRole", "")
+            try:
+                general_widget.set_source_role(Role(source_role))
+            except ValueError:
+                ...
 
-        source_role = get_str(settings.value("sourceRole"), "")
-        try:
-            general_widget.set_source_role(Role(source_role))
-        except ValueError:
-            ...
+            bias_voltage = settings.get("biasVoltage", 0.0)
+            general_widget.set_bias_voltage(bias_voltage)
 
-        bias_voltage = get_float(settings.value("biasVoltage"), 0.0)
-        general_widget.set_bias_voltage(bias_voltage)
+            bias_source_role = settings.get("biasSourceRole", "")
+            try:
+                general_widget.set_bias_source_role(Role(bias_source_role))
+            except ValueError:
+                ...
 
-        bias_source_role = get_str(settings.value("biasSourceRole"), "")
-        try:
-            general_widget.set_bias_source_role(Role(bias_source_role))
-        except ValueError:
-            ...
+            current_compliance = settings.get("currentCompliance", 1.0)
+            general_widget.set_current_compliance(current_compliance)
 
-        current_compliance = get_float(settings.value("currentCompliance"), 1.0)
-        general_widget.set_current_compliance(current_compliance)
+            continue_in_compliance = settings.get("continueInCompliance", False)
+            general_widget.set_continue_in_compliance(continue_in_compliance)
 
-        continue_in_compliance = get_bool(settings.value("continueInCompliance"), False)
-        general_widget.set_continue_in_compliance(continue_in_compliance)
+            waiting_time_continuous = settings.get("waitingTimeContinuous", 1)
+            general_widget.set_waiting_time_continuous(waiting_time_continuous)
 
-        waiting_time_continuous = get_float(settings.value("waitingTimeContinuous"), 1)
-        general_widget.set_waiting_time_continuous(waiting_time_continuous)
+            wait_for_setpoint = settings.get("waitForSetpoint", False)
+            general_widget.set_wait_for_setpoint(wait_for_setpoint)
 
-        wait_for_setpoint = get_bool(settings.value("waitForSetpoint"), False)
-        general_widget.set_wait_for_setpoint(wait_for_setpoint)
-
-        settings.endGroup()
-
-        settings.beginGroup("roles")
-
-        for role_widget in self.main_window.roles():
-            name = str(role_widget.role())
-            settings.beginGroup(name)
-            role_widget.set_model(get_str(settings.value("model"), ""))
-            role_widget.set_resource_name(get_str(settings.value("resource"), ""))
-            role_widget.set_termination(get_str(settings.value("termination"), ""))
-            role_widget.set_timeout(get_float(settings.value("timeout"), 4.0))
-            role_widget.set_baud_rate(get_int(settings.value("baud_rate"), 9_600))
-            role_widget.set_reset_instrument(
-                get_bool(settings.value("reset_instrument"), False)
-            )
-            role_widget.set_resources(get_dict(settings.value("resources"), {}))
-            role_widget.set_configs(get_dict(settings.value("configs"), {}))
-            settings.endGroup()
-
-        settings.endGroup()
+        with settings.group("roles"):
+            for role_widget in self.main_window.roles():
+                name = str(role_widget.role())
+                with settings.group(name):
+                    role_widget.set_model(settings.get("model", ""))
+                    role_widget.set_resource_name(settings.get("resource", ""))
+                    role_widget.set_termination(settings.get("termination", ""))
+                    role_widget.set_timeout(settings.get("timeout", 4.0))
+                    role_widget.set_baud_rate(settings.get("baud_rate", 9_600))
+                    role_widget.set_reset_instrument(
+                        settings.get("reset_instrument", False)
+                    )
+                    role_widget.set_resources(settings._settings.value("resources", {}))  # type: ignore
+                    role_widget.set_configs(settings._settings.value("configs", {}))  # type: ignore
 
         self.on_instruments_changed()
 
     def write_settings(self) -> None:
-        settings = QtCore.QSettings()
+        settings = SettingsAdapter(QtCore.QSettings())
 
-        settings.setValue("mainwindow/geometry", self.main_window.saveGeometry())
-        settings.setValue("mainwindow/state", self.main_window.saveState())
+        with settings.group("mainwindow"):
+            settings.set("geometry", self.main_window.saveGeometry())
+            settings.set("state", self.main_window.saveState())
 
         continuous = self.main_window.is_continuous()
-        settings.setValue("continuous", continuous)
+        settings.set("continuous", continuous)
 
         auto_reconnect = self.main_window.is_auto_reconnect()
-        settings.setValue("autoReconnect", auto_reconnect)
+        settings.set("autoReconnect", auto_reconnect)
 
-        settings.beginGroup("generalTab")
+        with settings.group("generalTab"):
+            general_widget = self.main_window.general_widget
 
-        general_widget = self.main_window.general_widget
+            measurement_index = general_widget.measurement_combo_box.currentIndex()
+            settings.set("measurement/index", measurement_index)
 
-        measurement_index = general_widget.measurement_combo_box.currentIndex()
-        settings.setValue("measurement/index", measurement_index)
+            for role in self._roles:
+                enabled = general_widget.is_role_checked(role)
+                settings.set(f"{role}/enabled", enabled)
 
-        for role in self._roles:
-            enabled = general_widget.is_role_checked(role)
-            settings.setValue(f"{role}/enabled", enabled)
+            output_enabled = general_widget.is_output_enabled()
+            settings.set("outputEnabled", output_enabled)
 
-        output_enabled = general_widget.is_output_enabled()
-        settings.setValue("outputEnabled", output_enabled)
+            sample_name = general_widget.sample_name()
+            settings.set("sampleName", sample_name)
 
-        sample_name = general_widget.sample_name()
-        settings.setValue("sampleName", sample_name)
+            output_dir = general_widget.output_dir()
+            settings.set("outputDir", output_dir)
 
-        output_dir = general_widget.output_dir()
-        settings.setValue("outputDir", output_dir)
+            begin_voltage = general_widget.begin_voltage()
+            settings.set("beginVoltage", begin_voltage)
 
-        begin_voltage = general_widget.begin_voltage()
-        settings.setValue("beginVoltage", begin_voltage)
+            end_voltage = general_widget.end_voltage()
+            settings.set("endVoltage", end_voltage)
 
-        end_voltage = general_widget.end_voltage()
-        settings.setValue("endVoltage", end_voltage)
+            step_voltage = general_widget.step_voltage()
+            settings.set("stepVoltage", step_voltage)
 
-        step_voltage = general_widget.step_voltage()
-        settings.setValue("stepVoltage", step_voltage)
+            waiting_time = general_widget.waiting_time()
+            settings.set("waitingTime", waiting_time)
 
-        waiting_time = general_widget.waiting_time()
-        settings.setValue("waitingTime", waiting_time)
+            source_role = general_widget.source_role()
+            settings.set("sourceRole", source_role or "")
 
-        source_role = general_widget.source_role()
-        settings.setValue("sourceRole", source_role or "")
+            bias_voltage = general_widget.bias_voltage()
+            settings.set("biasVoltage", bias_voltage)
 
-        bias_voltage = general_widget.bias_voltage()
-        settings.setValue("biasVoltage", bias_voltage)
+            bias_source_role = general_widget.bias_source_role()
+            settings.set("biasSourceRole", bias_source_role or "")
 
-        bias_source_role = general_widget.bias_source_role()
-        settings.setValue("biasSourceRole", bias_source_role or "")
+            current_compliance = general_widget.current_compliance()
+            settings.set("currentCompliance", current_compliance)
 
-        current_compliance = general_widget.current_compliance()
-        settings.setValue("currentCompliance", current_compliance)
+            continueInCompliance = general_widget.is_continue_in_compliance()
+            settings.set("continueInCompliance", continueInCompliance)
 
-        continueInCompliance = general_widget.is_continue_in_compliance()
-        settings.setValue("continueInCompliance", continueInCompliance)
+            waiting_time_continuous = general_widget.waiting_time_continuous()
+            settings.set("waitingTimeContinuous", waiting_time_continuous)
 
-        waiting_time_continuous = general_widget.waiting_time_continuous()
-        settings.setValue("waitingTimeContinuous", waiting_time_continuous)
+            wait_for_setpoint = general_widget.is_wait_for_setpoint()
+            settings.set("waitForSetpoint", wait_for_setpoint)
 
-        wait_for_setpoint = general_widget.is_wait_for_setpoint()
-        settings.setValue("waitForSetpoint", wait_for_setpoint)
-
-        settings.endGroup()
-
-        settings.beginGroup("roles")
-
-        for role_widget in self.main_window.roles():
-            name = str(role_widget.role())
-            settings.beginGroup(name)
-            settings.setValue("model", role_widget.model())
-            settings.setValue("resource", role_widget.resource_name())
-            settings.setValue("termination", role_widget.termination())
-            settings.setValue("timeout", role_widget.timeout())
-            settings.setValue("baud_rate", role_widget.baud_rate())
-            settings.setValue("reset_instrument", role_widget.is_reset_instrument())
-            settings.setValue("resources", role_widget.resources())
-            settings.setValue("configs", role_widget.configs())
-            settings.endGroup()
-
-        settings.endGroup()
+        with settings.group("roles"):
+            for role_widget in self.main_window.roles():
+                name = str(role_widget.role())
+                with settings.group(name):
+                    settings.set("model", role_widget.model())
+                    settings.set("resource", role_widget.resource_name())
+                    settings.set("termination", role_widget.termination())
+                    settings.set("timeout", role_widget.timeout())
+                    settings.set("baud_rate", role_widget.baud_rate())
+                    settings.set("reset_instrument", role_widget.is_reset_instrument())
+                    settings.set("resources", role_widget.resources())
+                    settings.set("configs", role_widget.configs())
 
     @QtCore.Slot()
     def on_import_file(self) -> None:
@@ -1235,9 +1216,10 @@ class Controller(QtCore.QObject):
             # Create and run measurement
             measurement = self.create_measurement(state)
 
-            settings = QtCore.QSettings()
-            timestamp_format = get_str(settings.value("writer/timestampFormat"), ".6f")
-            value_format = get_str(settings.value("writer/valueFormat"), "+.3E")
+            settings = SettingsAdapter(QtCore.QSettings())
+            with settings.group("writer"):
+                timestamp_format = settings.get("timestampFormat", ".6f")
+                value_format = settings.get("valueFormat", "+.3E")
 
             self.main_window.clear()
             self.iv_plots_data_windget.clear()
