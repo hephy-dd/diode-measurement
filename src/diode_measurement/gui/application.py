@@ -3,7 +3,6 @@ import os
 from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import cast
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -11,6 +10,7 @@ from .. import __version__
 from ..controller import Controller
 from ..core.plugin import PluginRegistry
 from ..plugins import RPCServerPlugin, ScreenshotPlugin
+from .adapters import SettingsAdapter
 from .mainwindow import MainWindow
 
 __all__ = ["bootstrap"]
@@ -51,11 +51,10 @@ def parse_log_level(log_level: str) -> int:
 
 
 def load_logging_config() -> LoggingConfig:
-    settings = QtCore.QSettings()
-    write_logfile = cast(bool, settings.value("logging/write_logfile", True, bool))
-    log_level = parse_log_level(
-        cast(str, settings.value("logging/log_level", "info", str))
-    )
+    settings = SettingsAdapter(QtCore.QSettings())
+    with settings.group("logging"):
+        write_logfile = settings.get("write_logfile", True)
+        log_level = parse_log_level(settings.get("log_level", "info"))
     return LoggingConfig(log_level, write_logfile)
 
 

@@ -40,5 +40,5 @@ diode-measurement = "diode_measurement.__main__:main"
 [tool.ruff.lint]
 extend-ignore = ["BLE001", "RUF022"]
 
-[tool.pyright]
+[tool.basedpyright]
 typeCheckingMode = "standard"

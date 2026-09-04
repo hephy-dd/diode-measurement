@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 
-def format_metric(value: float, unit: str, decimals: int = 3) -> str:
+def format_metric(value: float | None, unit: str, decimals: int = 3) -> str:
     """Pretty format metric units.
     >>> format_metric(.0042, "A")
     '4.200 mA'
