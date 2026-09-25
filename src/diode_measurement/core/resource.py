@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Self
 
 import pyvisa
-from pyvisa.constants import StatusCode
+from pyvisa.constants import InterfaceType, StatusCode
 from pyvisa.resources import MessageBasedResource
 
 __all__ = [
@@ -207,6 +207,11 @@ def _drain_output_buffer(
 
     if max_reads <= 0:
         raise ValueError("max_reads must be positive")
+
+    # Never probe GPIB by reading until timeout (e.g. error -420 "Query UNTERMINATED").
+    if resource.interface_type == InterfaceType.gpib:
+        resource.clear()
+        return
 
     previous_timeout = resource.timeout
 
