@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "diode-measurement"
-version = "0.31.2"
+version = "0.31.3"
 description = "IV/CV measurements for silicon sensors."
 readme = "README.md"
 license = {text = "GPLv3"}
