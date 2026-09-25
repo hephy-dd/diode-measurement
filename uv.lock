@@ -1,6 +1,10 @@
 version = 1
 revision = 3
 requires-python = ">=3.11"
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version < '3.12'",
+]
 
 [[package]]
 name = "comet"
@@ -8,7 +12,8 @@ version = "1.6.0"
 source = { url = "https://github.com/hephy-dd/comet/archive/refs/tags/v1.6.0.tar.gz" }
 dependencies = [
     { name = "numpy" },
-    { name = "pint" },
+    { name = "pint", version = "0.25.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "pint", version = "0.26.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pyserial" },
     { name = "pyusb" },
     { name = "pyvisa" },
@@ -169,6 +174,9 @@ wheels = [
 name = "pint"
 version = "0.25.3"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.12'",
+]
 dependencies = [
     { name = "flexcache" },
     { name = "flexparser" },
@@ -181,12 +189,30 @@ wheels = [
 ]
 
 [[package]]
-name = "platformdirs"
-version = "4.9.6"
+name = "pint"
+version = "0.26.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9f/4a/0883b8e3802965322523f0b200ecf33d31f10991d0401162f4b23c698b42/platformdirs-4.9.6.tar.gz", hash = "sha256:3bfa75b0ad0db84096ae777218481852c0ebc6c727b3168c1b9e0118e458cf0a", size = 29400, upload-time = "2026-04-09T00:04:10.812Z" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+]
+dependencies = [
+    { name = "flexcache" },
+    { name = "flexparser" },
+    { name = "platformdirs" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/bc/2c38c32e0fb1f966d3695f4493a3f3ce2cc0cca1bbe7c958b92261b31af9/pint-0.26.1.tar.gz", hash = "sha256:1bbde36eae57a5a289cd05081c6405618a5899814940752064ce351cd0204f71", size = 273631, upload-time = "2026-09-10T21:16:49.712Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/a6/a0a304dc33b49145b21f4808d763822111e67d1c3a32b524a1baf947b6e1/platformdirs-4.9.6-py3-none-any.whl", hash = "sha256:e61adb1d5e5cb3441b4b7710bea7e4c12250ca49439228cc1021c00dcfac0917", size = 21348, upload-time = "2026-04-09T00:04:09.463Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/5c/9507ea3c732f8a259f45ddf190a741e9bf7d3fe229b5d473917ee6efbf1e/pint-0.26.1-py3-none-any.whl", hash = "sha256:e982b129415c09c63308f314ae44697d83e5c96f253bcc0d5b833fc3329eb6d4", size = 326478, upload-time = "2026-09-10T21:16:48.316Z" },
+]
+
+[[package]]
+name = "platformdirs"
+version = "4.11.13"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0e/7be2983c52622d6c0899300f760e31ba143355cedf1afcb3e65689d5ca85/platformdirs-4.11.13.tar.gz", hash = "sha256:6985eefdc2298693e4ce1fe124645524cb967428eb6384e0ce5b49767e7ea8ba", size = 40415, upload-time = "2026-09-25T04:44:25.484Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/29/a6/76a492f6a937e196641b3abd1588c504c71438e243daf1bebde4d3bb8ee9/platformdirs-4.11.13-py3-none-any.whl", hash = "sha256:228b2283af5c1f32673cdf55271216a52bbd8258cb31374e302ad7bd26cd7513", size = 25054, upload-time = "2026-09-25T04:44:23.975Z" },
 ]
 
 [[package]]
