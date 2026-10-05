@@ -1,7 +1,12 @@
 import pytest
 
 from diode_measurement.core.scpi import SCPIParseError
-from diode_measurement.drivers.keithley.k2400 import K2400Adapter
+from diode_measurement.drivers.keithley.k2400 import (
+    FilterType,
+    K2400Adapter,
+    RouteTerminals,
+    SourceFunction,
+)
 
 
 def test_k2400_adapter(res):
@@ -73,15 +78,15 @@ def test_k2400_adapter(res):
     assert res.buffer == [":SYST:BEEP:STAT 1", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_route_terminals("REAR") is None
+    assert d.set_route_terminals(RouteTerminals.REAR) is None
     assert res.buffer == [":ROUT:TERM REAR", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_source_function("VOLT") is None
+    assert d.set_source_function(SourceFunction.VOLTAGE) is None
     assert res.buffer == [":SOUR:FUNC VOLT", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_sense_average_tcontrol("REP") is None
+    assert d.set_sense_average_tcontrol(FilterType.REPEAT) is None
     assert res.buffer == [":SENS:AVER:TCON REP", "*OPC?"]
 
     res.buffer = ["1"]

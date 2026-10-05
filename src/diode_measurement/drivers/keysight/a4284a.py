@@ -1,12 +1,67 @@
 import time
 from collections.abc import Mapping
-from typing import Any
+from enum import IntEnum, StrEnum
+from typing import Annotated
+
+import msgspec
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
 from diode_measurement.core.resource import Resource
 from diode_measurement.core.scpi import parse_scpi_error
 
 __all__ = ["A4284AAdapter"]
+
+
+class ImpedanceType(StrEnum):
+    CPRP = "CPRP"
+
+
+class IntegrationTime(StrEnum):
+    SHORT = "SHOR"
+    MEDIUM = "MED"
+    LONG = "LONG"
+
+
+class CorrectionLength(IntEnum):
+    METER_0 = 0
+    METER_1 = 1
+    METER_2 = 2
+
+
+AveragingRate = Annotated[int, msgspec.Meta(ge=1, le=128)]
+
+
+class A4284AConfig(msgspec.Struct, frozen=True):
+    function_type: ImpedanceType = msgspec.field(
+        default=ImpedanceType.CPRP,
+        name="function.type",
+    )
+    integration_time: IntegrationTime = msgspec.field(
+        default=IntegrationTime.MEDIUM,
+        name="aperture.integration_time",
+    )
+    averaging_rate: AveragingRate = msgspec.field(
+        default=1,
+        name="aperture.averaging_rate",
+    )
+    correction_length: CorrectionLength = msgspec.field(
+        default=CorrectionLength.METER_0,
+        name="correction.length",
+    )
+    correction_open_enabled: bool = msgspec.field(
+        default=False,
+        name="correction.open.enabled",
+    )
+    correction_short_enabled: bool = msgspec.field(
+        default=False,
+        name="correction.short.enabled",
+    )
+    voltage: float = 1.0
+    frequency: float = 1000.0
+    amplitude_alc: bool = msgspec.field(
+        default=False,
+        name="amplitude.alc",
+    )
 
 
 class A4284AAdapter:
@@ -25,38 +80,26 @@ class A4284AAdapter:
     def next_error(self) -> InstrumentError | None:
         return parse_scpi_error(self._query(":SYST:ERR?"))
 
-    def configure(self, options: Mapping[str, Any]) -> None:
+    def configure(self, options: Mapping[str, object]) -> None:
+        config = msgspec.convert(options, type=A4284AConfig)
+
         self._write(":INIT:CONT OFF")
         self._write(":TRIG:SOUR BUS")
 
-        function_type = options.get("function.type", "CPRP")
-        self.set_function_impedance_type(function_type)
+        self.set_function_impedance_type(config.function_type)
 
-        # Apterture
-        integration_time = options.get("aperture.integration_time", "MED")
-        averaging_rate = options.get("aperture.averaging_rate", 1)
-        self.set_aperture(integration_time, averaging_rate)
+        self.set_aperture(
+            config.integration_time,
+            config.averaging_rate,
+        )
 
-        # Correction cable length
-        correction_length = options.get("correction.length", 0)
-        self.set_correction_length(correction_length)
+        self.set_correction_length(config.correction_length)
+        self.set_correction_open_state(config.correction_open_enabled)
+        self.set_correction_short_state(config.correction_short_enabled)
 
-        # Enable open correction
-        correction_open_enabled = options.get("correction.open.enabled", False)
-        self.set_correction_open_state(correction_open_enabled)
-
-        # Enable short correction
-        correction_short_enabled = options.get("correction.short.enabled", False)
-        self.set_correction_short_state(correction_short_enabled)
-
-        voltage = options.get("voltage", 1.0)
-        self.set_amplitude_voltage(voltage)
-
-        frequency = options.get("frequency", 1000.0)
-        self.set_amplitude_frequency(frequency)
-
-        amplitude_alc = options.get("amplitude.alc", False)
-        self.set_amplitude_alc(amplitude_alc)
+        self.set_amplitude_voltage(config.voltage)
+        self.set_amplitude_frequency(config.frequency)
+        self.set_amplitude_alc(config.amplitude_alc)
 
     def get_output_enabled(self) -> bool:
         return self._query(":BIAS:STAT?") == "1"
@@ -94,16 +137,15 @@ class A4284AAdapter:
                 f"Failed to parse impedance reading: {result!r}"
             ) from exc
 
-    def set_function_impedance_type(self, impedance_type: str) -> None:
+    def set_function_impedance_type(self, impedance_type: ImpedanceType) -> None:
         self._write(f":FUNC:IMP:TYPE {impedance_type}")
 
-    def set_aperture(self, integration_time: str, averaging_rate: int) -> None:
-        assert integration_time in ["SHOR", "MED", "LONG"]
-        assert 1 <= averaging_rate <= 128
+    def set_aperture(
+        self, integration_time: IntegrationTime, averaging_rate: int
+    ) -> None:
         self._write(f":APER {integration_time},{averaging_rate:d}")
 
-    def set_correction_length(self, correction_length: int) -> None:
-        assert correction_length in [0, 1, 2]
+    def set_correction_length(self, correction_length: CorrectionLength) -> None:
         self._write(f":CORR:LENG {correction_length:d}")
 
     def set_correction_open_state(self, state: bool) -> None:

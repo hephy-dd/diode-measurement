@@ -28,6 +28,7 @@ dependencies = [
     "PyVISA~=1.16.1",
     "PyVISA-py~=0.8.1",
     "json-rpc~=1.15",
+    "msgspec~=0.22.0",
 ]
 
 [project.urls]
