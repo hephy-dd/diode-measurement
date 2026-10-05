@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Normalized instrument drivers by using adapters (#190).
 - Migrated the build backend from Hatchling to `uv_build` (#192).
 
+## [0.31.4] - 2026-10-05
+
+### Fixed
+
+- Explicitly clear K2657A error queue (#195).
+
 ## [0.31.3] - 2026-09-25
 
 ### Fixed
@@ -679,7 +685,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - IV measurement.
 
-[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.31.3...HEAD
+[Unreleased]: https://github.com/hephy-dd/diode-measurement/compare/0.31.4...HEAD
+[0.31.4]: https://github.com/hephy-dd/diode-measurement/compare/0.31.3...0.31.4
 [0.31.3]: https://github.com/hephy-dd/diode-measurement/compare/0.31.2...0.31.3
 [0.31.2]: https://github.com/hephy-dd/diode-measurement/compare/0.31.1...0.31.2
 [0.31.1]: https://github.com/hephy-dd/diode-measurement/compare/0.31.0...0.31.1
