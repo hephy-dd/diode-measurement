@@ -1,6 +1,11 @@
-import pytest
-
-from diode_measurement.drivers.keithley.k2470 import K2470Adapter
+from diode_measurement.drivers.keithley.k2470 import (
+    BreakdownProtection,
+    FilterType,
+    K2470Adapter,
+    RouteTerminals,
+    SenseFunction,
+    SourceFunction,
+)
 
 
 def test_k2470_adapter(res):
@@ -69,19 +74,19 @@ def test_k2470_adapter(res):
     ]
 
     res.buffer = ["1"]
-    assert d.set_route_terminals("REAR") is None
+    assert d.set_route_terminals(RouteTerminals.REAR) is None
     assert res.buffer == [":ROUT:TERM REAR", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_source_function("VOLT") is None
+    assert d.set_source_function(SourceFunction.VOLTAGE) is None
     assert res.buffer == [":SOUR:FUNC VOLT", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_sense_function("CURR") is None
+    assert d.set_sense_function(SenseFunction.CURRENT) is None
     assert res.buffer == [':SENS:FUNC "CURR"', "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_sense_current_average_tcontrol("MOV") is None
+    assert d.set_sense_current_average_tcontrol(FilterType.MOVING) is None
     assert res.buffer == [":SENS:CURR:AVER:TCON MOV", "*OPC?"]
 
     res.buffer = ["1"]
@@ -97,19 +102,16 @@ def test_k2470_adapter(res):
     assert res.buffer == [":SENS:CURR:NPLC 4.200000E+00", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_system_breakdown_protection("OFF") is None
+    assert d.set_system_breakdown_protection(BreakdownProtection.OFF) is None
     assert res.buffer == [":SYST:BRE:PROT OFF", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_system_breakdown_protection("ON") is None
+    assert d.set_system_breakdown_protection(BreakdownProtection.ON) is None
     assert res.buffer == [":SYST:BRE:PROT ON", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_system_breakdown_protection("AUTO") is None
+    assert d.set_system_breakdown_protection(BreakdownProtection.AUTO) is None
     assert res.buffer == [":SYST:BRE:PROT AUTO", "*OPC?"]
-
-    with pytest.raises(ValueError):
-        d.set_system_breakdown_protection("shrubbery")
 
     res.buffer = ["1"]
     assert d.is_interlock() is True

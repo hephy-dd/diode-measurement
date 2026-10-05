@@ -1,7 +1,8 @@
 import time
 from collections.abc import Iterable, Mapping
-from typing import Any
+from enum import StrEnum
 
+import msgspec
 from comet.driver.keithley.k6517b import K6517B
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
@@ -9,6 +10,52 @@ from diode_measurement.core.resource import Resource
 from diode_measurement.core.scpi import parse_scpi_error
 
 __all__ = ["K6517BAdapter"]
+
+
+class SenseFunction(StrEnum):
+    CURRENT = "CURR"
+    VOLTAGE = "VOLT"
+
+
+class FilterType(StrEnum):
+    MOVING = "MOV"
+    REPEAT = "REP"
+
+
+class K6517BConfig(msgspec.Struct, frozen=True):
+    sense_range: float = msgspec.field(
+        default=20e-3,
+        name="sense.range",
+    )
+    sense_auto_range_lower_limit: float = msgspec.field(
+        default=2e-12,
+        name="sense.auto_range.lower_limit",
+    )
+    sense_auto_range_upper_limit: float = msgspec.field(
+        default=20e-3,
+        name="sense.auto_range.upper_limit",
+    )
+    sense_auto_range: bool = msgspec.field(
+        default=True,
+        name="sense.auto_range",
+    )
+    source_meter_connect: bool = msgspec.field(
+        default=False,
+        name="source.meter_connect",
+    )
+    filter_type: FilterType = msgspec.field(
+        default=FilterType.MOVING,
+        name="filter.mode",
+    )
+    filter_count: int = msgspec.field(
+        default=10,
+        name="filter.count",
+    )
+    filter_enable: bool = msgspec.field(
+        default=False,
+        name="filter.enable",
+    )
+    nplc: float = 1.0
 
 
 class K6517BAdapter:
@@ -28,40 +75,27 @@ class K6517BAdapter:
     def next_error(self) -> InstrumentError | None:
         return parse_scpi_error(self._query(":SYST:ERR?"))
 
-    def configure(self, options: Mapping[str, Any]) -> None:
+    def configure(self, options: Mapping[str, object]) -> None:
+        config = msgspec.convert(options, type=K6517BConfig)
+
         self.set_format_elements(["READ"])
-        self.set_sense_function("CURR")
+        self.set_sense_function(SenseFunction.CURRENT)
 
-        sense_range = options.get("sense.range", 20e-3)
-        self.set_sense_current_range(sense_range)
-
-        sense_auto_range_lower_limit = options.get(
-            "sense.auto_range.lower_limit", 2e-12
+        self.set_sense_current_range(config.sense_range)
+        self.set_sense_current_range_auto_lower_limit(
+            config.sense_auto_range_lower_limit
         )
-        self.set_sense_current_range_auto_lower_limit(sense_auto_range_lower_limit)
-
-        sense_auto_range_upper_limit = options.get(
-            "sense.auto_range.upper_limit", 20e-3
+        self.set_sense_current_range_auto_upper_limit(
+            config.sense_auto_range_upper_limit
         )
-        self.set_sense_current_range_auto_upper_limit(sense_auto_range_upper_limit)
+        self.set_sense_current_range_auto(config.sense_auto_range)
 
-        sense_auto_range = options.get("sense.auto_range", True)
-        self.set_sense_current_range_auto(sense_auto_range)
+        self.set_source_voltage_mconnect(config.source_meter_connect)
 
-        source_meter_connect = options.get("source.meter_connect", False)
-        self.set_source_voltage_mconnect(source_meter_connect)
-
-        filter_mode = options.get("filter.mode", "MOV")
-        self.set_sense_current_average_tcontrol(filter_mode)
-
-        filter_count = options.get("filter.count", 10)
-        self.set_sense_current_average_count(filter_count)
-
-        filter_enable = options.get("filter.enable", False)
-        self.set_sense_current_average_state(filter_enable)
-
-        nplc = options.get("nplc", 1.0)
-        self.set_sense_current_nplcycles(nplc)
+        self.set_sense_current_average_tcontrol(config.filter_type)
+        self.set_sense_current_average_count(config.filter_count)
+        self.set_sense_current_average_state(config.filter_enable)
+        self.set_sense_current_nplcycles(config.nplc)
 
     def get_output_enabled(self) -> bool:
         return bool(int(self._query(":OUTP:STAT?")))
@@ -109,7 +143,7 @@ class K6517BAdapter:
         value = ",".join(elements)
         self._write(f":FORM:ELEM {value}")
 
-    def set_sense_function(self, function: str) -> None:
+    def set_sense_function(self, function: SenseFunction) -> None:
         self._write(f":SENS:FUNC '{function}'")
 
     def set_sense_current_range(self, level: float) -> None:
@@ -124,7 +158,7 @@ class K6517BAdapter:
     def set_sense_current_range_auto_upper_limit(self, limit: float) -> None:
         self._write(f":SENS:CURR:RANG:AUTO:ULIM {limit:E}")
 
-    def set_sense_current_average_tcontrol(self, tcontrol: str) -> None:
+    def set_sense_current_average_tcontrol(self, tcontrol: FilterType) -> None:
         self._write(f":SENS:CURR:AVER:TCON {tcontrol}")
 
     def set_sense_current_average_count(self, count: int) -> None:

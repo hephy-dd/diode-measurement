@@ -1,6 +1,7 @@
 from collections.abc import Mapping
-from typing import Any
+from enum import StrEnum
 
+import msgspec
 from comet.driver.keithley.k2400 import K2400
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
@@ -8,6 +9,45 @@ from diode_measurement.core.resource import Resource
 from diode_measurement.core.scpi import parse_scpi_error
 
 __all__ = ["K2400Adapter"]
+
+
+class RouteTerminals(StrEnum):
+    FRONT = "FRON"
+    REAR = "REAR"
+
+
+class SourceFunction(StrEnum):
+    CURRENT = "CURR"
+    VOLTAGE = "VOLT"
+
+
+class FilterType(StrEnum):
+    MOVING = "MOV"
+    REPEAT = "REP"
+
+
+class K2400Config(msgspec.Struct, frozen=True):
+    beeper_state: bool = msgspec.field(
+        default=False,
+        name="beeper.state",
+    )
+    route_terminals: RouteTerminals = msgspec.field(
+        default=RouteTerminals.FRONT,
+        name="route.terminals",
+    )
+    filter_type: FilterType = msgspec.field(
+        default=FilterType.MOVING,
+        name="filter.mode",
+    )
+    filter_count: int = msgspec.field(
+        default=10,
+        name="filter.count",
+    )
+    filter_enable: bool = msgspec.field(
+        default=False,
+        name="filter.enable",
+    )
+    nplc: float = 1.0
 
 
 class K2400Adapter:
@@ -28,30 +68,22 @@ class K2400Adapter:
     def next_error(self) -> InstrumentError | None:
         return parse_scpi_error(self._query(":SYST:ERR?"))
 
-    def configure(self, options: Mapping[str, Any]) -> None:
-        beeper_state = options.get("beeper.state", False)
-        self.set_system_beeper_state(beeper_state)
+    def configure(self, options: Mapping[str, object]) -> None:
+        config = msgspec.convert(options, type=K2400Config)
 
-        route_terminals = options.get("route.terminals", "FRON")
-        self.set_route_terminals(route_terminals)
+        self.set_system_beeper_state(config.beeper_state)
+        self.set_route_terminals(config.route_terminals)
 
-        self.set_source_function("VOLT")
+        self.set_source_function(SourceFunction.VOLTAGE)
 
         self._write(":SENS:FUNC:CONC ON")  # enable concurrent measurements
         self._write(":SENS:FUNC:ON 'VOLT','CURR'")
         self._write(":FORM:ELEM VOLT,CURR")
 
-        filter_mode = options.get("filter.mode", "MOV")
-        self.set_sense_average_tcontrol(filter_mode)
-
-        filter_count = options.get("filter.count", 10)
-        self.set_sense_average_count(filter_count)
-
-        filter_enable = options.get("filter.enable", False)
-        self.set_sense_average_state(filter_enable)
-
-        nplc = options.get("nplc", 1.0)
-        self.set_sense_current_nplc(nplc)
+        self.set_sense_average_tcontrol(config.filter_type)
+        self.set_sense_average_count(config.filter_count)
+        self.set_sense_average_state(config.filter_enable)
+        self.set_sense_current_nplc(config.nplc)
 
     def get_output_enabled(self) -> bool:
         return self._query(":OUTP:STAT?") == "1"
@@ -93,13 +125,13 @@ class K2400Adapter:
     def set_system_beeper_state(self, state: bool) -> None:
         self._write(f":SYST:BEEP:STAT {state:d}")
 
-    def set_route_terminals(self, terminal: str) -> None:
+    def set_route_terminals(self, terminal: RouteTerminals) -> None:
         self._write(f":ROUT:TERM {terminal}")
 
-    def set_source_function(self, function: str) -> None:
+    def set_source_function(self, function: SourceFunction) -> None:
         self._write(f":SOUR:FUNC {function}")
 
-    def set_sense_average_tcontrol(self, tcontrol: str) -> None:
+    def set_sense_average_tcontrol(self, tcontrol: FilterType) -> None:
         self._write(f":SENS:AVER:TCON {tcontrol}")
 
     def set_sense_average_count(self, count: int) -> None:

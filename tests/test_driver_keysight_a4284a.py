@@ -1,4 +1,9 @@
-from diode_measurement.drivers.keysight.a4284a import A4284AAdapter
+from diode_measurement.drivers.keysight.a4284a import (
+    A4284AAdapter,
+    CorrectionLength,
+    ImpedanceType,
+    IntegrationTime,
+)
 
 
 def test_a4284a_adapter(res):
@@ -69,15 +74,15 @@ def test_a4284a_adapter(res):
     ]
 
     res.buffer = ["1"]
-    assert d.set_function_impedance_type("CPRP") is None
+    assert d.set_function_impedance_type(ImpedanceType.CPRP) is None
     assert res.buffer == [":FUNC:IMP:TYPE CPRP", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_aperture("MED", 42) is None
+    assert d.set_aperture(IntegrationTime.MEDIUM, 42) is None
     assert res.buffer == [":APER MED,42", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_correction_length(2) is None
+    assert d.set_correction_length(CorrectionLength.METER_2) is None
     assert res.buffer == [":CORR:LENG 2", "*OPC?"]
 
     res.buffer = ["1"]

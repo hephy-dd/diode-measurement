@@ -1,7 +1,9 @@
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, Final
+from typing import Final
+
+import msgspec
 
 from diode_measurement.core.driver import InstrumentError, handle_exception
 from diode_measurement.core.resource import Resource
@@ -40,6 +42,13 @@ ERROR_MESSAGES: Final[dict[int, str]] = {
 logger = logging.getLogger(__name__)
 
 
+class K237Config(msgspec.Struct, frozen=True):
+    filter_mode: int = msgspec.field(
+        default=0,
+        name="filter.mode",
+    )
+
+
 class K237Adapter:
     WRITE_DELAY: float = 0.250
 
@@ -65,11 +74,12 @@ class K237Adapter:
                 return InstrumentError(code, message)
         return None
 
-    def configure(self, options: Mapping[str, Any]) -> None:
+    def configure(self, options: Mapping[str, object]) -> None:
+        config = msgspec.convert(options, type=K237Config)
+
         self._write("F0,0X")  # function VOLT
         self._write("B0,0,0X")  # bias to auto
-        filter_mode = options.get("filter.mode", 0)
-        self._write(f"P{filter_mode:d}X")
+        self._write(f"P{config.filter_mode:d}X")
 
     def get_output_enabled(self) -> bool:
         return self._query("U3X")[18:20] == "N1"

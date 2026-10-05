@@ -1,4 +1,8 @@
-from diode_measurement.drivers.keithley.k2657a import K2657AAdapter
+from diode_measurement.drivers.keithley.k2657a import (
+    FilterType,
+    K2657AAdapter,
+    SourceFunction,
+)
 
 
 def test_k2657a_adapter(res):
@@ -65,11 +69,11 @@ def test_k2657a_adapter(res):
     assert res.buffer == ["beeper.enable = beeper.ON", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_source_function("DCVOLTS") is None
+    assert d.set_source_function(SourceFunction.DCVOLTS) is None
     assert res.buffer == ["smua.source.func = smua.OUTPUT_DCVOLTS", "*OPC?"]
 
     res.buffer = ["1"]
-    assert d.set_measure_filter_type("REPEAT_AVG") is None
+    assert d.set_measure_filter_type(FilterType.REPEAT_AVG) is None
     assert res.buffer == ["smua.measure.filter.type = smua.FILTER_REPEAT_AVG", "*OPC?"]
 
     res.buffer = ["1"]
