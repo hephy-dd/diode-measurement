@@ -21,7 +21,11 @@ class K2657AAdapter:
         self._write("reset()")
 
     def clear(self) -> None:
-        self._write("status.reset()")
+        self._write("status.reset()", wait_for_completion=False)
+
+        # Neither reset() nor status.reset() clears the error queue.
+        # Clear it explicitly to prevent stale errors from affecting subsequent operations.
+        self._write("errorqueue.clear()")
 
     def next_error(self) -> InstrumentError | None:
         error = self._driver.next_error()
@@ -106,9 +110,10 @@ class K2657AAdapter:
         self._write(f"display.smua.measure.func = display.MEASURE_{function}")
 
     @handle_exception
-    def _write(self, message: str) -> None:
+    def _write(self, message: str, wait_for_completion: bool = True) -> None:
         _ = self._resource.write(message)
-        _ = self._resource.query("*OPC?")
+        if wait_for_completion:
+            _ = self._resource.query("*OPC?")
 
     @handle_exception
     def _query(self, message: str) -> str:

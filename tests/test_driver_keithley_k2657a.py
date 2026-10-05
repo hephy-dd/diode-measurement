@@ -14,7 +14,7 @@ def test_k2657a_adapter(res):
 
     res.buffer = ["1"]
     assert d.clear() is None
-    assert res.buffer == ["status.reset()", "*OPC?"]
+    assert res.buffer == ["status.reset()", "errorqueue.clear()", "*OPC?"]
 
     res.buffer = ["0\tno error\t123\t0"]
     assert d.next_error() is None
