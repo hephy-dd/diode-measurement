@@ -4,7 +4,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..core.measurement import Measurement
+from ..core.measurement import Measurement, MeasurementRunner
 from ..writer import Writer
 
 __all__ = ["MeasurementJob"]
@@ -52,4 +52,4 @@ class MeasurementJob:
                 fp = stack.enter_context(open(filename, "w", newline=""))
                 writer = self.create_writer(fp)
                 measurement.add_writer(writer)
-            measurement.run()
+            MeasurementRunner(measurement).run()

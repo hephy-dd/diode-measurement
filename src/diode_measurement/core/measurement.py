@@ -29,8 +29,9 @@ from .role import Role
 from .station import Station
 
 __all__ = [
-    "MeasurementParameters",
     "Measurement",
+    "MeasurementParameters",
+    "MeasurementRunner",
     "RangeMeasurement",
 ]
 
@@ -154,42 +155,6 @@ class Measurement:
     def measure(self) -> None: ...
 
     def finalize(self) -> None: ...
-
-    def run(self) -> None:
-        try:
-            logger.debug("run measurement...")
-            self.set_fsm_state(FSMState.CONFIGURE)
-            logger.debug("handle started callbacks...")
-            self.on_started()
-            logger.debug("handle started callbacks... done.")
-            with contextlib.ExitStack() as stack:
-                logger.debug("creating instrument contexts...")
-                self.station.create_instruments(stack)
-                logger.debug("creating instrument contexts... done.")
-                try:
-                    logger.debug("initialize...")
-                    self.initialize()
-                    logger.debug("initialize... done.")
-                    logger.debug("measure...")
-                    self.measure()
-                    logger.debug("measure... done.")
-                except Exception as exc:
-                    logger.exception("failed to initialize measurement")
-                    self.context.submit_event(ExceptionEvent(exc))
-                finally:
-                    logger.debug("finalize...")
-                    self.set_fsm_state(FSMState.STOPPING)
-                    self.finalize()
-                    logger.debug("finalize... done.")
-        except Exception as exc:
-            logger.exception("failed to run measurement")
-            self.context.submit_event(ExceptionEvent(exc))
-        finally:
-            logger.debug("handle finished callbacks...")
-            self.on_finished()
-            logger.debug("handle finished callbacks... done.")
-            self.set_fsm_state(FSMState.IDLE)
-            logger.debug("run measurement... done.")
 
 
 class RangeMeasurement(Measurement):
@@ -371,9 +336,7 @@ class RangeMeasurement(Measurement):
         """Emit update progress event for ramp iterations."""
         self.update_progress(0, estimate.total, estimate.passed)
 
-    def initialize(self) -> None:
-        self.safe_drain_output_buffers()
-
+    def resolve_instruments(self) -> None:
         source_role = self.state.source_role
         if source_role is None:
             raise RuntimeError("No source instrument set")
@@ -381,10 +344,8 @@ class RangeMeasurement(Measurement):
         if self.source_instrument is None:
             raise RuntimeError("No source instrument set")
 
-        # Bias
-
         self.bias_source_instrument = None
-        if self.state.measurement_type in ["iv_bias"]:  # TODO
+        if self.state.measurement_type in ["iv_bias"]:  # TODO!
             bias_source_role = self.state.bias_source_role
             if bias_source_role is None:
                 raise RuntimeError("No bias source instrument set")
@@ -392,39 +353,29 @@ class RangeMeasurement(Measurement):
             if self.bias_source_instrument is None:
                 raise RuntimeError("No bias source instrument set")
 
-        logger.debug("querying context identities...")
+    def identify_instruments(self) -> None:
         for role, instrument in self.station.instruments.items():
-            logger.debug("reading %s identity...", role.upper())
             identity: str = instrument.identify()
-            logger.debug("reading %s identity... done.", role.upper())
             logger.info("%s IDN: %s", role.upper(), identity)
-        logger.debug("querying context identities... done.")
 
-        logger.debug("get source output state...")
-        source_output_state: bool = self.get_source_output_state()
-        logger.debug("get source output state... done.")
+    def recover_source(self) -> None:
+        if not self.get_source_output_state():
+            return
 
-        if source_output_state:
-            self.ramp_to_zero()
-        else:
-            self.set_source_voltage(0.0)
+        self.ramp_to_zero()
+        self.set_source_output_state(False)
 
-        # Bias
+    def recover_bias_source(self) -> None:
+        if self.bias_source_instrument is None:
+            return
 
-        if self.bias_source_instrument:
-            logger.debug("get bias source output state...")
-            bias_source_output_state = self.get_bias_source_output_state()
-            logger.debug("get bias source output state... done.")
+        if not self.get_bias_source_output_state():
+            return
 
-            if bias_source_output_state:
-                self.ramp_bias_to_zero()
-            else:
-                self.set_bias_source_voltage(0.0)
+        self.ramp_bias_to_zero()
+        self.set_bias_source_output_state(False)
 
-        # Switch
-        self.initialize_switch()
-
-        # Reset (optional)
+    def reset_instruments(self) -> None:
         for role, instrument in self.station.instruments.items():
             role_config = self.state.find_role(role)
             if role_config and role_config.reset_instrument:
@@ -432,13 +383,13 @@ class RangeMeasurement(Measurement):
                 instrument.reset()
                 logger.info("Reset %s... done.", role.upper())
 
-        # Clear state
+    def clear_instruments(self) -> None:
         for role, instrument in self.station.instruments.items():
             logger.info("Clear %s...", role.upper())
             instrument.clear()
             logger.info("Clear %s... done.", role.upper())
 
-        # Configure
+    def configure_instruments(self) -> None:
         for role, instrument in self.station.instruments.items():
             logger.info("Configure %s...", role.upper())
             role_config = self.state.find_role(role)
@@ -448,6 +399,24 @@ class RangeMeasurement(Measurement):
                 instrument.configure(role_config.options)
                 self.check_error_state(instrument)
             logger.info("Configure %s... done.", role.upper())
+
+    def initialize(self) -> None:
+        self.safe_drain_output_buffers()
+
+        self.resolve_instruments()
+
+        # Verify the complete station before touching anything.
+        self.identify_instruments()
+
+        # Recover potentially energized sources before reset/clear/configure.
+        self.recover_source()
+        self.recover_bias_source()
+
+        # Instruments are now assumed to be in a safe state.
+        self.initialize_switch()
+        self.reset_instruments()
+        self.clear_instruments()
+        self.configure_instruments()
 
         # Compliance
         self.context.process_inbox()
@@ -563,67 +532,88 @@ class RangeMeasurement(Measurement):
             self.acquire_continuous_reading()
 
     def finalize(self) -> None:
+        errors: list[Exception] = []
+
         try:
             self.safe_drain_output_buffers()
+        except Exception as exc:
+            errors.append(exc)
 
+        try:
             self.tcu.stop()
+        except Exception as exc:
+            errors.append(exc)
 
-            self.finalize_elms()
+        for role in {Role.ELM, Role.ELM2}:
+            try:
+                self.finalize_elm(role)
+            except Exception as exc:
+                errors.append(exc)
 
+        try:
             self.ramp_to_zero()
+        except Exception as exc:
+            errors.append(exc)
 
-            if self.bias_source_instrument:
+        if self.bias_source_instrument:
+            try:
                 self.ramp_bias_to_zero()
+            except Exception as exc:
+                errors.append(exc)
 
-            self.finalize_lcr()
+        try:
+            self.finalize_lcr(Role.LCR)
+        except Exception as exc:
+            errors.append(exc)
 
+        try:
             self.assure_discharge()
+        except Exception as exc:
+            errors.append(exc)
 
+        try:
             self.set_source_output_state(False)
+        except Exception as exc:
+            errors.append(exc)
 
-            if self.bias_source_instrument:
+        if self.bias_source_instrument:
+            try:
                 self.set_bias_source_output_state(False)
+            except Exception as exc:
+                errors.append(exc)
 
-            self.finalize_switch()
-        finally:
-            self.tcu.stop()
+        try:
+            self.finalize_switch(Role.SWITCH)
+        except Exception as exc:
+            errors.append(exc)
 
-            self.submit_update(
-                {
-                    "source_voltage": None,
-                    "bias_source_voltage": None,
-                    "smu_voltage": None,
-                    "smu_current": None,
-                    "smu2_voltage": None,
-                    "smu2_current": None,
-                    "elm_current": None,
-                    "elm2_current": None,
-                    "lcr_capacity": None,
-                    "dmm_temperature": None,
-                }
-            )
+        self.submit_update(
+            {
+                "source_voltage": None,
+                "bias_source_voltage": None,
+            }
+        )
+        self.clear_readings()
 
-    def finalize_elms(self) -> None:
-        elm = self.station.instruments.get(Role.ELM)
-        if elm is not None:
+        if errors:
+            raise ExceptionGroup("failed to finalize measurement", errors)
+
+    def finalize_elm(self, role: Role) -> None:
+        elm = self.station.instruments.get(role)
+        if elm is not None and hasattr(elm, "set_zero_check_enabled"):
             elm.set_zero_check_enabled(True)
-            logger.info("ELM zero check: on")
+            logger.info("%s zero check: on", role)
 
-        elm2 = self.station.instruments.get(Role.ELM2)
-        if elm2 is not None:
-            elm2.set_zero_check_enabled(True)
-            logger.info("ELM2 zero check: on")
-
-    def finalize_lcr(self) -> None:
-        lcr = self.station.instruments.get(Role.LCR)
+    def finalize_lcr(self, role: Role) -> None:
+        lcr = self.station.instruments.get(role)
         if lcr is not None and hasattr(lcr, "finalize"):
             lcr.finalize()
 
-    def finalize_switch(self) -> None:
-        switch = self.station.instruments.get(Role.SWITCH)
-        if switch:
+    def finalize_switch(self, role: Role) -> None:
+        switch = self.station.instruments.get(role)
+        if switch is not None and hasattr(switch, "open_all_channels"):
             switch.open_all_channels()
-            logger.info("Switch: opened ALL channels")
+            logger.info("%s: opened ALL channels", role)
 
     def assure_discharge(self) -> None:
         """Wait until capacitors discared before output disable."""
@@ -661,6 +651,23 @@ class RangeMeasurement(Measurement):
 
     def acquire_continuous_reading(self) -> None: ...
 
+    def clear_readings(self) -> None:
+        self.submit_update(
+            {
+                "smu_voltage": None,
+                "smu_current": None,
+                "smu2_voltage": None,
+                "smu2_current": None,
+                "elm_current": None,
+                "elm2_current": None,
+                "lcr_capacity": None,
+                "dmm_temperature": None,
+                "tcu_temperature": None,
+                "tcu_humidity": None,
+                "tcu_state": None,
+            }
+        )
+
     def ramp_to_begin(self) -> None:
         source_voltage = self.get_source_voltage()
         voltage_begin: float = self.state.voltage_begin
@@ -687,21 +694,7 @@ class RangeMeasurement(Measurement):
 
     def ramp_to_zero(self) -> None:
         source_voltage = self.get_source_voltage()
-        self.submit_update(
-            {
-                "smu_voltage": None,
-                "smu_current": None,
-                "smu2_voltage": None,
-                "smu2_current": None,
-                "elm_current": None,
-                "elm2_current": None,
-                "lcr_capacity": None,
-                "dmm_temperature": None,
-                "tcu_temperature": None,
-                "tcu_humidity": None,
-                "tcu_state": None,
-            }
-        )
+        self.clear_readings()
 
         source_voltage_end: float = 0.0
         source_voltage_step: float = 5.0
@@ -751,21 +744,8 @@ class RangeMeasurement(Measurement):
         end_voltage: float = 0.0
         step_voltage: float = 5.0
         waiting_time: float = 0.250
-        self.submit_update(
-            {
-                "smu_voltage": None,
-                "smu_current": None,
-                "smu2_voltage": None,
-                "smu2_current": None,
-                "elm_current": None,
-                "elm2_current": None,
-                "lcr_capacity": None,
-                "dmm_temperature": None,
-                "tcu_temperature": None,
-                "tcu_humidity": None,
-                "tcu_state": None,
-            }
-        )
+        self.clear_readings()
+
         ramp: LinearRange = LinearRange(bias_source_voltage, end_voltage, step_voltage)
         estimate: Estimate = Estimate(len(ramp))
         logger.info("Ramp bias source to zero...")
@@ -832,6 +812,39 @@ class RangeMeasurement(Measurement):
         # If end voltage lower, set new range after ramp.
         if abs(ramp.end) < abs(ramp.begin):
             self.set_source_voltage_range(ramp.end)
+
+
+class MeasurementRunner:
+    def __init__(self, measurement: Measurement) -> None:
+        self.measurement = measurement
+
+    def run(self) -> None:
+        measurement = self.measurement
+
+        try:
+            logger.debug("run measurement...")
+            measurement.set_fsm_state(FSMState.CONFIGURE)
+            measurement.on_started()
+
+            with contextlib.ExitStack() as stack:
+                measurement.station.create_instruments(stack)
+
+                try:
+                    measurement.initialize()
+                    measurement.measure()
+                except Exception as exc:
+                    logger.exception("failed to run measurement")
+                    measurement.context.submit_event(ExceptionEvent(exc))
+                finally:
+                    measurement.set_fsm_state(FSMState.STOPPING)
+                    measurement.finalize()
+
+        except Exception as exc:
+            logger.exception("failed to run measurement")
+            measurement.context.submit_event(ExceptionEvent(exc))
+        finally:
+            measurement.on_finished()
+            measurement.set_fsm_state(FSMState.IDLE)
 
 
 class TCUController:
