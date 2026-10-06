@@ -111,6 +111,12 @@ class Envelope:
     future: Future[Any]
 
 
+@dataclass(frozen=True, slots=True)
+class ServerConfig:
+    hostname: str
+    port: int
+
+
 class EventHandler:
     def __init__(self, controller: Controller) -> None:
         self.controller = controller
@@ -309,10 +315,8 @@ class AsyncioTCPServer:
 
 
 class RPCWidget(QtWidgets.QWidget):
-    MaximumEntries: int = 1024
-    """Maximum number of visible protocol entries."""
-
-    restart_signal = QtCore.Signal()
+    enabled_changed = QtCore.Signal(bool)
+    config_changed = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -326,23 +330,30 @@ class RPCWidget(QtWidgets.QWidget):
         self.state_label.setText("Stop")
 
         self.hostname_line_edit = QtWidgets.QLineEdit()
-        self.hostname_line_edit.setToolTip("Hostname")
-        self.hostname_line_edit.setStatusTip("Hostname")
+        self.hostname_line_edit.setMaxLength(253)
+        self.hostname_line_edit.setToolTip(
+            "Host name or IP address on which the RPC server will listen."
+        )
+        self.hostname_line_edit.setStatusTip(
+            "Enter the host name or IP address for the RPC server."
+        )
 
         self.port_spin_box = QtWidgets.QSpinBox()
-        self.port_spin_box.setToolTip("Port")
-        self.port_spin_box.setStatusTip("Port")
-        self.port_spin_box.setRange(0, 999999)
+        self.port_spin_box.setRange(1, 65535)
+        self.port_spin_box.setToolTip("TCP port on which the RPC server will listen.")
+        self.port_spin_box.setStatusTip("Select the TCP port for the RPC server.")
 
         self.enabled_check_box = QtWidgets.QCheckBox("Enabled")
-        self.enabled_check_box.setToolTip("Run server")
-        self.enabled_check_box.setStatusTip("Run server")
+        self.enabled_check_box.setToolTip("Enable or disable the RPC server.")
+        self.enabled_check_box.setStatusTip("Start or stop the RPC server.")
 
         self.protocol_text_edit = QtWidgets.QTextEdit()
         self.protocol_text_edit.setReadOnly(True)
-        self.protocol_text_edit.document().setMaximumBlockCount(
-            type(self).MaximumEntries
+        self.protocol_text_edit.document().setMaximumBlockCount(1024)
+        self.protocol_text_edit.setToolTip(
+            "Messages received from and sent to RPC clients."
         )
+        self.protocol_text_edit.setStatusTip("RPC communication log.")
 
         self.protocol_group_box = QtWidgets.QGroupBox("Protocol")
 
@@ -364,7 +375,9 @@ class RPCWidget(QtWidgets.QWidget):
         layout.setStretch(1, 2)
 
         # Connections
-        self.enabled_check_box.toggled.connect(self.restart_signal)
+        self.enabled_check_box.toggled.connect(self.enabled_changed)
+        self.hostname_line_edit.textChanged.connect(self.config_changed)
+        self.port_spin_box.valueChanged.connect(self.config_changed)
 
     def is_server_enabled(self) -> bool:
         return self.enabled_check_box.isChecked()
@@ -389,6 +402,12 @@ class RPCWidget(QtWidgets.QWidget):
     def set_port(self, port: int) -> None:
         self.port_spin_box.setValue(port)
 
+    def server_config(self) -> ServerConfig:
+        return ServerConfig(
+            hostname=self.hostname(),
+            port=self.port(),
+        )
+
     def set_state(self, text: str) -> None:
         self.state_label.setText(text)
 
@@ -402,6 +421,8 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         super().__init__(parent)
         self._thread = threading.Thread(target=self.run)
         self._enabled = threading.Event()
+        self._server_requested = threading.Event()
+        self._server_config = ServerConfig("", 4000)
         self._shutdown_handlers: list[Callable[[], None]] = []
         self._message_cache: list[str] = []
         self._message_cache_lock = threading.RLock()
@@ -419,6 +440,9 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         self.event_handler = EventHandler(context)
         self.rpc_handler = RPCHandler(self.event_handler)
         self.read_settings()
+        self._update_server_config()
+        if self.rpc_widget.is_server_enabled():
+            self._server_requested.set()
         self._start_thread()
         self._message_timer.start(250)
 
@@ -426,6 +450,7 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
         self._message_timer.stop()
         self.failed.disconnect(context.handle_exception)
         self._enabled.clear()
+        self._server_requested.set()
         for handler in self._shutdown_handlers:
             handler()
         self.write_settings()
@@ -454,9 +479,17 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
             port = self.rpc_widget.port()
             settings.set("port", port)
 
-    def _request_restart(self) -> None:
-        for handler in self._shutdown_handlers:
-            handler()
+    def _update_server_config(self) -> None:
+        self._server_config = self.rpc_widget.server_config()
+
+    def _on_enabled_changed(self, enabled: bool) -> None:
+        self._update_server_config()
+        if enabled:
+            self._server_requested.set()
+        else:
+            self._server_requested.clear()
+            for handler in self._shutdown_handlers:
+                handler()
 
     def join(self) -> None:
         self._thread.join()
@@ -464,7 +497,8 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
     def _install_tab(self, context) -> None:
         self.rpc_widget = RPCWidget()
         self.running.connect(lambda state: self.rpc_widget.set_connected(state))
-        self.rpc_widget.restart_signal.connect(lambda: self._request_restart())
+        self.rpc_widget.enabled_changed.connect(self._on_enabled_changed)
+        self.rpc_widget.config_changed.connect(self._update_server_config)
         context.main_window.control_tab_widget.insertTab(
             1000, self.rpc_widget, self.rpc_widget.windowTitle()
         )
@@ -512,12 +546,12 @@ class RPCServerPlugin(Plugin, QtCore.QObject):
 
     def run(self) -> None:
         while self._enabled.is_set():
-            if self.rpc_widget.is_server_enabled():
-                hostname = self.rpc_widget.hostname()
-                port = self.rpc_widget.port()
-                self._run_server(hostname, port)
-            else:
-                time.sleep(0.50)
+            self._server_requested.wait()
+            if not self._enabled.is_set():
+                break
+
+            config = self._server_config
+            self._run_server(config.hostname, config.port)
 
     def _run_server(self, hostname: str, port: int) -> None:
         logger.info("TCP started %s:%s", hostname, port)
